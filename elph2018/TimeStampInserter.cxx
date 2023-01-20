@@ -49,7 +49,7 @@ TimeStampInserter::HandleData(FairMQParts& msgParts,
   //while (CheckCurrentState(RUNNING) && Send(parts, fOutputChannelName) <= 0) {
   while ((GetCurrentState() == fair::mq::State::Running)
     && Send(parts, fOutputChannelName) <= 0) {
-      LOG(WARNING) << "failed to send a message.";
+      LOG(warn) << "failed to send a message.";
   }
   
   return true;

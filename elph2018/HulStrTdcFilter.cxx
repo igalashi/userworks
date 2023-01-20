@@ -69,8 +69,8 @@ void init_pos_tbl()
   float ang_v = (-30.0 + 90.0) * Deg2Rad ; /* rot_v is defined against X, +90 for Y direction */
   float rot_v = -30.0 * Deg2Rad; /* rot_v is defined against X, +90 for Y direction */
   float a_v = 1.0 * tan( ang_v );
-  float x_uv[ n_u_ch ][ n_v_ch ];
-  float y_uv[ n_u_ch ][ n_v_ch ];
+  // float x_uv[ n_u_ch ][ n_v_ch ];
+  // float y_uv[ n_u_ch ][ n_v_ch ];
   for ( int id_u = 0; id_u < n_u_ch; id_u++ )
     {
       for ( int id_v = 0; id_v < n_v_ch; id_v++ )
@@ -79,8 +79,8 @@ void init_pos_tbl()
   	  float b_v = id_v * 0.5 / sin( rot_v );
   	  float x = (b_u - b_v)/(a_v - a_u);
   	  float y = a_u * x + b_u;
-	  x_uv[ id_u ][ id_v ] = x;
-	  y_uv[ id_u ][ id_v ] = y;
+	  //x_uv[ id_u ][ id_v ] = x;
+	  //y_uv[ id_u ][ id_v ] = y;
   	  /* printf( "id_u = %d, id_v = %d\n", id_u, id_v ); */
   	  /* printf( "x = %f, y = %f \n", x, y ); */
   	  //printf("\033[%d;%dH%s\n", int(x), int(y), "*");
@@ -318,15 +318,15 @@ HulStrTdcFilter::ApplyFilter(const std::vector<std::vector<char>>& inputData)
   // tmp holder for mus time window
   std::vector< hul_decode_word_t > hul_mod_dat_tmp[ num_hul_mod ]; 
 
-  double spill_time_sta;
-  double spill_time_stp;
-  spill_time_sta = get_time_stamp();  
+  // double spill_time_sta;
+  // double spill_time_stp;
+  // spill_time_sta = get_time_stamp();  
   // first level vector: TF header + ( STF header + Heart beat + TDC + Spill end ) x 6
   // second level vector for header: magic + evt_id + ...
   // second level vector for HUL: hul data word, 5 Byte ...
   std::cout << " ApplyFilter Called ...  " << std::dec << filter_counter << " times " << std::endl;
   std::cout << " parts size = " << inputData.size() << std::endl; // number of first level vector
-  for (int i=0; i<inputData.size(); ++i){ // loop into first level vector
+  for (unsigned int i=0; i<inputData.size(); ++i){ // loop into first level vector
     if ( (i % 5000) == 0 )
       {
 	std::cout << "i = " << i << std::endl;
@@ -370,7 +370,7 @@ HulStrTdcFilter::ApplyFilter(const std::vector<std::vector<char>>& inputData)
       }
     else // loop on hul raw data
       { 
-	for (int j = 0; j < data.size()/sizeof(hul_raw_word_t); j++) 
+	for (unsigned int j = 0; j < data.size()/sizeof(hul_raw_word_t); j++) 
 	  {
 	    hul_raw_word_t *tmp_raw_word = (hul_raw_word_t *)&data.at( j*sizeof(hul_raw_word_t) );
 	    hul_decode_word_t tmp_decode_word;
@@ -450,8 +450,8 @@ HulStrTdcFilter::ApplyFilter(const std::vector<std::vector<char>>& inputData)
   } // end of decode loop on inputData
   
   // merge decoded hul data into mdg_dat; hul_mod_dat is already sorted (as TDC stream)
-  int mid_pos = 0;
-  for (int i = 0; i < num_hul_mod; i++ )
+  unsigned int mid_pos = 0;
+  for (unsigned int i = 0; i < num_hul_mod; i++ )
     {
       //std::cout << "hul_mod_dat[ i ].size() = " << hul_mod_dat[ i ].size() << std::endl;
       if ( hul_mod_dat[ i ].size() == 0 )
@@ -469,7 +469,7 @@ HulStrTdcFilter::ApplyFilter(const std::vector<std::vector<char>>& inputData)
   	}
       mid_pos += hul_mod_dat[ i ].size();
     }
-  for ( int i = 0; i < mgd_dat.size(); i++ )
+  for ( unsigned int i = 0; i < mgd_dat.size(); i++ )
     {
       std::cout << "mgd_dat.at( " << i << " )" << mgd_dat.at( i ).time_stamp << std::endl;
     }
@@ -761,6 +761,8 @@ bool
 highp::e50::
 HulStrTdcFilter::HandleData(FairMQParts& parts, int index)
 {
+  (void)index;
+
   // std::cout << " HandleData Called ...  " << std::dec << handle_counter << " times " << std::endl;
   // std::cout << " index = " << std::dec << index << std::endl;
 

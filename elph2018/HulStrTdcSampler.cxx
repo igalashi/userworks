@@ -64,15 +64,15 @@ HulStrTdcSampler::ConditionalRun()
 
   //     ++fNumIterations;
   //     if ((fMaxIterations >0) && (fNumIterations >= fMaxIterations)) {
-  // 	  LOG(INFO) << "Configured maximum number of iterations reached. Leaving RUNNING state.";
+  // 	  LOG(info) << "Configured maximum number of iterations reached. Leaving RUNNING state.";
   // 	  return false;
   //     }
   // } 
   // else {
-  //     LOG(WARNING) << "failed to send a message.";
+  //     LOG(warn) << "failed to send a message.";
   // }
 
-  //    LOG(WARNING) << "You should swim!";
+  //    LOG(warn) << "You should swim!";
   //    std::this_thread::sleep_for(std::chrono::seconds(1));
 
   return true;
@@ -105,23 +105,23 @@ HulStrTdcSampler::InitTask()
   fTWCorr3           = fConfig->GetValue<int>(opt::TWCorr3.data()); 
   fTWCorr4           = fConfig->GetValue<int>(opt::TWCorr4.data()); 
 
-  LOG(INFO) << fIpSiTCP;
-  LOG(INFO) << fTotFilterEn;
-  LOG(INFO) << fTotMinTh;
-  LOG(INFO) << fTotMaxTh;
-  LOG(INFO) << fTotZeroAllow;
-  LOG(INFO) << fTWCorr0;
-  LOG(INFO) << fTWCorr1;
-  LOG(INFO) << fTWCorr2;
-  LOG(INFO) << fTWCorr3;
-  LOG(INFO) << fTWCorr4;
+  LOG(info) << fIpSiTCP;
+  LOG(info) << fTotFilterEn;
+  LOG(info) << fTotMinTh;
+  LOG(info) << fTotMaxTh;
+  LOG(info) << fTotZeroAllow;
+  LOG(info) << fTWCorr0;
+  LOG(info) << fTWCorr1;
+  LOG(info) << fTWCorr2;
+  LOG(info) << fTWCorr3;
+  LOG(info) << fTWCorr4;
 
   rbcp_header rbcpHeader;
   rbcpHeader.type = UDPRBCP::rbcp_ver_;
   rbcpHeader.id   = 0;
     
   FPGAModule fModule(fIpSiTCP.c_str(), 4660, &rbcpHeader, 0);
-  LOG(INFO) << std::hex << fModule.ReadModule(hul_strtdc::BCT::addr_Version, 4) << std::dec;
+  LOG(info) << std::hex << fModule.ReadModule(hul_strtdc::BCT::addr_Version, 4) << std::dec;
 
   Reporter::Reset();
 }
@@ -134,7 +134,7 @@ HulStrTdcSampler::PreRun()
   using namespace hul_strtdc;
 
   if(-1 == (fHulSocket = ConnectSocket(fIpSiTCP.c_str()))) return;
-  LOG(INFO) << "TCP connected";
+  LOG(info) << "TCP connected";
 
   rbcp_header rbcpHeader;
   rbcpHeader.type = UDPRBCP::rbcp_ver_;
@@ -154,7 +154,7 @@ HulStrTdcSampler::PreRun()
 
   fModule.WriteModule(DCT::addr_gate,  1, 1);
 
-  LOG(INFO) << "Start DAQ";
+  LOG(info) << "Start DAQ";
 }
 
 //______________________________________________________________________________
@@ -171,7 +171,7 @@ HulStrTdcSampler::PostRun()
   FPGAModule fModule(fIpSiTCP.c_str(), 4660, &rbcpHeader, 0);
   fModule.WriteModule(DCT::addr_gate,  0, 1);
 
-  LOG(INFO) << "End DAQ";
+  LOG(info) << "End DAQ";
 }
 
 //______________________________________________________________________________
@@ -185,7 +185,7 @@ HulStrTdcSampler::ResetTask()
 
   close(fHulSocket);
 
-  LOG(INFO) << "Socket close";
+  LOG(info) << "Socket close";
 
 }
 
@@ -211,7 +211,7 @@ HulStrTdcSampler::ConnectSocket(const char* ip)
   setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
   if(0 > connect(sock, (struct sockaddr*)&SiTCP_ADDR, sizeof(SiTCP_ADDR))){
-    LOG(ERROR) << "TCP connection error";
+    LOG(error) << "TCP connection error";
     close(sock);
     return -1;
   }

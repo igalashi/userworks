@@ -31,7 +31,7 @@ MQSink::Count(int n)
     msgRate /= dt.count()*1e-3 * 1e6;
     double dataRate = fRecvBytes;
     dataRate /= dt.count()*1e-3 * 1e6;
-    LOG(INFO) << "Number of received messages = " << fRecvCounter
+    LOG(info) << "Number of received messages = " << fRecvCounter
               << ", n bytes = " << fRecvBytes
               << " in " << dt.count() << " msec.    "
               << msgRate << " MHz, "
@@ -50,6 +50,8 @@ bool
 highp::e50::
 MQSink::HandleMultipartMessageData(FairMQParts& parts, int index)
 {
+  (void)index;
+
   Reporter::AddInputMessageSize(parts);
   // auto n = 0; 
   // for (auto& m : parts) n += m->GetSize();

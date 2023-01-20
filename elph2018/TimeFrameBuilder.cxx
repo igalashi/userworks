@@ -47,7 +47,7 @@ TimeFrameBuilder::ConditionalRun()
     }
     else {
       // if received ID has been previously discarded.
-      LOG(WARN) << "Received part from an already discarded timeframe with id " << stfId;
+      LOG(warn) << "Received part from an already discarded timeframe with id " << stfId;
     }
   }
 
@@ -109,19 +109,19 @@ TimeFrameBuilder::ConditionalRun()
           // timeout
           //if (!CheckCurrentState(RUNNING)) {
           if (GetCurrentState() != fair::mq::State::Running) {
-            LOG(INFO) << "Device is not RUNNING";
+            LOG(info) << "Device is not RUNNING";
             return true;
           }
-          LOG(ERROR) << "Failed to queue time frame : TF = " << h->timeFrameId;
+          LOG(error) << "Failed to queue time frame : TF = " << h->timeFrameId;
         }
       } else {
         // discard incomplete time frame
         auto dt = std::chrono::steady_clock::now() - tfBuf.front().start;
         if (std::chrono::duration_cast<std::chrono::milliseconds>(dt).count() > fBufferTimeoutInMs) {
-          LOG(WARN) << "Timeframe #" << stfId << " incomplete after " << fBufferTimeoutInMs << " milliseconds, discarding";
+          LOG(warn) << "Timeframe #" << stfId << " incomplete after " << fBufferTimeoutInMs << " milliseconds, discarding";
           fDiscarded.insert(stfId);
           tfBuf.clear();
-          LOG(WARN) << "Number of discarded timeframes: " << fDiscarded.size();
+          LOG(warn) << "Number of discarded timeframes: " << fDiscarded.size();
         }
       }
       

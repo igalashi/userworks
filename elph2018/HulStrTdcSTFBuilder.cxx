@@ -34,6 +34,8 @@ HulStrTdcSTFBuilder::BuildFrame(FairMQMessagePtr& msg, int index)
   using Word     = Data::Word;
   std::size_t offset = 0;
 
+  (void)index;
+
   // LOG(debug)
   //   << " buildframe STF = " << fSTFId << " HBF = " << fHBFCounter << "\n"
   //   << " input payload entries = " << fInputPayloads.size() 
@@ -51,7 +53,7 @@ HulStrTdcSTFBuilder::BuildFrame(FairMQMessagePtr& msg, int index)
   //                 HexDump{4});
   // }
   
-  for (auto i=0; i<nWord; ++i) {
+  for (auto i=0u ; i<nWord; ++i) {
     auto word = reinterpret_cast<Data::Bits*>(msgBegin+i);
     // LOG(debug) << " idx = " << std::setw(10) << i << " (" << std::hex << std::setw(10) << i << ") "
     //            << " i-offset = " << std::setw(10) << i-offset << " (" << std::hex << std::setw(10) << i-offset << ") "
@@ -184,7 +186,7 @@ highp::e50::
 HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 {
   namespace Data = HulStrTdc::Data;
-  using Word     = Data::Word;
+  //using Word     = Data::Word;
   using Bits     = Data::Bits;
   //LOG(debug)
   // std::cout << "HandleData() HBF " << fHBFCounter << " input message " << msg->GetSize() << std::endl;
@@ -200,30 +202,30 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 
     // std::cout << " send data " << fOutputPayloads.size() << std::endl;
     auto& payload = fOutputPayloads.front();
-    for (auto& msg : *payload) {
-      //std::for_each(reinterpret_cast<uint64_t*>(msg->GetData()), 
-      //              reinterpret_cast<uint64_t*>(msg->GetData() + msg->GetSize()), 
+    for (auto& vmsg : *payload) {
+      //std::for_each(reinterpret_cast<uint64_t*>(vmsg->GetData()), 
+      //              reinterpret_cast<uint64_t*>(vmsg->GetData() + vmsg->GetSize()), 
       //              HexDump{4});
 
       if (dqmSocketExists) {
-        if (msg->GetSize()==sizeof(STF::Header)) {
+        if (vmsg->GetSize()==sizeof(STF::Header)) {
           FairMQMessagePtr msgCopy(fTransportFactory->CreateMessage());
-          msgCopy->Copy(*msg);
+          msgCopy->Copy(*vmsg);
           dqmParts.AddPart(std::move(msgCopy));
         }
         else {
-          auto b = reinterpret_cast<Bits*>(msg->GetData());
+          auto b = reinterpret_cast<Bits*>(vmsg->GetData());
           if (b->head == Data::Heartbeat     ||
               b->head == Data::ErrorRecovery || 
               b->head == Data::SpillEnd) {
             FairMQMessagePtr msgCopy(fTransportFactory->CreateMessage());
-            msgCopy->Copy(*msg);
+            msgCopy->Copy(*vmsg);
             dqmParts.AddPart(std::move(msgCopy));
           }
         }
       }
 
-      parts.AddPart(std::move(msg));
+      parts.AddPart(std::move(vmsg));
     }
     fOutputPayloads.pop();
 
@@ -266,10 +268,10 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
         // timeout
         //if (!CheckCurrentState(RUNNING)) {
         if (GetCurrentState() != fair::mq::State::Running) {
-          LOG(INFO) << "Device is not RUNNING"; 
+          LOG(info) << "Device is not RUNNING"; 
           return false;
         }
-        LOG(ERROR) << "Failed to enqueue sub time frame (DQM) : FEM = " << std::hex << h->FEMId << std::dec << "  STF = " << h->timeFrameId << std::endl;
+        LOG(error) << "Failed to enqueue sub time frame (DQM) : FEM = " << std::hex << h->FEMId << std::dec << "  STF = " << h->timeFrameId << std::endl;
       }
     }
 
@@ -278,10 +280,10 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
       // timeout
       //if (!CheckCurrentState(RUNNING)) {
       if (GetCurrentState() != fair::mq::State::Running) {
-        LOG(INFO) << "Device is not RUNNING"; 
+        LOG(info) << "Device is not RUNNING"; 
         return false;
       }
-      LOG(ERROR) << "Failed to enqueue sub time frame (data) : FEM = " << std::hex << h->FEMId << std::dec << "  STF = " << h->timeFrameId << std::endl;
+      LOG(error) << "Failed to enqueue sub time frame (data) : FEM = " << std::hex << h->FEMId << std::dec << "  STF = " << h->timeFrameId << std::endl;
     }
   }
 

@@ -41,7 +41,7 @@ protected:
   void PostRun() override;
 
 private:
-  int fNumSource {0};
+  unsigned int fNumSource {0};
   int fBufferTimeoutInMs {100000};
   std::string fInputChannelName;
   std::string fOutputChannelName;

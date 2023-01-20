@@ -153,7 +153,7 @@ private:
    SplitFunc fSplit;
 
    int fCompBufSize{-1};
-   int64_t fMaxBranchSize; // {1024 * 1024 * 1024};
+   uint64_t fMaxBranchSize; // {1024 * 1024 * 1024};
    std::string fOpenmode;
    int fDebug{0};
 };

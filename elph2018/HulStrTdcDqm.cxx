@@ -21,6 +21,8 @@ TH1* HF1(std::unordered_map<std::string, TH1*>& h1Map,
   auto name = Form("h%04d", id);
   auto h    = h1Map.at(name);
   if (h) h->Fill(x, w);
+
+  return h;
 }
 
 namespace STF = highp::e50::SubTimeFrame;
@@ -50,7 +52,7 @@ HulStrTdcDqm::Check(std::vector<STFBuffer>&& stfs)
 {
   // LOG(debug) << "Check"; 
   namespace Data = HulStrTdc::Data;
-  using Word     = Data::Word;
+  //using Word     = Data::Word;
   using Bits     = Data::Bits;
 
   // [time-stamp, femId-list]
@@ -63,9 +65,9 @@ HulStrTdcDqm::Check(std::vector<STFBuffer>&& stfs)
     auto& [stf, t] = stfs[istf];
     auto h = reinterpret_cast<STF::Header*>(stf.At(0)->GetData());
     auto nmsg  = stf.Size();
-    auto len   = h->length - sizeof(STF::Header); // data size including tdc measurement
-    auto nword = len/sizeof(Word);
-    auto nhit  = nword - nmsg;
+    //auto len   = h->length - sizeof(STF::Header); // data size including tdc measurement
+    //auto nword = len/sizeof(Word);
+    //auto nhit  = nword - nmsg;
     auto femIdx = fFEMId[h->FEMId];
 
     for (int imsg=1; imsg<nmsg; ++imsg) {
@@ -125,7 +127,7 @@ HulStrTdcDqm::Check(std::vector<STFBuffer>&& stfs)
       HF1(fH1Map, 3, femId);
       HF1(fH1Map, 300+femId, t);
     }
-    if (fems.size()!=fNumSource) {
+    if (static_cast<int>(fems.size()) != fNumSource) {
       mismatch = true;
     }
   }
@@ -148,6 +150,7 @@ bool
 highp::e50::
 HulStrTdcDqm::HandleData(FairMQParts& parts, int index)
 {
+  (void)index;
   assert(parts.Size()>=2);
   Reporter::AddInputMessageSize(parts);
   {
@@ -173,7 +176,7 @@ HulStrTdcDqm::HandleData(FairMQParts& parts, int index)
   }
   else {
     // if received ID has been previously discarded.
-    LOG(WARN) << "Received part from an already discarded timeframe with id " << std::hex << stfId << std::dec;
+    LOG(warn) << "Received part from an already discarded timeframe with id " << std::hex << stfId << std::dec;
   }
 
 
@@ -181,16 +184,16 @@ HulStrTdcDqm::HandleData(FairMQParts& parts, int index)
   if (!fTFBuffer.empty()) {
     // find time frame in ready
     for (auto itr = fTFBuffer.begin(); itr!=fTFBuffer.end();) {
-      auto stfId  = itr->first;
+      auto l_stfId  = itr->first;
       auto& stfs  = itr->second;
-      if (stfs.size() != fNumSource) {
+      if (static_cast<int>(stfs.size()) != fNumSource) {
         // discard incomplete time frame
         auto dt = std::chrono::steady_clock::now() - stfs.front().start;
         if (std::chrono::duration_cast<std::chrono::milliseconds>(dt).count() > fBufferTimeoutInMs) {
-          LOG(WARN) << "Timeframe #" << stfId << " incomplete after " << fBufferTimeoutInMs << " milliseconds, discarding";
-          fDiscarded.insert(stfId);
+          LOG(warn) << "Timeframe #" << l_stfId << " incomplete after " << fBufferTimeoutInMs << " milliseconds, discarding";
+          fDiscarded.insert(l_stfId);
           stfs.clear();
-          LOG(WARN) << "Number of discarded timeframes: " << fDiscarded.size();
+          LOG(warn) << "Number of discarded timeframes: " << fDiscarded.size();
           HF1(fH1Map, 0, Discarded);
         }
       } else {
@@ -247,6 +250,7 @@ HulStrTdcDqm::InitServer(std::string_view server)
     return h;
   };
 
+#if 0
   auto createCanvas = [](std::string_view name, std::string_view title, int nx, int ny) -> TCanvas* {
     auto l = gROOT->GetListOfCanvases();
     if (dynamic_cast<TCanvas*>(l->FindObject(name.data()))) return nullptr;
@@ -256,6 +260,7 @@ HulStrTdcDqm::InitServer(std::string_view server)
     c->Divide(nx, ny);
     return c;
   };
+#endif
 
   HB1(0, "status",           3,          -0.5, 3-0.5, "");
   HB1(1, "# Heatbeat",       fNumSource, -0.5, fNumSource-0.5, "");

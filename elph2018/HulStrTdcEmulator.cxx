@@ -43,28 +43,28 @@ uint32_t type = 0;
 uint32_t ch = 0;
 uint32_t tdc = 0;
 uint8_t hul_data_word[5] = {0};
-void assign_hul_data_word(uint8_t hul_data_word[5], uint32_t head, uint32_t rsv, 
-			  uint32_t tot, uint32_t type, uint32_t ch, uint32_t tdc)
+void assign_hul_data_word(uint8_t vhul_data_word[5], uint32_t vhead, uint32_t vrsv, 
+			  uint32_t vtot, uint32_t vtype, uint32_t vch, uint32_t vtdc)
 {
-  hul_data_word[4] |= (head & 0xF) << 4;
-  hul_data_word[4] |= (rsv & 0x1) << 3;
-  hul_data_word[4] |= (tot >> 5) & 0x7;
+  vhul_data_word[4] |= (vhead & 0xF) << 4;
+  vhul_data_word[4] |= (vrsv & 0x1) << 3;
+  vhul_data_word[4] |= (vtot >> 5) & 0x7;
   // std::cout << "assign_hul_data_word:" << std::endl;
-  // std::cout << "(head & 0xF) << 4 = " << std::dec << std::bitset< 8 > ( ( head & 0xF ) << 4 ) << std::endl;
-  // std::cout << "hul_data_word[4] = " << std::dec << std::bitset< 8 > ( hul_data_word[4] ) << std::endl;
-  hul_data_word[3] |= (tot & 0x1F) << 3;
-  hul_data_word[3] |= (type & 0x3) << 1;
-  hul_data_word[3] |= (ch >> 5) & 0x1;
-  //  std::cout << "hul_data_word[3] = " << std::dec << std::bitset< 8 > ( hul_data_word[3] ) << std::endl;
-  hul_data_word[2] |= (ch & 0x1F) << 3;
-  hul_data_word[2] |= (tdc >> 16) & 0x7;
-  //  std::cout << "hul_data_word[2] = " << std::dec << std::bitset< 8 > ( hul_data_word[2] ) << std::endl;
-  hul_data_word[1] |= (tdc >> 8) & 0xFF;
-  //  std::cout << "hul_data_word[1] = " << std::dec << std::bitset< 8 > ( hul_data_word[1] ) << std::endl;
-  hul_data_word[0] |= (tdc >> 0) & 0xFF;
-  // std::cout << "hul_data_word[0] = " << std::dec << std::bitset< 8 > ( hul_data_word[0] ) << std::endl;
-  // std::cout << "hul_data_word = " << std::dec << std::bitset< 64 > ( *((uint64_t*) hul_data_word) ) << std::endl;
-  //std::cout << "hul_data_word[4] = " << std::dec << unsigned( hul_data_word[4] ) << std::endl;
+  // std::cout << "(head & 0xF) << 4 = " << std::dec << std::bitset< 8 > ( ( vhead & 0xF ) << 4 ) << std::endl;
+  // std::cout << "hul_data_word[4] = " << std::dec << std::bitset< 8 > ( vhul_data_word[4] ) << std::endl;
+  vhul_data_word[3] |= (vtot & 0x1F) << 3;
+  vhul_data_word[3] |= (vtype & 0x3) << 1;
+  vhul_data_word[3] |= (vch >> 5) & 0x1;
+  //  std::cout << "hul_data_word[3] = " << std::dec << std::bitset< 8 > ( vhul_data_word[3] ) << std::endl;
+  vhul_data_word[2] |= (vch & 0x1F) << 3;
+  vhul_data_word[2] |= (vtdc >> 16) & 0x7;
+  //  std::cout << "hul_data_word[2] = " << std::dec << std::bitset< 8 > ( vhul_data_word[2] ) << std::endl;
+  vhul_data_word[1] |= (vtdc >> 8) & 0xFF;
+  //  std::cout << "hul_data_word[1] = " << std::dec << std::bitset< 8 > ( vhul_data_word[1] ) << std::endl;
+  vhul_data_word[0] |= (vtdc >> 0) & 0xFF;
+  // std::cout << "hul_data_word[0] = " << std::dec << std::bitset< 8 > ( vhul_data_word[0] ) << std::endl;
+  // std::cout << "hul_data_word = " << std::dec << std::bitset< 64 > ( *((uint64_t*) vhul_data_word) ) << std::endl;
+  //std::cout << "hul_data_word[4] = " << std::dec << unsigned( vhul_data_word[4] ) << std::endl;
 }
 
 
@@ -212,22 +212,22 @@ HulStrTdcEmulator::ConditionalRun()
       ++fNumIterations;
       //if (!CheckCurrentState(RUNNING)) {
       if (GetCurrentState() != fair::mq::State::Running) {
-        LOG(INFO) << " Device is not RUNNING";
+        LOG(info) << " Device is not RUNNING";
         return false;
       }
       else if ((fMaxIterations >0) && (fNumIterations >= fMaxIterations)) {
-        LOG(INFO) << "Configured maximum number of iterations reached. Leaving RUNNING state.";
+        LOG(info) << "Configured maximum number of iterations reached. Leaving RUNNING state.";
         return false;
       }
     } 
     else {
-      LOG(WARNING) << "failed to send a message.";
+      LOG(warn) << "failed to send a message.";
     }
 
     --fMsgCounter;
   }
   else {
-    LOG(INFO) << "output channel looks busy or missing ... ";
+    LOG(info) << "output channel looks busy or missing ... ";
     std::this_thread::yield();
     std::this_thread::sleep_for(1s);
   }
@@ -235,7 +235,7 @@ HulStrTdcEmulator::ConditionalRun()
   while (fMsgCounter == 0) {
     std::this_thread::yield();
     std::this_thread::sleep_for(1us);
-    //LOG(INFO) << "main thread waiting for reset of message counter";
+    //LOG(info) << "main thread waiting for reset of message counter";
   }
 
 
@@ -266,11 +266,11 @@ HulStrTdcEmulator::InitTask()
 
   if (fMsgRate<1) {
     auto errMsg = "invalid output message rate " + std::to_string(fMsgRate) + " Hz";
-    LOG(ERROR) << errMsg;
+    LOG(error) << errMsg;
     throw std::runtime_error(errMsg);
   }
 
-  LOG(INFO) << "message rate = " << fMsgRate << " /sec, "
+  LOG(info) << "message rate = " << fMsgRate << " /sec, "
             << " message size = " << fMsgSize << " byte";
 
   std::cout << "HBF pos = " << fHBFPosition << std::endl;
@@ -310,7 +310,7 @@ HulStrTdcEmulator::ResetMsgCounter()
   using namespace std::chrono_literals;
   //while (CheckCurrentState(RUNNING)) {
   while (GetCurrentState() == fair::mq::State::Running) {
-    //LOG(INFO) << "reset message counter thread";
+    //LOG(info) << "reset message counter thread";
     if (fMsgRate>=100) {
       //fMsgCounter = fMsgRate / 100;
       std::this_thread::sleep_for(10ms);

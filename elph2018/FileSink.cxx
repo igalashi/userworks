@@ -174,7 +174,7 @@ FileSink::PreRun()
 {
   // check file type
   if (fileTypes.find(fFileType) == fileTypes.end()) {
-    LOG(ERROR) << "Unknown file type. " << fFileType;
+    LOG(error) << "Unknown file type. " << fFileType;
     throw std::runtime_error("unknown file type : " + fFileType);
   }
 
@@ -204,19 +204,19 @@ FileSink::PreRun()
   stdfs::path pathName(filename);
   while (stdfs::exists(pathName)) {
     if (fOverwrite == OverwriteOption::Auto) {
-      LOG(WARNING) << "File name : " << filename << " already exists. auto increment run-id : "
+      LOG(warn) << "File name : " << filename << " already exists. auto increment run-id : "
                    << fRunId << " -> " << (++fRunId);
       filename = (boost::format("%s/run%06d%s%s") % fFilePath % fRunId % fSubId % extension).str();
       pathName = filename;
       continue;
     }
     if (fOverwrite == OverwriteOption::Warning) {
-      LOG(WARNING) << "File name : " << filename << " already exists. overwrite";
+      LOG(warn) << "File name : " << filename << " already exists. overwrite";
     } else if (fOverwrite == OverwriteOption::Error) {
-      LOG(ERROR) <<  "File name : " << filename << " already exists. stop";
+      LOG(error) <<  "File name : " << filename << " already exists. stop";
       throw std::runtime_error("file already exists " + filename);
     } else {
-      LOG(ERROR) << "Unknown overwrite option : " << fOverwrite; 
+      LOG(error) << "Unknown overwrite option : " << fOverwrite; 
       throw std::runtime_error("unknown overwrite option : " + fOverwrite);
     }
     break;

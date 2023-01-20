@@ -44,6 +44,8 @@ SubTimeFrameBuilder::BuildFrame(FairMQParts& msgParts, int index)
 {
   namespace HBF = HeartbeatFrame;
 
+  (void)index;
+
   assert(msgParts.Size() != 0);
   assert(msgParts.Size() == 2);
 
@@ -69,7 +71,7 @@ SubTimeFrameBuilder::BuildFrame(FairMQParts& msgParts, int index)
   //               reinterpret_cast<uint64_t*>(lastMsgBegin)+lastMsgSize/sizeof(uint64_t), 
   //               HexDump{4});
 
-  for (auto i=0; i<n; ) {
+  for (auto i=0u; i<n; ) {
     auto hbfHeader = reinterpret_cast<HBF::Header*>(lastMsgBegin + i);
     //std::cout << " idx " << i << std::endl;
     if (hbfHeader->magic == HBF::Magic) {
@@ -187,11 +189,11 @@ SubTimeFrameBuilder::HandleData(FairMQParts& msgParts, int index)
     while ((Send(parts, fOutputChannelName, direction, 0) < 0)) {
       //if (!CheckCurrentState(RUNNING)) { 
       if (GetCurrentState() != fair::mq::State::Running) { 
-        LOG(INFO) << " Device is not RUNNIG";
+        LOG(info) << " Device is not RUNNIG";
         return false;
       }
       // timeout
-      LOG(ERROR) << "Failed to queue sub time frame : FEM = " << h->FEMId << "  STF = " << h->timeFrameId;
+      LOG(error) << "Failed to queue sub time frame : FEM = " << h->FEMId << "  STF = " << h->timeFrameId;
     }
   }
 

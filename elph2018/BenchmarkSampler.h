@@ -42,7 +42,7 @@ protected:
   void PostRun() override;
 
   int fHBFPosition {0};
-  int fMsgSize {0};
+  unsigned int fMsgSize {0};
   std::atomic<int> fMsgCounter {0};
   int fMsgRate {0};
   int fHBFRate {0};

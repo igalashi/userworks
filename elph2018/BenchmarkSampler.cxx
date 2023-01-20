@@ -67,22 +67,22 @@ BenchmarkSampler::ConditionalRun()
       ++fNumIterations;
       //if (!CheckCurrentState(RUNNING)) {
       if (GetCurrentState() != fair::mq::State::Running) {
-        LOG(INFO) << "Device is not RUNNING";
+        LOG(info) << "Device is not RUNNING";
         return false;
       }
       else if ((fMaxIterations >0) && (fNumIterations >= fMaxIterations)) {
-        LOG(INFO) << "Configured maximum number of iterations reached. Leaving RUNNING state.";
+        LOG(info) << "Configured maximum number of iterations reached. Leaving RUNNING state.";
         return false;
       }
     } 
     else {
-      LOG(WARNING) << "failed to send a message.";
+      LOG(warn) << "failed to send a message.";
     }
 
     --fMsgCounter;
   }
   else {
-    LOG(INFO) << "output channel looks busy or missing ... ";
+    LOG(info) << "output channel looks busy or missing ... ";
     std::this_thread::yield();
     std::this_thread::sleep_for(1s);
   }
@@ -90,7 +90,7 @@ BenchmarkSampler::ConditionalRun()
   while (fMsgCounter == 0) {
     std::this_thread::yield();
     std::this_thread::sleep_for(1us);
-    //LOG(INFO) << "main thread waiting for reset of message counter";
+    //LOG(info) << "main thread waiting for reset of message counter";
   }
 
 
@@ -122,14 +122,14 @@ BenchmarkSampler::InitTask()
 
   if (fMsgRate<1) {
     auto errMsg = "invalid output message rate " + std::to_string(fMsgRate) + " Hz";
-    LOG(ERROR) << errMsg;
+    LOG(error) << errMsg;
     throw std::runtime_error(errMsg);
   }
 
   if (fMsgSize < sizeof(HBF::Header)) {
     fMsgSize = sizeof(HBF::Header);
   }
-  LOG(INFO) << "message rate = " << fMsgRate << " /sec, "
+  LOG(info) << "message rate = " << fMsgRate << " /sec, "
             << " message size = " << fMsgSize << " byte";
 
   if (fHBFPosition+sizeof(HBF::Header) > fMsgSize) {
@@ -172,7 +172,7 @@ BenchmarkSampler::ResetMsgCounter()
   using namespace std::chrono_literals;
   //while (CheckCurrentState(RUNNING)) {
   while (GetCurrentState() == fair::mq::State::Running) {
-    //LOG(INFO) << "reset message counter thread";
+    //LOG(info) << "reset message counter thread";
     if (fMsgRate>=100) {
 //      fMsgCounter = fMsgRate / 100;
       std::this_thread::sleep_for(10ms);

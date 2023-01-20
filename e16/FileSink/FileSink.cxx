@@ -53,9 +53,9 @@ void addCustomOptions(bpo::options_description &options)
 
    { // FileUtil's options ------------------------------
       using fu = e16::FileUtil;
-      using fopt = fu::OptionKey;
-      using sopt = fu::SplitOption;
-      using oopt = fu::OpenmodeOption;
+      //using fopt = fu::OptionKey;
+      //using sopt = fu::SplitOption;
+      //using oopt = fu::OpenmodeOption;
       auto &desc = fu::GetDescriptions();
 
       fu::AddOptions(options);
@@ -65,6 +65,8 @@ void addCustomOptions(bpo::options_description &options)
 //______________________________________________________________________________
 FairMQDevicePtr getDevice(const FairMQProgOptions &config)
 {
+   (void)config;
+
    return new e16::daq::FileSink;
 }
 
@@ -146,6 +148,8 @@ bool FileSink::HandleData(FairMQMessagePtr &msg, int index)
 //______________________________________________________________________________
 bool FileSink::HandleDataMT(FairMQMessagePtr &msg, int index)
 {
+   (void)index;
+
    if (fStopRequested) {
       return false;
    }
@@ -178,6 +182,8 @@ bool FileSink::HandleMultipartData(FairMQParts &msgParts, int index)
 //______________________________________________________________________________
 bool FileSink::HandleMultipartDataMT(FairMQParts &msgParts, int index)
 {
+   (void)index;
+
    if (fStopRequested) {
       return false;
    }
@@ -270,7 +276,7 @@ void FileSink::PostRun()
    }
    if (fChannels.count(fInputDataChannelName) > 0) {
       auto n = fChannels.count(fInputDataChannelName);
-      for (auto i = 0; i < n; ++i) {
+      for (auto i = 0u; i < n; ++i) {
          for (auto itry = 0; itry < 10; ++itry) {
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
             if (fMultipart) {
@@ -311,7 +317,7 @@ void FileSink::PostRun()
          fSize = 0;
          fCompressedSize = 0;
       }
-      for (auto i = 0; i < files.size(); ++i) {
+      for (auto i = 0u; i < files.size(); ++i) {
          ss << " file: " << files[i]                   //
             << ", n = " << numIteration[i]             //
             << ", compressed = " << compressedSize[i]; //
@@ -393,6 +399,8 @@ void FileSink::PreRun()
 //______________________________________________________________________________
 bool FileSink::WriteData(FairMQMessagePtr &msg, int index)
 {
+   (void)index;
+
    if (fStopRequested) {
       return false;
    }
@@ -415,6 +423,8 @@ bool FileSink::WriteData(FairMQMessagePtr &msg, int index)
 //______________________________________________________________________________
 bool FileSink::WriteMultipartData(FairMQParts &msgParts, int index)
 {
+   (void)index;
+
    if (fStopRequested) {
       return false;
    }
@@ -426,12 +436,14 @@ bool FileSink::WriteMultipartData(FairMQParts &msgParts, int index)
    //           << " total length = " << len << " bytes"
    //           << ", n-write = " << fNWrite;
 
+   #if 0
    for (const auto &m : msgParts) {
       auto first = reinterpret_cast<const char *>(m->GetData());
       auto last = first + m->GetSize();
-      // LOG(debug) << "message nbytes = " << m->GetSize();
-      //      std::for_each(first, last, HexDump()));
+      LOG(debug) << "message nbytes = " << m->GetSize();
+            std::for_each(first, last, HexDump()));
    }
+   #endif
 
    if (fMergeMessage) {
       std::vector<char> v;
