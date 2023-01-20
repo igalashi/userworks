@@ -1,0 +1,34 @@
+#!/bin/bash
+
+RATELOGGING=0
+BINDIR=@EX_BIN_DIR@
+GUIBINDIR=@EX_GUIBIN_DIR@
+LIBDIR=@EX_LIB_DIR@
+PLUGIN=" -S '<$LIBDIR' -P daqcommand --cmd-address tcp://localhost:30000 --hb-address tcp://localhost:40000"
+
+#-------------------------------------------------------------------------------
+SAMPLER="ex-1-1-sampler"
+SAMPLER+=" --id sampler1"
+SAMPLER+=" --channel-config name=data,type=push,method=bind,address=tcp://*:5555,rateLogging=$RATELOGGING"
+SAMPLER+=$PLUGIN
+echo xterm -geometry 80x23+0+0 -hold -e $BINDIR/$SAMPLER
+xterm -geometry 80x23+0+0 -hold -e $BINDIR/"$SAMPLER" &
+
+echo ""
+
+#-------------------------------------------------------------------------------
+SINK="ex-1-1-sink"
+SINK+=" --id sink1"
+SINK+=" --channel-config name=data,type=pull,method=connect,address=tcp://localhost:5555,rateLogging=$RATELOGGING"
+SINK+=$PLUGIN
+echo xterm -geometry 80x23+500+0 -hold -e $BINDIR/$SINK
+xterm -geometry 80x23+500+0 -hold -e $BINDIR/"$SINK" &
+
+
+echo ""
+
+#-------------------------------------------------------------------------------
+GUI="daq-web-ui --docroot . --http-listen 0.0.0.0:8080 --cmd-address tcp://*:30000 --hb-address tcp://*:40000"
+echo xterm -geometry 80x23+0+820 -hold -e $GUIBINDIR/$GUI
+xterm -geometry 80x23+0+820 -hold -e $GUIBINDIR/$GUI &
+

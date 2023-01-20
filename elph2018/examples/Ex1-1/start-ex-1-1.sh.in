@@ -1,0 +1,20 @@
+#!/bin/bash
+
+RATELOGGING=0
+BINDIR=@EX_BIN_DIR@
+
+#-------------------------------------------------------------------------------
+SAMPLER="ex-1-1-sampler"
+SAMPLER+=" --id sampler1"
+SAMPLER+=" --channel-config name=data,type=push,method=bind,address=tcp://*:5555,rateLogging=$RATELOGGING"
+echo xterm -geometry 80x23+0+0 -hold -e $BINDIR/$SAMPLER
+xterm -geometry 80x23+0+0 -hold -e $BINDIR/$SAMPLER &
+
+echo ""
+
+#-------------------------------------------------------------------------------
+SINK="ex-1-1-sink"
+SINK+=" --id sink1"
+SINK+=" --channel-config name=data,type=pull,method=connect,address=tcp://localhost:5555,rateLogging=$RATELOGGING"
+echo xterm -geometry 80x23+500+0 -hold -e $BINDIR/$SINK
+xterm -geometry 80x23+500+0 -hold -e $BINDIR/$SINK &

@@ -1,0 +1,28 @@
+#!/bin/bash
+
+BINDIR=@EX_BIN_DIR@
+CONFJSON=$BINDIR/ex-1-1.json
+
+GUIBINDIR=@EX_GUIBIN_DIR@
+LIBDIR=@EX_LIB_DIR@
+PLUGIN=" -S '<$LIBDIR' -P daqcommand --cmd-address tcp://localhost:30000 --hb-address tcp://localhost:40000"
+
+#-------------------------------------------------------------------------------
+devices+=("ex-1-1-sampler --id sampler1")
+devices+=("ex-1-1-sink    --id sink1")
+
+#-------------------------------------------------------------------------------
+xpos=(0 510)
+ypos=(0   0)
+
+for ((i = 0; i < ${#devices[@]}; i++)) {
+    dev="${devices[i]} --mq-config $CONFJSON"
+    dev+=$PLUGIN
+    set $dev
+    xterm -geometry 80x23+${xpos[i]}+${ypos[i]} -title $1 -hold -e $BINDIR/"$dev" &
+}
+
+#-------------------------------------------------------------------------------
+GUI="daq-web-ui --docroot . --http-listen 0.0.0.0:8080 --cmd-address tcp://*:30000 --hb-address tcp://*:40000"
+set $GUI
+xterm -geometry 80x23+0+820 -title $1 -hold -e $GUIBINDIR/$GUI &

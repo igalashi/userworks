@@ -1,0 +1,6 @@
+{ "fairMQOptions": { "devices": [
+    { "id": "sampler1", "channels": [{ "name": "out", "sockets": [{ "type": "push", "method": "bind",    "address": "tcp://*:11111",         "rateLogging": 0 }] }] }, 
+
+    { "id": "filter1",  "channels": [{ "name": "in",  "sockets": [{ "type": "pull", "method": "connect", "address": "tcp://localhost:11111", "rateLogging": 0 }] }, 
+                                     { "name": "out", "sockets": [{ "type": "push", "method": "connect", "address": "tcp://localhost:22222", "rateLogging": 0 }] }] }
+]}}
