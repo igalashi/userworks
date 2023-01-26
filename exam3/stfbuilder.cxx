@@ -39,37 +39,43 @@ HulStrTdcSTFBuilder::BuildFrame(FairMQMessagePtr& msg, int index)
 
 	(void)index;
 
-	// LOG(debug)
-	//   << " buildframe STF = " << fSTFId << " HBF = " << fHBFCounter << "\n"
-	//   << " input payload entries = " << fInputPayloads.size()
-	//   << " offset " << offset << std::endl;
+	#if 1
+	LOG(debug) << " buildframe STF = " << fSTFId << " HBF = " << fHBFCounter << "\n"
+		<< " input payload entries = " << fInputPayloads.size()
+		<< " offset " << offset << std::endl;
+	#endif
 
 	auto msgBegin  = reinterpret_cast<Word*>(msg->GetData());
 	auto msgSize   = msg->GetSize();
 	auto nWord     = msgSize / sizeof(Word);
 
-	//LOG(debug) << " msg size " << msgSize << " bytes " << nWord << " words" << std::endl;
-	// {
-	//   std::for_each(reinterpret_cast<Word*>(msgBegin),
-	//                 msgBegin+nWord,
-	//                 //msgBegin+100,
-	//                 HexDump{4});
-	// }
+	LOG(debug) << " msg size " << msgSize << " bytes "
+		<< nWord << " words" << sizeof(Word) << std::endl;
+	#if 0
+	{
+	std::for_each(reinterpret_cast<Word*>(msgBegin),
+		msgBegin+nWord,
+		//msgBegin+100,
+		HexDump{4});
+	}
+	#endif
 
 	//for (auto i=0; i<nWord; ++i) {
 	for (long unsigned int i = 0 ; i < nWord ; ++i) {
 		auto word = reinterpret_cast<Data::Bits*>(msgBegin+i);
-		// LOG(debug) << " idx = " << std::setw(10) << i << " (" << std::hex << std::setw(10) << i << ") "
-		//            << " i-offset = " << std::setw(10) << i-offset << " (" << std::hex << std::setw(10) << i-offset << ") "
-		//            << HexDump::cast<uint64_t>(*word)
-		//            << std::dec << std::endl;
-
+		#if 0
+		LOG(debug) << " idx = " << std::setw(10) << i
+			<< " (" << std::hex << std::setw(10) << i << ") "
+			<< " i-offset = " << std::setw(10) << i-offset
+			<< " (" << std::hex << std::setw(10) << i-offset << ") "
+			<< HexDump::cast<uint64_t>(*word)
+			<< std::dec << std::endl;
+		#endif
 		uint8_t h = word->head;
 		// LOG(debug) << " head = " << std::hex << static_cast<uint16_t>(h) << std::dec << std::endl;
 		bool isHeadValid = false;
-		for (auto validHead : {
-		            Data::Data, Data::Heartbeat, Data::ErrorRecovery, Data::SpillEnd
-		        }) {
+		for (auto validHead :
+			{Data::Data, Data::Heartbeat, Data::ErrorRecovery, Data::SpillEnd}) {
 			if (h == validHead) isHeadValid = true;
 		}
 
@@ -84,14 +90,19 @@ HulStrTdcSTFBuilder::BuildFrame(FairMQMessagePtr& msg, int index)
 				auto first = msgBegin + offset;
 				auto last  = msgBegin + i;
 				std::for_each(first, last, HexDump{4});
-				fInputPayloads.insert(fInputPayloads.end(), std::make_move_iterator(first), std::make_move_iterator(last));
+				fInputPayloads.insert(
+					fInputPayloads.end(),
+					std::make_move_iterator(first),
+					std::make_move_iterator(last));
 			}
 			offset = i+1;
 			continue;
 		}
 
 		if ((h == Data::Heartbeat) || (h == Data::ErrorRecovery) || (h == Data::SpillEnd)) {
-			// LOG(debug) << " Fill " << std::setw(10) << offset << " -> " << std::setw(10) << i << " : " << std::hex << word->raw << std::dec;
+			// LOG(debug) << " Fill " << std::setw(10) << offset
+			// 	 << " -> " << std::setw(10) << i
+			// 	  << " : " << std::hex << word->raw << std::dec;
 			auto first = msgBegin + offset;
 			auto last  = msgBegin + i;
 			offset     = i+1;
@@ -191,11 +202,12 @@ bool
 HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 {
 	namespace Data = HulStrTdc::Data;
-	//using Word     = Data::Word;
+	using Word     = Data::Word;
 	using Bits     = Data::Bits;
 	//LOG(debug)
-	// std::cout << "HandleData() HBF " << fHBFCounter << " input message " << msg->GetSize() << std::endl;
+	std::cout << "#D HandleData() HBF " << fHBFCounter << " input message " << msg->GetSize() << std::endl;
 	//Reporter::AddInputMessageSize(msg->GetSize());
+
 	BuildFrame(msg, index);
 
 	while (!fOutputPayloads.empty()) {
@@ -229,43 +241,52 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 				}
 			}
 
-			parts.AddPart(std::move(msg));
+			parts.AddPart(std::move(tmsg));
 		}
 		fOutputPayloads.pop();
 
 		auto h = reinterpret_cast<STF::Header*>(parts.At(0)->GetData());
 
-		// { // for debug-begin
-		//   std::cout << " parts size = " << parts.Size() << std::endl;
-		//   for (int i=0; i<parts.Size(); ++i){
-		//     const auto& msg = parts.At(i);
-		//     if (i==0) {
-		//       auto stfh = reinterpret_cast<STF::Header*>(msg->GetData());
-		//       LOG(debug) << "STF " << stfh->timeFrameId << " length " << stfh->length << " header " << msg->GetSize() << std::endl;
-		//       std::for_each(reinterpret_cast<uint64_t*>(msg->GetData()),
-		//                     reinterpret_cast<uint64_t*>(msg->GetData() + msg->GetSize()),
-		//                     HexDump{4});
-		//     } else {
-		//       LOG(debug) << " body " << i << " " << msg->GetSize() << " "
-		//                  << std::showbase << std::hex <<  msg->GetSize() << std::noshowbase<< std::dec << std::endl;
-		//       auto n = msg->GetSize()/sizeof(Word);
-		//       // n = (n>10) ? 10 : n;
-		//       std::for_each(reinterpret_cast<Word*>(msg->GetData()),
-		//                     reinterpret_cast<Word*>(msg->GetData()) + n,
-		//                     HexDump{4});
-		//       if (n == 1) {
-		//         auto v = reinterpret_cast<Word*>(msg->GetData());
-		//         std::cout << "single word = " << std::hex << HexDump::cast<uint64_t>(*v) << std::dec << std::endl;
-		//       }
-		//     }
-		//   }
-		// } // for debug-end
+		#if 0
+		{ // for debug-begin
+		std::cout << " parts size = " << parts.Size() << std::endl;
+		for (int i=0; i<parts.Size(); ++i) {
+			const auto& vmsg = parts.At(i);
+			if (i==0) {
+				auto stfh = reinterpret_cast<STF::Header*>(vmsg->GetData());
+				LOG(debug) << "STF " << stfh->timeFrameId
+					<< " length " << stfh->length
+					<< " header " << vmsg->GetSize() << std::endl;
+				std::for_each(reinterpret_cast<uint64_t*>(vmsg->GetData()),
+					reinterpret_cast<uint64_t*>(vmsg->GetData() + vmsg->GetSize()),
+					HexDump{4});
+			} else {
+				LOG(debug) << " body " << i << " " << vmsg->GetSize()
+					<< " " << std::showbase << std::hex <<  vmsg->GetSize()
+					<< std::noshowbase<< std::dec << std::endl;
+				auto n = vmsg->GetSize()/sizeof(Word);
+				// n = (n>10) ? 10 : n;
+				std::for_each(reinterpret_cast<Word*>(vmsg->GetData()),
+					reinterpret_cast<Word*>(vmsg->GetData()) + n,
+					HexDump{5});
+				if (n == 1) {
+					auto v = reinterpret_cast<Word*>(vmsg->GetData());
+					std::cout << "single word = "
+						<< std::hex << HexDump::cast<uint64_t>(*v)
+						<< std::dec << std::endl;
+				}
+			}
+		}
+		} // for debug-end
+		#endif
 
 		// Push multipart message into send queue
 		// LOG(debug) << "send multipart message ";
-
+	
 		//Reporter::AddOutputMessageSize(parts);
 
+
+		#if 1
 		if (dqmSocketExists) {
 			if (Send(dqmParts, fDQMChannelName) < 0) {
 				// timeout
@@ -274,7 +295,9 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 					LOG(info) << "Device is not RUNNING";
 					return false;
 				}
-				LOG(error) << "Failed to enqueue sub time frame (DQM) : FEM = " << std::hex << h->FEMId << std::dec << "  STF = " << h->timeFrameId << std::endl;
+				LOG(error) << "Failed to enqueue sub time frame (DQM) : FEM = "
+					<< std::hex << h->FEMId << std::dec
+					<< "  STF = " << h->timeFrameId << std::endl;
 			}
 		}
 
@@ -286,8 +309,13 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 				LOG(info) << "Device is not RUNNING";
 				return false;
 			}
-			LOG(error) << "Failed to enqueue sub time frame (data) : FEM = " << std::hex << h->FEMId << std::dec << "  STF = " << h->timeFrameId << std::endl;
+			LOG(error) << "Failed to enqueue sub time frame (data) : FEM = "
+				<< std::hex << h->FEMId << std::dec
+				<< "  STF = " << h->timeFrameId << std::endl;
 		}
+		#endif
+
+
 	}
 
 	return true;

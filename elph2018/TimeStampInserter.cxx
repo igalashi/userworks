@@ -21,6 +21,7 @@ highp::e50::
 TimeStampInserter::HandleData(FairMQParts& msgParts, 
 			      int index)
 {
+  (void)index;
   namespace HBF = HeartbeatFrame;
   assert(msgParts.Size() >= 2);
   

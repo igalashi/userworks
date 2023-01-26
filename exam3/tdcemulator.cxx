@@ -103,8 +103,10 @@ HulStrTdcEmulator::ConditionalRun()
 
 			int ntdc = fMsgSize/fNumHBF/sizeof(hul_data_word);
 
-			#if 0
-			std::cout << " max word = " << maxWord << " ntdc = " << ntdc << std::endl;
+			#if 1
+			std::cout << " max word = " << maxWord
+				<< " ntdc = " << ntdc
+				<< " fMsgSize = " << fMsgSize << std::endl;
 			#endif
 
 			for (int ihbf=0; ihbf<fNumHBF; ++ihbf) {
@@ -159,6 +161,7 @@ HulStrTdcEmulator::ConditionalRun()
 				}
 				++fHBFId;
 			}
+
 			// // fill tdc data
 			// head = 0xD;
 			// rsv = 0;
@@ -242,7 +245,8 @@ HulStrTdcEmulator::ConditionalRun()
 				LOG(info) << " Device is not RUNNING";
 				return false;
 			} else if ((fMaxIterations >0) && (fNumIterations >= fMaxIterations)) {
-				LOG(info) << "Configured maximum number of iterations reached. Leaving RUNNING state.";
+				LOG(info) << "Configured maximum number of iterations reached."
+					<< " Leaving RUNNING state.";
 				return false;
 			}
 		} else {
@@ -256,14 +260,19 @@ HulStrTdcEmulator::ConditionalRun()
 		std::this_thread::sleep_for(1s);
 	}
 
+
+	if (fMsgCounter <= 0) {
+		std::this_thread::yield();
+		ResetMsgCounter_offloop();
+	}
+
+	#if 0
 	while (fMsgCounter == 0) {
 		std::this_thread::yield();
 		std::this_thread::sleep_for(1us);
-
-		ResetMsgCounter_offloop();
-
 		//LOG(info) << "main thread waiting for reset of message counter";
 	}
+	#endif
 
 	return true;
 }
@@ -360,12 +369,16 @@ HulStrTdcEmulator::ResetMsgCounter()
 void
 HulStrTdcEmulator::ResetMsgCounter_offloop()
 {
+	using namespace std::chrono_literals;
 	if (fMsgRate >= 100) {
 		fMsgCounter = fMsgRate / 100;
+		std::this_thread::sleep_for(10ms);
 	} else if (fMsgRate >=10 ) {
 		fMsgCounter = fMsgRate / 10;
+		std::this_thread::sleep_for(100ms);
 	} else {
 		fMsgCounter = fMsgRate;
+		std::this_thread::sleep_for(1000ms);
 	}
 }
 
@@ -378,7 +391,8 @@ addCustomOptions(bpo::options_description& options)
 	using opt = HulStrTdcEmulator::OptionKey;
 	options.add_options()
 	(opt::MaxIterations.data(),     bpo::value<uint64_t>()->default_value(0),        "Number of run iterations (0 - infinite)")
-	(opt::MsgRate.data(),           bpo::value<int>()->default_value(100),           "Message rate limit in maximum number of messages per second")
+	//(opt::MsgRate.data(),           bpo::value<int>()->default_value(100),           "Message rate limit in maximum number of messages per second")
+	(opt::MsgRate.data(),           bpo::value<int>()->default_value(2),           "Message rate limit in maximum number of messages per second")
 	(opt::MsgSize.data(),           bpo::value<int>()->default_value(1024),          "Message size in bytes")
 	(opt::HBFRate.data(),           bpo::value<int>()->default_value(1),             "Heartbeat frame (HBF) rate. 1 HBF per N messages")
 	(opt::HBFPosition.data(),       bpo::value<int>()->default_value(0),             "Heartbeat frame (HBF) position.")
