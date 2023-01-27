@@ -100,7 +100,6 @@ HulStrTdcEmulator::ConditionalRun()
 
 			int hul_data_counter = 0;
 			int maxWord = fMsgSize/sizeof(hul_data_word) - 1;
-
 			int ntdc = fMsgSize/fNumHBF/sizeof(hul_data_word);
 
 			#if 1
@@ -232,9 +231,6 @@ HulStrTdcEmulator::ConditionalRun()
 		              + (msg->GetSize())/sizeof(hul_data_word_t),
 		              HexDump{4});
 		#endif
-
-		// y.ma 20181210
-		// std::this_thread::sleep_for(1000ms);
 
 		////Reporter::AddOutputMessageSize(msg->GetSize());
 		// push multipart message into send queue
@@ -396,7 +392,7 @@ addCustomOptions(bpo::options_description& options)
 	(opt::MsgSize.data(),           bpo::value<int>()->default_value(1024),          "Message size in bytes")
 	(opt::HBFRate.data(),           bpo::value<int>()->default_value(1),             "Heartbeat frame (HBF) rate. 1 HBF per N messages")
 	(opt::HBFPosition.data(),       bpo::value<int>()->default_value(0),             "Heartbeat frame (HBF) position.")
-	(opt::NumHBF.data(),            bpo::value<int>()->default_value(1),             "Number of HBF in 1 spill")
+	(opt::NumHBF.data(),            bpo::value<int>()->default_value(4),             "Number of HBF in 1 spill")
 	(opt::OutputChannelName.data(), bpo::value<std::string>()->default_value("out"), "Name of the output channel")
 	;
 }

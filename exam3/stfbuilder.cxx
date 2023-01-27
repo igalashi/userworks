@@ -123,11 +123,11 @@ HulStrTdcSTFBuilder::BuildFrame(FairMQMessagePtr& msg, int index)
 		}
 	}
 
-	// std::cout << " data remains: " << (nWord - offset) << " offset =  " << offset << std::endl;
+	// std::cout << " data remains: " << (nWord - offset) << " offset = " << offset << std::endl;
 	if (offset < nWord) { // && !isSpillEnd)) {
 		fInputPayloads.insert(fInputPayloads.end(),
-		                      std::make_move_iterator(msgBegin + offset),
-		                      std::make_move_iterator(msgBegin + nWord));
+			std::make_move_iterator(msgBegin + offset),
+			std::make_move_iterator(msgBegin + nWord));
 	}
 
 }
@@ -231,10 +231,11 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 					dqmParts.AddPart(std::move(msgCopy));
 				} else {
 					auto b = reinterpret_cast<Bits*>(tmsg->GetData());
-					if (b->head == Data::Heartbeat     ||
-					        b->head == Data::ErrorRecovery ||
-					        b->head == Data::SpillEnd) {
-						FairMQMessagePtr msgCopy(fTransportFactory->CreateMessage());
+					if (b->head == Data::Heartbeat
+						|| b->head == Data::ErrorRecovery
+						|| b->head == Data::SpillEnd) {
+						FairMQMessagePtr msgCopy(
+							fTransportFactory->CreateMessage());
 						msgCopy->Copy(*tmsg);
 						dqmParts.AddPart(std::move(msgCopy));
 					}
@@ -285,8 +286,6 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 	
 		//Reporter::AddOutputMessageSize(parts);
 
-
-		#if 1
 		if (dqmSocketExists) {
 			if (Send(dqmParts, fDQMChannelName) < 0) {
 				// timeout
@@ -313,8 +312,6 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 				<< std::hex << h->FEMId << std::dec
 				<< "  STF = " << h->timeFrameId << std::endl;
 		}
-		#endif
-
 
 	}
 
@@ -342,7 +339,7 @@ HulStrTdcSTFBuilder::InitTask()
 		std::string token;
 		int i = 3;
 		while (std::getline(iss, token, '.')) {
-			if (i<0)  break;
+			if (i<0) break;
 			uint32_t v = (std::stoul(token) & 0xff) << (8*i);
 			// std::cout << " i = " << i << " token = " << token << " v = " << v << std::endl;
 			fFEMId |= v;
@@ -411,12 +408,18 @@ void addCustomOptions(bpo::options_description& options)
 {
 	using opt = HulStrTdcSTFBuilder::OptionKey;
 	options.add_options()
-	(opt::FEMId.data(),             bpo::value<std::string>(),                       "FEM ID")
-	(opt::InputChannelName.data(),  bpo::value<std::string>()->default_value("in"),  "Name of the input channel")
-	(opt::OutputChannelName.data(), bpo::value<std::string>()->default_value("out"), "Name of the output channel")
-	(opt::DQMChannelName.data(),    bpo::value<std::string>()->default_value("dqm"), "Name of the data quality monitoring")
-	(opt::MaxHBF.data(),            bpo::value<int>()->default_value(1),             "maximum number of heartbeat frame in one sub time frame")
-	(opt::SplitMethod.data(),       bpo::value<int>()->default_value(0),             "STF split method")
+	(opt::FEMId.data(),             bpo::value<std::string>(),
+		"FEM ID")
+	(opt::InputChannelName.data(),  bpo::value<std::string>()->default_value("in"),
+		"Name of the input channel")
+	(opt::OutputChannelName.data(), bpo::value<std::string>()->default_value("out"),
+		"Name of the output channel")
+	(opt::DQMChannelName.data(),    bpo::value<std::string>()->default_value("dqm"),
+		"Name of the data quality monitoring")
+	(opt::MaxHBF.data(),            bpo::value<int>()->default_value(1),
+		"maximum number of heartbeat frame in one sub time frame")
+	(opt::SplitMethod.data(),       bpo::value<int>()->default_value(0),
+		"STF split method")
 	;
 }
 
