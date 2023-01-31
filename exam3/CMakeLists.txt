@@ -1,7 +1,7 @@
 #==============================================================================
 #foreach(lvar IN ITEMS Sampler; Sink; NullDevice;
 foreach(lvar IN ITEMS
-	sampler; sink; tdcemulator; stfbuilder; tfbuilder; tfdump
+	sampler; sink; tdcemulator; stfbuilder; tfbuilder; tfdump; filter
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 

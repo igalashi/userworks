@@ -65,11 +65,13 @@ TimeFrameBuilder::ConditionalRun()
         h->magic       = TF::Magic;
         h->timeFrameId = stfId;
         h->numSource   = fNumSource;
-        h->length      = std::accumulate(tfBuf.begin(), tfBuf.end(), sizeof(TF::Header), 
-					 [](auto init, auto& stfBuf) {
-					   return init + std::accumulate(stfBuf.parts.begin(), stfBuf.parts.end(), 0, 
-                                                                         [] (auto jinit, auto& m) { return (!m) ? jinit : jinit + m->GetSize(); });
-					 });
+        h->length      = std::accumulate(
+                           tfBuf.begin(), tfBuf.end(), sizeof(TF::Header), 
+                           [](auto init, auto& stfBuf) {
+                             return init + std::accumulate(stfBuf.parts.begin(), stfBuf.parts.end(), 0, 
+                             [] (auto jinit, auto& m) { return (!m) ? jinit : jinit + m->GetSize(); });
+                           }
+                         );
         // LOG(debug) << " length = " << h->length;
 	outParts.AddPart(MessageUtil::NewMessage(*this, std::move(h)));
         for (auto& stfBuf: tfBuf) {
