@@ -31,7 +31,6 @@ struct TFdump : fair::mq::Device
 	{
 		// register a handler for data arriving on "data" channel
 		//OnData("in", &TFdump::HandleData);
-
 		//LOG(info) << "Constructer Input Channel : " << fInputChannelName;
 	}
 
@@ -47,9 +46,9 @@ struct TFdump : fair::mq::Device
 
 	}
 
-
 	bool CheckData(fair::mq::MessagePtr& msg);
-#if 0
+
+	#if 0
 	bool HandleData(fair::mq::MessagePtr& msg, int)
 	{
 		LOG(info) << "Received: \""
@@ -66,7 +65,7 @@ struct TFdump : fair::mq::Device
 		// (otherwise return false go to the Ready state)
 		return true;
 	}
-#endif
+	#endif
 
 	bool ConditionalRun() override;
 	void PostRun() override;
@@ -125,7 +124,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 		#if 1
 		for (unsigned int j = 0 ; j < msize ; j += 5) {
 
-			if ((pdata[j + 4] & 0xf0) != 0xd0) {
+			//if ((pdata[j + 4] & 0xf0) != 0xd0) {
 				std::cout << "# " << std::setw(8) << j << " : "
 					<< std::hex << std::setw(2) << std::setfill('0')
 					<< std::setw(2) << static_cast<unsigned int>(pdata[j + 4]) << " "
@@ -134,7 +133,9 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 					<< std::setw(2) << static_cast<unsigned int>(pdata[j + 1]) << " "
 					<< std::setw(2) << static_cast<unsigned int>(pdata[j + 0]) << " : ";
 
-				if        ((pdata[j + 4] & 0xf0) == 0x10) {
+				if        ((pdata[j + 4] & 0xf0) == 0xd0) {
+					std::cout << "TDC" << std::endl;
+				} else if ((pdata[j + 4] & 0xf0) == 0x10) {
 					std::cout << "SPILL Start" << std::endl;
 				} else if ((pdata[j + 4] & 0xf0) == 0xf0) {
 					std::cout << "Hart beat" << std::endl;
@@ -143,7 +144,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 				} else {
 					std::cout << std::endl;
 				}
-			}
+			//}
 		}
 		#endif
 

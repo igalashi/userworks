@@ -31,19 +31,19 @@ echo "---------------------------------------------------------------------"
 #---------------------------------------------------------------------------
 
 # Sampler 
-endpoint     Sampler          data           type push  method bind 
-endpoint     BenchmarkSampler       out           type push  method bind 
-endpoint     HulStrTdcEmulator      out           type push  method bind 
+#endpoint     Sampler          data           type push  method bind 
+#endpoint     BenchmarkSampler       out           type push  method bind 
+#endpoint     HulStrTdcEmulator      out           type push  method bind 
 endpoint     tdcemulator      out            type pair  method bind 
 
 #
 endpoint     stfbuilder       in            type pair  method connect 
-endpoint     stfbuilder       out           type push  method bind autoSubChannel true
-#endpoint     stfbuilder       out           type pair  method bind
+endpoint     stfbuilder       out           type push  method connect autoSubChannel true
 #endpoint     stfbuilder       dqm           type push  method bind 
 
 #
-endpoint     tfbuilder       in            type pull  method connect autoSubChannel true
+#endpoint     tfbuilder       in            type pull  method bind autoSubChannel true
+endpoint     tfbuilder       in            type pull  method bind
 endpoint     tfbuilder       out           type push  method bind 
 
 # Sink

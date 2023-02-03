@@ -1,2 +1,2 @@
 #!/bin/sh
-redis-cli KEY 'daq_service:*' | xargs redis-cli DEL
+redis-cli KEYS 'daq_service:*' | xargs redis-cli DEL
