@@ -18,6 +18,7 @@
 #include "HulStrTdcData.h"
 #include "SubTimeFrameHeader.h"
 #include "TimeFrameHeader.h"
+#include "UnpackTdc.h"
 
 namespace bpo = boost::program_options;
 
@@ -87,7 +88,7 @@ private:
 
 };
 
-
+#if 0
 bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 {
 	unsigned int msize = msg->GetSize();
@@ -121,7 +122,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 	} else {
 		std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
 
-		#if 1
+		#if 0
 		for (unsigned int j = 0 ; j < msize ; j += 5) {
 
 			//if ((pdata[j + 4] & 0xf0) != 0xd0) {
@@ -148,6 +149,87 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 		}
 		#endif
 
+	}
+
+	#if 0
+	for (unsigned int i = 0 ; i < msize; i++) {
+		if ((i % 16) == 0) {
+			if (i != 0) std::cout << std::endl;
+			std::cout << "#" << std::setw(8) << std::setfill('0')
+				<< i << " : ";
+		}
+		std::cout << " "
+			<< std::hex << std::setw(2) << std::setfill('0')
+			<< static_cast<unsigned int>(pdata[i]);
+	}
+	std::cout << std::endl;
+	#endif
+
+
+	return true;
+}
+#endif
+
+bool TFdump::CheckData(fair::mq::MessagePtr& msg)
+{
+	unsigned int msize = msg->GetSize();
+	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
+	uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(pdata));
+
+	static TimeFrame::Header ltimeframe;
+	static SubTimeFrame::Header lsubtimeframe;
+	static int nsubtimeframe = 0;
+
+	#if 0
+	std::cout << "#Msg MAGIC: " << std::hex << msg_magic
+		<< " Size: " << std::dec << msize << std::endl;
+	#endif
+
+	if (msg_magic == TimeFrame::Magic) {
+		TimeFrame::Header *ptf
+			= reinterpret_cast<TimeFrame::Header *>(pdata);
+		ltimeframe.magic = ptf->magic;
+		ltimeframe.timeFrameId = ptf->timeFrameId;
+		ltimeframe.numSource = ptf->numSource;
+		ltimeframe.length = ptf->length;
+
+		std::cout << "#TF Header "
+			<< std::hex << std::setw(16) << std::setfill('0') <<  ptf->magic
+			<< " id: " << std::setw(8) << std::setfill('0') <<  ptf->timeFrameId
+			<< " Nsource: " << std::setw(8) << std::setfill('0') <<  ptf->numSource
+			<< " len: " << std::dec <<  ptf->length
+			<< std::endl;
+
+	} else if (msg_magic == SubTimeFrame::Magic) {
+		SubTimeFrame::Header *pstf
+			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
+		if (nsubtimeframe != 0) {
+			std::cout << "#E lost SubTimeFrame Msg" << std::endl;
+		}
+
+		lsubtimeframe.magic = pstf->magic;
+		lsubtimeframe.timeFrameId = pstf->timeFrameId;
+		lsubtimeframe.FEMId = pstf->FEMId;
+		lsubtimeframe.length = pstf->length;
+		lsubtimeframe.numMessages = pstf->numMessages;
+		nsubtimeframe = lsubtimeframe.numMessages - 1;
+
+		std::cout << "#STF Header "
+			<< std::hex << std::setw(8) << std::setfill('0') <<  pstf->magic
+			<< " id: " << std::setw(8) << std::setfill('0') <<  pstf->timeFrameId
+			<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->FEMId
+			<< " len: " << std::dec <<  pstf->length
+			<< " nMsg: " << std::dec <<  pstf->numMessages
+			<< std::endl;
+
+	} else {
+		if (nsubtimeframe > 0) {
+			std::cout << "#TDC body" << std::endl;
+			//if (Trig::CheckEntryFEM(lsubtimeframe.FEMId)) Trig::Mark(pdata);
+			nsubtimeframe--;
+		} else {
+			std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
+		}
 	}
 
 	#if 0

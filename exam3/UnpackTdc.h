@@ -64,7 +64,7 @@ int Unpack(unsigned char *data, struct tdc40 *tdc)
 } //namespace TDC40
 
 
-namespace TDC64 {
+namespace TDC64H {
 
 static constexpr unsigned int T_TDC = (0x2c >> 2);
 static constexpr unsigned int T_HB =  (0x70 >> 2);
@@ -76,6 +76,7 @@ struct tdc64 {
 	int ch;
 	int tot;
 	int tdc;
+	int tdc2u;
 	int flag;
 	int spill;
 	int hartbeat;
@@ -90,6 +91,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch       = (data & 0x03f8'0000'0000'0000) >> 51;
 		tdc->tot      = (data & 0x0007'ffff'e000'0000) >> 29;
 		tdc->tdc      = (data & 0x0000'0000'1fff'ffff);
+		tdc->tdc2u    = (data & 0x0000'0000'1fff'ffff) >> 11;
 		tdc->spill    = -1;
 		tdc->hartbeat = -1;
 	} else
@@ -97,6 +99,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch       = -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
+		tdc->tdc2u    = -1;
 		tdc->flag     = (data & 0x03ff'0000'0000'0000) >> 48;
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
@@ -105,6 +108,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch       = -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
+		tdc->tdc2u    = -1;
 		tdc->flag     = (data & 0x03ff'0000'0000'0000) >> 48;
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
@@ -112,6 +116,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch       = -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
+		tdc->tdc2u    = -1;
 		tdc->flag     = -1;
 		tdc->spill    = -1;
 		tdc->hartbeat = -1;
@@ -149,6 +154,7 @@ struct tdc64 {
 	int ch;
 	int tot;
 	int tdc;
+	int tdc2u;
 	int flag;
 	int spill;
 	int hartbeat;
@@ -163,6 +169,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch       = (data & 0x03f8'0000'0000'0000) >> 51;
 		tdc->tot      = (data & 0x0007'f800'0000'0000) >> 43;
 		tdc->tdc      = (data & 0x0000'07ff'ff00'0000) >> 24;
+		tdc->tdc2u    = (data & 0x0000'07ff'ff00'0000) >> 25;
 		tdc->flag     = -1;
 		tdc->spill    = -1;
 		tdc->hartbeat = -1;
@@ -171,6 +178,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch       = -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
+		tdc->tdc2u    = -1;
 		tdc->flag     = (data & 0x03ff'0000'0000'0000) >> 48;
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
@@ -179,6 +187,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch       = -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
+		tdc->tdc2u    = -1;
 		tdc->flag     = (data & 0x03ff'0000'0000'0000) >> 48;
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
@@ -186,6 +195,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch       = -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
+		tdc->tdc2u    = -1;
 		tdc->flag     = -1;
 		tdc->spill    = -1;
 		tdc->hartbeat = -1;
@@ -197,20 +207,21 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 } //namespace TDC64L
 
 
+//#ifdef TEST_MAIN
 #if 0
 int main(int argc, char* argv[])
 {
 	static char cbuf[16];
 	uint64_t *pdata = reinterpret_cast<uint64_t *>(cbuf);
-	struct TDC64::tdc64 tdc;
+	struct TDC64H::tdc64 tdc;
 
 	while (true) {
 		std::cin.read(cbuf, 8);
 		//std::cin >> *pdata; 
 		if (std::cin.eof()) break;
 
-		int type = TDC64::Unpack(*pdata, &tdc);
-		if (type == TDC64::T_TDC) {
+		int type = TDC64H::Unpack(*pdata, &tdc);
+		if (type == TDC64H::T_TDC) {
 			std::cout << "TDC " << std::dec
 				<< " CH:" << tdc.ch 
 				<< " TOT:" << tdc.tot 
@@ -218,12 +229,12 @@ int main(int argc, char* argv[])
 				<< " : " << std::hex << *pdata
 				<< std::endl;
 		} else
-		if ((type == TDC64::T_HB)
-			|| (tdc.type == TDC64::T_S_START)
-			|| (tdc.type == TDC64::T_S_END)) {
-			if (type ==TDC64::T_HB) std::cout << "HB ";
-			if (type ==TDC64::T_S_START) std::cout << "S_STA ";
-			if (type ==TDC64::T_S_END) std::cout << "S_END ";
+		if ((type == TDC64H::T_HB)
+			|| (tdc.type == TDC64H::T_S_START)
+			|| (tdc.type == TDC64H::T_S_END)) {
+			if (type ==TDC64H::T_HB) std::cout << "HB ";
+			if (type ==TDC64H::T_S_START) std::cout << "S_STA ";
+			if (type ==TDC64H::T_S_END) std::cout << "S_END ";
 			std::cout  << std::hex
 				<< " FLAG: " << tdc.flag
 				<< " SPILL: " << tdc.spill
