@@ -198,6 +198,7 @@ std::vector<uint32_t> *Trigger::Scan()
 }
 
 
+
 int main(int argc, char* argv[])
 {
 	Trigger trig;

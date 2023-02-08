@@ -88,7 +88,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 
 	tdc->type = (data & 0xfc00'0000'0000'0000) >> 58;
 	if (tdc->type == T_TDC) {
-		tdc->ch       = (data & 0x03f8'0000'0000'0000) >> 51;
+		tdc->ch	= (data & 0x03f8'0000'0000'0000) >> 51;
 		tdc->tot      = (data & 0x0007'ffff'e000'0000) >> 29;
 		tdc->tdc      = (data & 0x0000'0000'1fff'ffff);
 		tdc->tdc2u    = (data & 0x0000'0000'1fff'ffff) >> 11;
@@ -96,7 +96,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->hartbeat = -1;
 	} else
 	if (tdc->type == T_HB) {
-		tdc->ch       = -1;
+		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
 		tdc->tdc2u    = -1;
@@ -105,7 +105,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
 	} else
 	if ((tdc->type == T_S_START) || (tdc->type == T_S_END)) {
-		tdc->ch       = -1;
+		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
 		tdc->tdc2u    = -1;
@@ -113,7 +113,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
 	} else {
-		tdc->ch       = -1;
+		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
 		tdc->tdc2u    = -1;
@@ -138,6 +138,25 @@ int Unpack(unsigned char *data, struct tdc64 *tdc)
 	uint64_t *pdata = reinterpret_cast<uint64_t *>(data);
 	return Unpack(*pdata, tdc);
 }
+
+int GetHBFrame(unsigned char *pdata, unsigned char *pend, unsigned char **ppnext)
+{
+	uint64_t *tdcword = reinterpret_cast<uint64_t *>(pdata);
+	struct tdc64 tdc;
+	int i = 0;
+	while (true) {
+		if (Unpack(tdcword[i++], &tdc) == T_HB) break;
+		if (reinterpret_cast<unsigned char*>(&(tdcword[i])) > pend) {
+			*ppnext = nullptr;
+			return 0;
+		}
+	}
+	i++;
+	*ppnext = reinterpret_cast<unsigned char *>(tdcword + i);
+
+	return i * sizeof(uint64_t);
+}
+
 
 
 } //namespace TDC64
@@ -166,7 +185,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 
 	tdc->type = (data & 0xfc00'0000'0000'0000) >> 58;
 	if (tdc->type == T_TDC) {
-		tdc->ch       = (data & 0x03f8'0000'0000'0000) >> 51;
+		tdc->ch	= (data & 0x03f8'0000'0000'0000) >> 51;
 		tdc->tot      = (data & 0x0007'f800'0000'0000) >> 43;
 		tdc->tdc      = (data & 0x0000'07ff'ff00'0000) >> 24;
 		tdc->tdc2u    = (data & 0x0000'07ff'ff00'0000) >> 25;
@@ -175,7 +194,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->hartbeat = -1;
 	} else
 	if (tdc->type == T_HB) {
-		tdc->ch       = -1;
+		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
 		tdc->tdc2u    = -1;
@@ -184,7 +203,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
 	} else
 	if ((tdc->type == T_S_START) || (tdc->type == T_S_END)) {
-		tdc->ch       = -1;
+		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
 		tdc->tdc2u    = -1;
@@ -192,7 +211,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
 	} else {
-		tdc->ch       = -1;
+		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
 		tdc->tdc2u    = -1;
@@ -207,7 +226,83 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 } //namespace TDC64L
 
 
-//#ifdef TEST_MAIN
+#ifdef TEST_MAIN
+//#if 0
+
+int tdc64h_dump(uint64_t data)
+{
+	struct TDC64H::tdc64 tdc;
+	int type = TDC64H::Unpack(data, &tdc);
+	if (type == TDC64H::T_TDC) {
+		std::cout << "TDC " << std::dec
+			<< " CH:" << tdc.ch 
+			<< " TOT:" << tdc.tot 
+			<< " TDC:" << tdc.tdc 
+			<< " : " << std::hex << data
+			<< std::endl;
+	} else
+	if ((type == TDC64H::T_HB)
+		|| (tdc.type == TDC64H::T_S_START)
+		|| (tdc.type == TDC64H::T_S_END)) {
+		if (type ==TDC64H::T_HB) std::cout << "HB ";
+		if (type ==TDC64H::T_S_START) std::cout << "S_STA ";
+		if (type ==TDC64H::T_S_END) std::cout << "S_END ";
+		std::cout  << std::hex
+			<< " FLAG: " << tdc.flag
+			<< " SPILL: " << tdc.spill
+			<< " HERTBEAT: " << tdc.hartbeat
+			<< " : " << std::hex << data
+			<< std::dec << std::endl;
+	} else {
+		std::cerr << "Invalid data : "
+			<< std::hex << data << std::dec << std::endl;
+	}
+
+	return type;
+}
+
+int main(int argc, char* argv[])
+{
+	static char cbuf[16];
+	uint64_t *pdata = reinterpret_cast<uint64_t *>(cbuf);
+
+	uint64_t *buf = new uint64_t[1024*1024*8];
+
+	int i = 0;
+	while (true) {
+		std::cin.read(cbuf, 8);
+		//std::cin >> *pdata; 
+		if (std::cin.eof()) break;
+		buf[i++] = *pdata;
+		#if 0
+		std::cout << "\r "  << i << ": " << *pdata << "  " << std::flush;
+		#endif
+	}
+
+	unsigned char *pcurr = reinterpret_cast<unsigned char *>(buf);
+	unsigned char *pend = reinterpret_cast<unsigned char *>(buf + i);
+	unsigned char *pnext = nullptr;
+	while (true) {
+		int len = TDC64H::GetHBFrame(pcurr, pend, &pnext);
+		if (len <= 0) break;
+
+		std::cout << "#D HB frame size: " << std::dec << len
+			<< " curr: " << std::hex
+			<< reinterpret_cast<uintptr_t>(pcurr)
+			<< " next: "
+			<< reinterpret_cast<uintptr_t>(pnext) << std::endl;
+
+		pdata = reinterpret_cast<uint64_t *>(pcurr);
+		for (unsigned int j = 0 ; j < len / sizeof(uint64_t) ; j++) {
+			tdc64h_dump(pdata[j]);
+		}
+		pcurr = pnext;
+	}
+
+	return 0;
+}
+#endif
+
 #if 0
 int main(int argc, char* argv[])
 {
