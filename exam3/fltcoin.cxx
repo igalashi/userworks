@@ -18,21 +18,23 @@
 #include "HulStrTdcData.h"
 #include "SubTimeFrameHeader.h"
 #include "TimeFrameHeader.h"
-#include "UnpackTdc.h"
+#include "FilterHeader.h"
+
+#include "trigger.cxx"
 
 namespace bpo = boost::program_options;
 
-struct TFdump : fair::mq::Device
+struct Filter : fair::mq::Device
 {
 	struct OptionKey {
 		static constexpr std::string_view InputChannelName  {"in-chan-name"};
+		static constexpr std::string_view OutputChannelName  {"out-chan-name"};
 	};
 
-	TFdump()
+	Filter()
 	{
 		// register a handler for data arriving on "data" channel
-		//OnData("in", &TFdump::HandleData);
-		//LOG(info) << "Constructer Input Channel : " << fInputChannelName;
+		//OnData("in", &Filter::HandleData);
 	}
 
 	void InitTask() override
@@ -42,14 +44,16 @@ struct TFdump : fair::mq::Device
 		// Get the fMaxIterations value from the command line options (via fConfig)
 		fMaxIterations = fConfig->GetProperty<uint64_t>("max-iterations");
 		fInputChannelName  = fConfig->GetValue<std::string>(opt::InputChannelName.data());
-		LOG(info) << "InitTask Input Channel : " << fInputChannelName;
-		//OnData(fInputChannelName, &TFdump::HandleData);
+		fOutputChannelName = fConfig->GetValue<std::string>(opt::OutputChannelName.data());
+		LOG(info) << "InitTask: Input Channel : " << fInputChannelName
+			<< " Output Channel : " << fOutputChannelName;
 
+		//OnData(fInputChannelName, &Filter::HandleData);
 	}
 
-	bool CheckData(fair::mq::MessagePtr& msg);
 
-	#if 0
+	bool CheckData(fair::mq::MessagePtr& msg);
+#if 0
 	bool HandleData(fair::mq::MessagePtr& msg, int)
 	{
 		LOG(info) << "Received: \""
@@ -66,7 +70,7 @@ struct TFdump : fair::mq::Device
 		// (otherwise return false go to the Ready state)
 		return true;
 	}
-	#endif
+#endif
 
 	bool ConditionalRun() override;
 	void PostRun() override;
@@ -76,6 +80,7 @@ private:
 	uint64_t fNumIterations = 0;
 
 	std::string fInputChannelName;
+	std::string fOutputChannelName;
 
 	struct STFBuffer {
 		FairMQParts parts;
@@ -88,8 +93,8 @@ private:
 
 };
 
-#if 0
-bool TFdump::CheckData(fair::mq::MessagePtr& msg)
+
+bool Filter::CheckData(fair::mq::MessagePtr& msg)
 {
 	unsigned int msize = msg->GetSize();
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
@@ -99,8 +104,8 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 		<< " Size: " << std::dec << msize << std::endl;
 
 	if (msg_magic == TimeFrame::Magic) {
-		TimeFrame::Header *ptf
-			= reinterpret_cast<TimeFrame::Header *>(pdata);
+		TimeFrame::Header *ptf = reinterpret_cast<TimeFrame::Header *>(pdata);
+
 		std::cout << "#TF Header "
 			<< std::hex << std::setw(16) << std::setfill('0') <<  ptf->magic
 			<< " id: " << std::setw(8) << std::setfill('0') <<  ptf->timeFrameId
@@ -108,9 +113,21 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 			<< " len: " << std::dec <<  ptf->length
 			<< std::endl;
 
+		for (unsigned int i = 0 ; i < ptf->length ; i++) {
+			if ((i % 16) == 0) {
+				std::cout << std::endl
+					<< "#" << std::setw(8) << std::setfill('0')
+					<< i << " : ";
+			}
+			std::cout << " "
+				<< std::hex << std::setw(2) << std::setfill('0')
+				<< static_cast<unsigned int>(pdata[i]);
+		}
+		std::cout << std::endl;
+		
 	} else if (msg_magic == SubTimeFrame::Magic) {
 		SubTimeFrame::Header *pstf
-			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
+				= reinterpret_cast<SubTimeFrame::Header *>(pdata);
 		std::cout << "#STF Header "
 			<< std::hex << std::setw(8) << std::setfill('0') <<  pstf->magic
 			<< " id: " << std::setw(8) << std::setfill('0') <<  pstf->timeFrameId
@@ -119,14 +136,10 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 			<< " nMsg: " << std::dec <<  pstf->numMessages
 			<< std::endl;
 
-	} else {
-		std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
-
-		#if 0
-		for (unsigned int j = 0 ; j < msize ; j += 5) {
-
-			//if ((pdata[j + 4] & 0xf0) != 0xd0) {
-				std::cout << "# " << std::setw(8) << j << " : "
+			#if 0
+			for (unsigned int j = 0 ; j < pstf->length ; j += 5) {
+				if ((pstfdata[j + 4] & 0xf0) != 0xd0) {
+				std::cout << "# " << std::setw(8) << i << " : "
 					<< std::hex << std::setw(2) << std::setfill('0')
 					<< std::setw(2) << static_cast<unsigned int>(pdata[j + 4]) << " "
 					<< std::setw(2) << static_cast<unsigned int>(pdata[j + 3]) << " "
@@ -134,123 +147,29 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 					<< std::setw(2) << static_cast<unsigned int>(pdata[j + 1]) << " "
 					<< std::setw(2) << static_cast<unsigned int>(pdata[j + 0]) << " : ";
 
-				if        ((pdata[j + 4] & 0xf0) == 0xd0) {
-					std::cout << "TDC" << std::endl;
-				} else if ((pdata[j + 4] & 0xf0) == 0x10) {
-					std::cout << "SPILL Start" << std::endl;
-				} else if ((pdata[j + 4] & 0xf0) == 0xf0) {
-					std::cout << "Hart beat" << std::endl;
-				} else if ((pdata[j + 4] & 0xf0) == 0x40) {
-					std::cout << "SPILL End" << std::endl;
-				} else {
-					std::cout << std::endl;
+					if        ((pdata[j + 4] & 0xf0) == 0x10) {
+						std::cout << "SPILL Start" << std::endl;
+					} else if ((pdata[j + 4] & 0xf0) == 0xf0) {
+						std::cout << "Hart beat" << std::endl;
+					} else if ((pdata[j + 4] & 0xf0) == 0x40) {
+						std::cout << "SPILL End" << std::endl;
+					} else {
+						std::cout << std::endl;
+					}
 				}
-			//}
-		}
-		#endif
+			}
+			#endif
 
-	}
-
-	#if 0
-	for (unsigned int i = 0 ; i < msize; i++) {
-		if ((i % 16) == 0) {
-			if (i != 0) std::cout << std::endl;
-			std::cout << "#" << std::setw(8) << std::setfill('0')
-				<< i << " : ";
-		}
-		std::cout << " "
-			<< std::hex << std::setw(2) << std::setfill('0')
-			<< static_cast<unsigned int>(pdata[i]);
-	}
-	std::cout << std::endl;
-	#endif
-
-
-	return true;
-}
-#endif
-
-bool TFdump::CheckData(fair::mq::MessagePtr& msg)
-{
-	//unsigned int msize = msg->GetSize();
-	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
-	uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(pdata));
-
-	static TimeFrame::Header ltimeframe;
-	static SubTimeFrame::Header lsubtimeframe;
-	static int nsubtimeframe = 0;
-
-	#if 0
-	std::cout << "#Msg MAGIC: " << std::hex << msg_magic
-		<< " Size: " << std::dec << msize << std::endl;
-	#endif
-
-	if (msg_magic == TimeFrame::Magic) {
-		TimeFrame::Header *ptf
-			= reinterpret_cast<TimeFrame::Header *>(pdata);
-		ltimeframe.magic = ptf->magic;
-		ltimeframe.timeFrameId = ptf->timeFrameId;
-		ltimeframe.numSource = ptf->numSource;
-		ltimeframe.length = ptf->length;
-
-		std::cout << "#TF Header "
-			<< std::hex << std::setw(16) << std::setfill('0') <<  ptf->magic
-			<< " id: " << std::setw(8) << std::setfill('0') <<  ptf->timeFrameId
-			<< " Nsource: " << std::setw(8) << std::setfill('0') <<  ptf->numSource
-			<< " len: " << std::dec <<  ptf->length
-			<< std::endl;
-
-	} else if (msg_magic == SubTimeFrame::Magic) {
-		SubTimeFrame::Header *pstf
-			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
-		if (nsubtimeframe != 0) {
-			std::cout << "#E lost SubTimeFrame Msg" << std::endl;
-		}
-
-		lsubtimeframe.magic = pstf->magic;
-		lsubtimeframe.timeFrameId = pstf->timeFrameId;
-		lsubtimeframe.FEMId = pstf->FEMId;
-		lsubtimeframe.length = pstf->length;
-		lsubtimeframe.numMessages = pstf->numMessages;
-		nsubtimeframe = lsubtimeframe.numMessages - 1;
-
-		std::cout << "#STF Header "
-			<< std::hex << std::setw(8) << std::setfill('0') <<  pstf->magic
-			<< " id: " << std::setw(8) << std::setfill('0') <<  pstf->timeFrameId
-			<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->FEMId
-			<< " len: " << std::dec <<  pstf->length
-			<< " nMsg: " << std::dec <<  pstf->numMessages
-			<< std::endl;
 
 	} else {
-		if (nsubtimeframe > 0) {
-			std::cout << "#TDC body" << std::endl;
-			//if (Trig::CheckEntryFEM(lsubtimeframe.FEMId)) Trig::Mark(pdata);
-			nsubtimeframe--;
-		} else {
-			std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
-		}
+		std::cout << "# Unknown Header" << std::hex << msg_magic << std::endl;
 	}
-
-	#if 0
-	for (unsigned int i = 0 ; i < msize; i++) {
-		if ((i % 16) == 0) {
-			if (i != 0) std::cout << std::endl;
-			std::cout << "#" << std::setw(8) << std::setfill('0')
-				<< i << " : ";
-		}
-		std::cout << " "
-			<< std::hex << std::setw(2) << std::setfill('0')
-			<< static_cast<unsigned int>(pdata[i]);
-	}
-	std::cout << std::endl;
-	#endif
 
 
 	return true;
 }
 
-bool TFdump::ConditionalRun()
+bool Filter::ConditionalRun()
 {
 	//Receive
 	FairMQParts inParts;
@@ -284,10 +203,31 @@ bool TFdump::ConditionalRun()
 
 
 
+	//Copy
+	FairMQParts outParts;
+	unsigned int msg_size = inParts.Size();
+	for (unsigned int ii = 0 ; ii < msg_size ; ii++) {
+		FairMQMessagePtr msgCopy(fTransportFactory->CreateMessage());
+		msgCopy->Copy(outParts.AtRef(ii));
+		outParts.AddPart(std::move(msgCopy));
+	}
+
+
+	//Send
+	while (Send(outParts, fOutputChannelName) < 0) {
+		// timeout
+		if (GetCurrentState() != fair::mq::State::Running) {
+			LOG(info) << "Device is not RUNNING";
+			break;
+		}
+		//LOG(error) << "Failed to queue time frame : TF = " << h->timeFrameId;
+		LOG(error) << "Failed to queue time frame";
+	}
+
 	return true;
 }
 
-void TFdump::PostRun()
+void Filter::PostRun()
 {
 	LOG(info) << "Post Run";
 	return;
@@ -295,7 +235,7 @@ void TFdump::PostRun()
 
 
 #if 0
-bool TFdump::HandleData(fair::mq::MessagePtr& msg, int val)
+bool Filter::HandleData(fair::mq::MessagePtr& msg, int val)
 {
 	(void)val;
 	#if 0
@@ -326,19 +266,23 @@ bool TFdump::HandleData(fair::mq::MessagePtr& msg, int val)
 
 void addCustomOptions(bpo::options_description& options)
 {
-	using opt = TFdump::OptionKey;
+	using opt = Filter::OptionKey;
 
 	options.add_options()
 		("max-iterations", bpo::value<uint64_t>()->default_value(0),
 		"Maximum number of iterations of Run/ConditionalRun/OnData (0 - infinite)")
 		(opt::InputChannelName.data(),
 			bpo::value<std::string>()->default_value("in"),
-			"Name of the input channel");
+			"Name of the input channel")
+		(opt::OutputChannelName.data(),
+			bpo::value<std::string>()->default_value("out"),
+			"Name of the output channel")
+    		;
 
 }
 
 
 std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& /*config*/)
 {
-	return std::make_unique<TFdump>();
+	return std::make_unique<Filter>();
 }

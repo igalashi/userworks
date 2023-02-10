@@ -226,7 +226,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 } //namespace TDC64L
 
 
-#ifdef TEST_MAIN
+#ifdef TEST_MAIN_UNPACKTDC
 //#if 0
 
 int tdc64h_dump(uint64_t data)
@@ -293,6 +293,7 @@ int main(int argc, char* argv[])
 			<< reinterpret_cast<uintptr_t>(pnext) << std::endl;
 
 		pdata = reinterpret_cast<uint64_t *>(pcurr);
+
 		for (unsigned int j = 0 ; j < len / sizeof(uint64_t) ; j++) {
 			tdc64h_dump(pdata[j]);
 		}

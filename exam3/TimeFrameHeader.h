@@ -21,6 +21,6 @@ struct Header {
 
 } // namespace v0
 
-} // namespace highp::e50::TimeFrame
+} // namespace TimeFrame
 
 #endif

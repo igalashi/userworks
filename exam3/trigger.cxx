@@ -8,27 +8,15 @@
 #include <vector>
 #include <map>
 
+#include <string.h>
 #include <assert.h>
 
 #include "UnpackTdc.h"
-
-#if 0
-struct CoinCh {
-	uint64_t FEMId;
-	std::vector<uint32_t> Ch;
-};
-#endif
 
 
 class Trigger
 {
 public:
-
-//struct CoinCh {
-//	uint64_t FEMId;
-//	std::vector<uint32_t> Ch;
-//};
-
 	Trigger();
 	virtual ~Trigger();
 	void InitParam();
@@ -67,6 +55,9 @@ void Trigger::InitParam()
 	fMarkMask = 0;
 	fHits.clear();
 	fHits.resize(0);
+	if (fTimeRegion != nullptr) {
+		memset(fTimeRegion, 0, fTimeRegionSize * sizeof(uint32_t));
+	}
 
 	return;
 }
@@ -140,13 +131,13 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem)
 		for (unsigned int i ; i < fEntryCh[fem].size() ; i++) {
 			int ch = fEntryCh[fem][i];
 			int delay = fEntryChDelay[fem][i];
-			for (unsigned int i = 0 ; i < (len / sizeof(uint64_t)) ; i++) {
+			for (unsigned int j = 0 ; j < (len / sizeof(uint64_t)) ; j++) {
 				struct TDC64H::tdc64 tdc;
-				if (TDC64H::Unpack(tdcval[i], &tdc) == TDC64H::T_TDC) {
+				if (TDC64H::Unpack(tdcval[j], &tdc) == TDC64H::T_TDC) {
 					if (tdc.ch == ch) {
 						uint32_t hit = tdc.tdc2u + delay;
 
-						std::cout << "#D Ch: " << ch
+						std::cout << "#D Mark Ch: " << std::dec << ch
 							<< " Hit: " << hit << std::endl;
 
 						if (hit < fTimeRegionSize) {
@@ -154,8 +145,8 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem)
 							fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
 							}
 							fTimeRegion[hit] |= (0x1 << fMarkCount);
-							if (tdc.tdc <
-								static_cast<int>(fTimeRegionSize) - 1) {
+							if (hit <
+								(fTimeRegionSize - 1)) {
 							fTimeRegion[hit + 1] |= (0x1 << fMarkCount);
 							}
 						}
@@ -164,6 +155,10 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem)
 			}
 			fMarkMask |= (0x1 << fMarkCount);
 			fMarkCount++;
+
+			if (static_cast<unsigned int>(fMarkCount) > sizeof(uint32_t)) {
+				std::cerr << "Entry Ch. exceed " << sizeof(uint32_t) << std::endl;
+			}
 			assert(fMarkCount <= static_cast<int>(sizeof(uint32_t)));
 		}
 	}
@@ -174,7 +169,7 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem)
 
 std::vector<uint32_t> *Trigger::Scan()
 {
-	std::cout << "#D fMarkMask: " << std::hex << fMarkMask << std::endl;
+	std::cout << "#D Scan fMarkMask: " << std::hex << fMarkMask << std::endl;
 	fHits.clear();
 	fHits.resize(0);
 	for (unsigned int i = 0 ; i < fTimeRegionSize ; i++) {
@@ -187,10 +182,9 @@ std::vector<uint32_t> *Trigger::Scan()
 			}
 		}
 		if (fTimeRegion[i] != 0) {
-			std::cout << "#D " << i
-				<< std::hex << " " << fTimeRegion[i]
-				<< std::dec << " " << fTimeRegion[i]
-				<< " " << fMarkMask << std::endl;
+			std::cout << "#D Scan Time: " << std::dec << i
+				<< " Bits: " << std::hex << fTimeRegion[i]
+				<< " Mask: " << fMarkMask << std::endl;
 		}
 	}
 
@@ -198,7 +192,7 @@ std::vector<uint32_t> *Trigger::Scan()
 }
 
 
-
+#ifdef TEST_MAIN_TRIG
 int main(int argc, char* argv[])
 {
 	Trigger trig;
@@ -210,7 +204,6 @@ int main(int argc, char* argv[])
 
 
 	int time_region = 1024 * 256; //18 bit
-	trig.InitParam();
 	trig.SetTimeRegion(time_region);
 
 	trig.Entry(1, 26, 10);
@@ -223,13 +216,51 @@ int main(int argc, char* argv[])
 		std::cin.read(cbuf, 8);
 		//std::cin >> *pdata; 
 		if (std::cin.eof()) break;
-
 		buf[i++] = *pdata;
+
 		std::cout << "\r "  << i << ": " << *pdata << "  " << std::flush;
+	
 	}
-	int len = i * sizeof(uint64_t);
+	//int len = i * sizeof(uint64_t);
 	std::cout << std::endl;
 
+	unsigned char *pcurr = reinterpret_cast<unsigned char *>(buf);
+	unsigned char *pend = reinterpret_cast<unsigned char *>(buf + i);
+	unsigned char *pnext = nullptr;
+	while (true) {
+		int len = TDC64H::GetHBFrame(pcurr, pend, &pnext);
+		if (len <= 0) break;
+
+		std::cout << "#D HB frame size: " << std::dec << len
+			<< " curr: " << std::hex
+			<< reinterpret_cast<uintptr_t>(pcurr)
+			<< " next: "
+			<< reinterpret_cast<uintptr_t>(pnext) << std::endl;
+
+		pdata = reinterpret_cast<uint64_t *>(pcurr);
+		#if 0
+		for (unsigned int j = 0 ; j < len / sizeof(uint64_t) ; j++) {
+			tdc64h_dump(pdata[j]);
+		}
+		#endif
+
+		trig.InitParam();
+		trig.Mark(reinterpret_cast<unsigned char *>(pdata), len, 1);
+		std::vector<uint32_t> *nhits = trig.Scan();
+		std::cout << "# Hits: ";
+		for (auto hit : *nhits) std::cout << " " << hit;
+		std::cout << std::endl;
+		std::cout << "Nhits: " << std::dec << nhits->size()
+			<< " / " << time_region << std::endl;
+
+
+
+
+		pcurr = pnext;
+	}
+
+
+	#if 0
 	trig.Mark(reinterpret_cast<unsigned char *>(buf), len, 1);
 	std::vector<uint32_t> *nhits = trig.Scan();
 	std::cout << "# ";
@@ -237,6 +268,8 @@ int main(int argc, char* argv[])
 	std::cout << std::endl;
 	std::cout << "Nhits: " << std::dec << nhits->size()
 		<< " / " << time_region << std::endl;
+	#endif
 
 	return 0;
 }
+#endif
