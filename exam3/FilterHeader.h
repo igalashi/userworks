@@ -1,7 +1,8 @@
-#ifndef TimeFrameHeader_h
-#define TimeFrameHeader_h
+#ifndef FilterHeader_h
+#define FilterHeader_h
 
 #include <cstdint>
+#include <sys/time.h>
 
 namespace Filter {
 
@@ -14,7 +15,7 @@ struct Header {
   uint32_t numTrigs    {0};
   uint32_t filterId    {0};
   uint32_t elapseTime  {0};
-  struct timeval       {0, 0};
+  struct timeval processTime {0, 0};
 };
 
 } // namespace Filter

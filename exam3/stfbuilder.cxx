@@ -181,10 +181,11 @@ HulStrTdcSTFBuilder::FinalizeSTF()
 	auto stfHeader          = std::make_unique<STF::Header>();
 	stfHeader->timeFrameId  = fSTFId;
 	stfHeader->FEMId        = fFEMId;
-	stfHeader->length       = std::accumulate(fWorkingPayloads->begin(), fWorkingPayloads->end(), sizeof(STF::Header),
-	[](auto init, auto& m) {
-		return (!m) ? init : init + m->GetSize();
-	});
+	stfHeader->length       = std::accumulate(fWorkingPayloads->begin(),
+			fWorkingPayloads->end(), sizeof(STF::Header),
+			[](auto init, auto& m) {
+				return (!m) ? init : init + m->GetSize();
+			});
 	stfHeader->numMessages  = fWorkingPayloads->size();
 
 	// replace first element with STF header
@@ -202,8 +203,8 @@ bool
 HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 {
 	namespace Data = HulStrTdc::Data;
-	using Word     = Data::Word;
-	using Bits     = Data::Bits;
+	//using Word     = Data::Word;
+	//using Bits     = Data::Bits;
 	//LOG(debug)
 	std::cout << "#D HandleData() HBF " << fHBFCounter << " input message " << msg->GetSize() << std::endl;
 	//Reporter::AddInputMessageSize(msg->GetSize());
@@ -230,7 +231,7 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 					msgCopy->Copy(*tmsg);
 					dqmParts.AddPart(std::move(msgCopy));
 				} else {
-					auto b = reinterpret_cast<Bits*>(tmsg->GetData());
+					auto b = reinterpret_cast<Data::Bits*>(tmsg->GetData());
 					if (b->head == Data::Heartbeat
 						|| b->head == Data::ErrorRecovery
 						|| b->head == Data::SpillEnd) {
@@ -265,13 +266,13 @@ HulStrTdcSTFBuilder::HandleData(FairMQMessagePtr& msg, int index)
 				LOG(debug) << " body " << i << " " << vmsg->GetSize()
 					<< " " << std::showbase << std::hex <<  vmsg->GetSize()
 					<< std::noshowbase<< std::dec << std::endl;
-				auto n = vmsg->GetSize()/sizeof(Word);
+				auto n = vmsg->GetSize()/sizeof(Data::Word);
 				// n = (n>10) ? 10 : n;
-				std::for_each(reinterpret_cast<Word*>(vmsg->GetData()),
-					reinterpret_cast<Word*>(vmsg->GetData()) + n,
+				std::for_each(reinterpret_cast<Data::Word*>(vmsg->GetData()),
+					reinterpret_cast<Data::Word*>(vmsg->GetData()) + n,
 					HexDump{5});
 				if (n == 1) {
-					auto v = reinterpret_cast<Word*>(vmsg->GetData());
+					auto v = reinterpret_cast<Data::Word*>(vmsg->GetData());
 					std::cout << "single word = "
 						<< std::hex << HexDump::cast<uint64_t>(*v)
 						<< std::dec << std::endl;

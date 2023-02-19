@@ -1,9 +1,9 @@
 /********************************************************************************
  *    Copyright (C) 2014 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH    *
- *                                                                              *
- *              This software is distributed under the terms of the             *
- *              GNU Lesser General Public Licence (LGPL) version 3,             *
- *                  copied verbatim in the file "LICENSE"                       *
+ *									      *
+ *	      This software is distributed under the terms of the	     *
+ *	      GNU Lesser General Public Licence (LGPL) version 3,	     *
+ *		  copied verbatim in the file "LICENSE"		       *
  ********************************************************************************/
 
 #include <fairmq/Device.h>
@@ -15,6 +15,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "MessageUtil.h"
+
 #include "HulStrTdcData.h"
 #include "SubTimeFrameHeader.h"
 #include "TimeFrameHeader.h"
@@ -22,21 +24,28 @@
 
 #include "trigger.cxx"
 
+
+std::atomic<int> gQdepth = 0;
+
 namespace bpo = boost::program_options;
 
-struct Filter : fair::mq::Device
+struct FltCoin : fair::mq::Device
 {
 	struct OptionKey {
 		static constexpr std::string_view InputChannelName  {"in-chan-name"};
 		static constexpr std::string_view OutputChannelName  {"out-chan-name"};
 	};
 
-	Filter()
+	FltCoin()
 	{
 		// register a handler for data arriving on "data" channel
-		//OnData("in", &Filter::HandleData);
+		//OnData("in", &FltCoin::HandleData);
+
+		fTrig = new Trigger();
 	}
 
+	void InitTask() override;
+#if 0
 	void InitTask() override
 	{
 		using opt = OptionKey;
@@ -48,11 +57,10 @@ struct Filter : fair::mq::Device
 		LOG(info) << "InitTask: Input Channel : " << fInputChannelName
 			<< " Output Channel : " << fOutputChannelName;
 
-		//OnData(fInputChannelName, &Filter::HandleData);
+		//OnData(fInputChannelName, &FltCoin::HandleData);
 	}
+#endif
 
-
-	bool CheckData(fair::mq::MessagePtr& msg);
 #if 0
 	bool HandleData(fair::mq::MessagePtr& msg, int)
 	{
@@ -72,10 +80,16 @@ struct Filter : fair::mq::Device
 	}
 #endif
 
+	
 	bool ConditionalRun() override;
 	void PostRun() override;
-	
+
+	bool CheckData(fair::mq::MessagePtr&);
+
 private:
+	int IsHartBeat(uint64_t, uint32_t);
+
+
 	uint64_t fMaxIterations = 0;
 	uint64_t fNumIterations = 0;
 
@@ -91,10 +105,29 @@ private:
 	std::unordered_set<uint64_t> fDiscarded;
 	int fNumSource = 0;
 
+	Trigger *fTrig;
+
 };
 
 
-bool Filter::CheckData(fair::mq::MessagePtr& msg)
+void FltCoin::InitTask()
+{
+	using opt = OptionKey;
+
+	// Get the fMaxIterations value from the command line options (via fConfig)
+	fMaxIterations = fConfig->GetProperty<uint64_t>("max-iterations");
+	fInputChannelName  = fConfig->GetValue<std::string>(opt::InputChannelName.data());
+	fOutputChannelName = fConfig->GetValue<std::string>(opt::OutputChannelName.data());
+	LOG(info) << "InitTask: Input Channel : " << fInputChannelName
+		<< " Output Channel : " << fOutputChannelName;
+
+
+	fTrig->Entry(1, 26, 0);
+	fTrig->Entry(3, 32, 0);
+
+}
+
+bool FltCoin::CheckData(fair::mq::MessagePtr &msg)
 {
 	unsigned int msize = msg->GetSize();
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
@@ -147,7 +180,7 @@ bool Filter::CheckData(fair::mq::MessagePtr& msg)
 					<< std::setw(2) << static_cast<unsigned int>(pdata[j + 1]) << " "
 					<< std::setw(2) << static_cast<unsigned int>(pdata[j + 0]) << " : ";
 
-					if        ((pdata[j + 4] & 0xf0) == 0x10) {
+					if	((pdata[j + 4] & 0xf0) == 0x10) {
 						std::cout << "SPILL Start" << std::endl;
 					} else if ((pdata[j + 4] & 0xf0) == 0xf0) {
 						std::cout << "Hart beat" << std::endl;
@@ -169,15 +202,192 @@ bool Filter::CheckData(fair::mq::MessagePtr& msg)
 	return true;
 }
 
-bool Filter::ConditionalRun()
+//int FltCoin::Trigger(FairMQParts &inParts, FairMQPatts &outParts)
+//{
+//	return 0;
+//}
+
+int FltCoin::IsHartBeat(uint64_t val, uint32_t type)
+{
+	int hbframe = -1;
+	if (type == SubTimeFrame::TDC64H) {
+		struct TDC64H::tdc64 tdc;
+		if (TDC64H::Unpack(val, &tdc) == TDC64H::T_TDC) {
+			hbframe = tdc.hartbeat;
+		}
+	} else
+	if (type == SubTimeFrame::TDC64L) {
+		struct TDC64L::tdc64 tdc;
+		if (TDC64L::Unpack(val, &tdc) == TDC64L::T_TDC) {
+			hbframe = tdc.hartbeat;
+		}
+	} else {
+		std::cout << "Unknown device : " << std::hex << type << std::endl;
+	}
+
+	return hbframe;
+}
+
+bool FltCoin::ConditionalRun()
 {
 	//Receive
 	FairMQParts inParts;
+	FairMQParts outParts;
+
+	FairMQMessagePtr msg_header(fTransportFactory->CreateMessage());
+	struct Filter::Header fltheader;
+	struct TimeFrame::Header tfheader;
+
+
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
 		assert(inParts.Size() >= 2);
-
 		std::cout << "# Nmsg: " << inParts.Size() << std::endl;
-		for(auto& vmsg : inParts) CheckData(vmsg);
+
+		struct DataBlock {
+			uint32_t FEMId;
+			uint32_t Type;
+			int HBFrame;
+			int index;
+			int nTrig;
+		};
+
+		std::vector<struct DataBlock> blocks;
+		std::vector< std::vector<struct DataBlock> > block_map;
+		std::vector<int> hbblocks;
+		std::vector< std::vector<int> > hbblock_map;
+		std::vector<struct SubTimeFrame::Header> stf;
+
+		uint64_t femid = 0;
+		uint64_t devtype = 0;
+		int hbframe = 0;
+		int iblock = 0;
+		int ifem = 0;
+
+		struct TimeFrame::Header tfHeader_keep;
+
+		//for(auto& vmsg : inParts) {
+		for(int i = 0 ; i < inParts.Size() ; i++) {
+
+			CheckData(inParts.At(i));
+
+			auto tfHeader = reinterpret_cast<struct TimeFrame::Header *>(inParts[i].GetData());
+			auto stfHeader = reinterpret_cast<struct SubTimeFrame::Header *>(inParts[i].GetData());
+			struct DataBlock dblock;
+
+			if (tfHeader->magic == TimeFrame::Magic) {
+				//////////
+				FairMQMessagePtr msg_tfheader(fTransportFactory->CreateMessage());
+				msg_tfheader->Copy(inParts[i]);
+				outParts.AddPart(std::move(msg_tfheader));
+				//////////
+				memcpy(reinterpret_cast<char *>(&tfHeader_keep),
+					reinterpret_cast<char *>(tfHeader),
+					sizeof(struct TimeFrame::Header));
+
+				iblock = 0;
+				ifem = -1;
+				stf.clear();
+				stf.resize(0);
+			} else
+			if (stfHeader->magic == SubTimeFrame::Magic) {
+				femid = stfHeader->FEMId;
+				devtype = stfHeader->Type;
+				stf.push_back(*stfHeader);
+				if (blocks.size() > 0) block_map.push_back(blocks);
+				if (hbblocks.size() > 0) hbblock_map.push_back(hbblocks);
+				iblock = 0;
+				blocks.clear();
+				blocks.resize(0);
+				ifem++;
+			} else {
+				// make block map;
+
+				//int stfframe = 0;
+		
+				uint64_t *data = reinterpret_cast<uint64_t *>(inParts[i].GetData());
+				//int len = inParts[i].GetSize();
+
+				hbframe = IsHartBeat(data[0], devtype);
+				if (hbframe < 0) {
+					dblock.FEMId = femid;
+					dblock.Type = devtype;
+					dblock.HBFrame = hbframe;
+					dblock.index = iblock;
+					dblock.nTrig = 0;
+				} else {
+					//data ga nakattatokimo push_back
+
+					dblock.HBFrame = hbframe;
+					blocks.push_back(dblock);
+					hbblocks.push_back(iblock);
+
+					femid = -1;
+					devtype = -1;
+				}
+				iblock++;
+
+			}
+		} /// endof for loop
+
+
+		for (size_t i = 0 ; i < blocks.size() ; i++) {
+
+			/// mark Hits
+			for (size_t iifem = 0 ; iifem < block_map.size() ; iifem++) {
+				struct DataBlock *dbl = &block_map[iifem][i];
+				uint64_t vfemid = dbl->FEMId;
+				fTrig->Mark(
+					reinterpret_cast<unsigned char *>(inParts[i].GetData()),
+					inParts[i].GetSize(),
+					vfemid);
+			}
+
+			/// check coincidence
+			int nhit = fTrig->Scan()->size();
+			for (size_t iifem = 0 ; iifem < block_map.size() ; iifem++) {
+				block_map[iifem][i].nTrig = nhit;
+			}
+		}
+
+
+		//make header message
+		auto fltHeader = std::make_unique<struct Filter::Header>();
+		//auto fltHeader = new Filter::Header;
+		fltHeader->magic = Filter::Magic;
+		fltHeader->length = 0;
+		fltHeader->numTrigs = 0;
+		fltHeader->filterId = 0;
+		fltHeader->elapseTime = 0;
+		fltHeader->processTime.tv_sec = 0;
+		fltHeader->processTime.tv_usec = 0;
+
+		auto u_tfHeader = std::make_unique<struct TimeFrame::Header>(tfHeader_keep);
+
+		outParts.AddPart(MessageUtil::NewMessage(*this, std::move(fltHeader)));
+		outParts.AddPart(MessageUtil::NewMessage(*this, std::move(u_tfHeader)));
+
+		//outputmessageparts  wo tukuru
+
+
+
+		#if 0
+		gQdepth++;
+		FairMQMessagePtr fltheadermsg(
+			NewMessage(
+			reinterpret_cast<char *>(&fltHeader),
+			sizeof(fltHeader),
+			[](void* pdata, void*) {
+				char *p = reinterpret_cast<char *>(pdata);
+				delete p;
+				//gQdepth--;
+			},
+			nullptr));
+		outParts.AddPart(std::move(fltheadermsg));
+		#endif
+
+		//make payloads message
+
+
 
 
 		#if 0
@@ -201,8 +411,7 @@ bool Filter::ConditionalRun()
 		#endif
 	}
 
-
-
+	#if 0
 	//Copy
 	FairMQParts outParts;
 	unsigned int msg_size = inParts.Size();
@@ -211,7 +420,7 @@ bool Filter::ConditionalRun()
 		msgCopy->Copy(outParts.AtRef(ii));
 		outParts.AddPart(std::move(msgCopy));
 	}
-
+	#endif
 
 	//Send
 	while (Send(outParts, fOutputChannelName) < 0) {
@@ -227,7 +436,7 @@ bool Filter::ConditionalRun()
 	return true;
 }
 
-void Filter::PostRun()
+void FltCoin::PostRun()
 {
 	LOG(info) << "Post Run";
 	return;
@@ -235,7 +444,7 @@ void Filter::PostRun()
 
 
 #if 0
-bool Filter::HandleData(fair::mq::MessagePtr& msg, int val)
+bool FltCoin::HandleData(fair::mq::MessagePtr& msg, int val)
 {
 	(void)val;
 	#if 0
@@ -266,7 +475,7 @@ bool Filter::HandleData(fair::mq::MessagePtr& msg, int val)
 
 void addCustomOptions(bpo::options_description& options)
 {
-	using opt = Filter::OptionKey;
+	using opt = FltCoin::OptionKey;
 
 	options.add_options()
 		("max-iterations", bpo::value<uint64_t>()->default_value(0),
@@ -284,5 +493,5 @@ void addCustomOptions(bpo::options_description& options)
 
 std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& /*config*/)
 {
-	return std::make_unique<Filter>();
+	return std::make_unique<FltCoin>();
 }
