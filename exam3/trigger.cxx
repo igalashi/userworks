@@ -12,6 +12,7 @@
 #include <assert.h>
 
 #include "UnpackTdc.h"
+#include "SubTimeFrameHeader.h"
 
 
 class Trigger
@@ -21,20 +22,27 @@ public:
 	virtual ~Trigger();
 	void InitParam();
 	bool SetTimeRegion(int);
-	void Entry(uint64_t, int, int);
-	bool CheckEntryFEM(uint64_t);
-	void Mark(unsigned char *, int, int);
+	void CleanUpTimeRegion();
+	uint32_t *GetTimeRegion();
+	uint32_t GetTimeRegionSize();
+	void Entry(uint32_t, int, int);
+	bool CheckEntryFEM(uint32_t);
+	void Mark(unsigned char *, int, int, uint32_t);
 	std::vector<uint32_t> *Scan();
 protected:
 private:
 	//std::vector<struct CoinCh> fEntry;
-	std::map<uint64_t, std::vector<int>> fEntryCh;
-	std::map<uint64_t, std::vector<int>> fEntryChDelay;
+	std::map<uint32_t, std::vector<int>> fEntryCh;
+	std::map<uint32_t, std::vector<int>> fEntryChDelay;
+	std::map<uint32_t, std::vector<uint32_t>> fEntryChBit;
+	int fEntryCounts = 0;
+	uint32_t fEntryMask = 0;
+
 	int fNentry = 0;
 	uint32_t fTimeRegionSize;
 	uint32_t *fTimeRegion = nullptr;
-	int fMarkCount = 0;
-	uint32_t fMarkMask = 0;
+	//int fMarkCount = 0;
+	//uint32_t fMarkMask = 0;
 	std::vector<uint32_t> fHits;
 };
 
@@ -45,14 +53,14 @@ Trigger::Trigger()
 
 Trigger::~Trigger()
 {
-	if (fTimeRegion != nullptr) delete fTimeRegion;
+	if (fTimeRegion != nullptr) delete[] fTimeRegion;
 	return;
 }
 
 void Trigger::InitParam()
 {
-	fMarkCount = 0;
-	fMarkMask = 0;
+	//fMarkCount = 0;
+	//fMarkMask = 0;
 	fHits.clear();
 	fHits.resize(0);
 	if (fTimeRegion != nullptr) {
@@ -65,9 +73,28 @@ void Trigger::InitParam()
 bool Trigger::SetTimeRegion(int size)
 {
 	fTimeRegionSize = size;
+	if (fTimeRegion != nullptr) {
+		delete[] fTimeRegion;
+	}
 	fTimeRegion = new uint32_t[size];
 
 	return true;
+}
+
+void Trigger::CleanUpTimeRegion()
+{
+	for (uint32_t i = 0 ; i < fTimeRegionSize ; i++) fTimeRegion[i] = 0;
+	return;
+}
+
+uint32_t *Trigger::GetTimeRegion()
+{
+	return fTimeRegion;
+}
+
+uint32_t Trigger::GetTimeRegionSize()
+{
+	return fTimeRegionSize;
 }
 
 
@@ -104,62 +131,100 @@ bool Trigger::CheckEntryFEM(uint64_t fem)
 
 #endif
 
-void Trigger::Entry(uint64_t fem, int ch, int offset)
+void Trigger::Entry(uint32_t fem, int ch, int offset)
 {
 
 	fEntryCh[fem].emplace_back(ch);
 	fEntryChDelay[fem].emplace_back(offset);
+	fEntryChBit[fem].emplace_back(0x0000001 << fEntryCounts);
+	fEntryMask |= 0x00000001 << fEntryCounts;
+	fEntryCounts++;
+
+	std::cout << "#D Trig Entry : Module: " << fem << " Ch: " << ch << std::endl;
+	if (static_cast<unsigned int>(fEntryCounts) > (sizeof(uint32_t) * 8)) {
+		std::cerr << "Entry Ch. exceed " << sizeof(uint32_t) * 8<< std::endl;
+	}
+	assert(fEntryCounts <= static_cast<int>(sizeof(uint32_t) * 8));
 
 	return;
 }
 
-bool Trigger::CheckEntryFEM(uint64_t fem)
+bool Trigger::CheckEntryFEM(uint32_t fem)
 {
 	bool rval = false;
 	if (fEntryCh.count(fem) >= 1) rval = true;
 	return rval;
 }
 
-void Trigger::Mark(unsigned char *pdata, int len, int fem)
+void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 {
 	if (fEntryCh.count(fem) >= 1) {
-
-
 		uint64_t *tdcval;
 		tdcval = reinterpret_cast<uint64_t *>(pdata);
 		//for (auto ch : fEntryCh[fem]) {
-		for (unsigned int i ; i < fEntryCh[fem].size() ; i++) {
+		for (unsigned int i = 0 ; i < fEntryCh[fem].size() ; i++) {
 			int ch = fEntryCh[fem][i];
 			int delay = fEntryChDelay[fem][i];
+			uint32_t markbit = fEntryChBit[fem][i];
+
+			//std::cout << "#DD Trigger::Mark " 
+			//	<< " FEM: " << fem << " Ch: " << ch
+			//	<< " MarkBit: " << markbit << std::endl;
+
 			for (unsigned int j = 0 ; j < (len / sizeof(uint64_t)) ; j++) {
-				struct TDC64H::tdc64 tdc;
-				if (TDC64H::Unpack(tdcval[j], &tdc) == TDC64H::T_TDC) {
-					if (tdc.ch == ch) {
-						uint32_t hit = tdc.tdc2u + delay;
 
-						std::cout << "#D Mark Ch: " << std::dec << ch
-							<< " Hit: " << hit << std::endl;
-
-						if (hit < fTimeRegionSize) {
-							if (hit > 1) {
-							fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
+				if (type == SubTimeFrame::TDC64H) {
+					struct TDC64H::tdc64 tdc;
+					if (TDC64H::Unpack(tdcval[j], &tdc) == TDC64H::T_TDC) {
+						if (tdc.ch == ch) {
+							uint32_t hit = tdc.tdc2u + delay;
+							std::cout << "#D Mark Ch: " << std::dec << ch
+								<< " Hit: " << hit << std::endl;
+							if (hit < fTimeRegionSize) {
+								if (hit > 1) {
+								//fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
+								fTimeRegion[hit - 1] |= markbit;
+								}
+								//fTimeRegion[hit] |= (0x1 << fMarkCount);
+								fTimeRegion[hit] |= markbit;
+								if (hit < (fTimeRegionSize - 1)) {
+								//fTimeRegion[hit + 1] |= (0x1 << fMarkCount);
+								fTimeRegion[hit + 1] |= markbit;
+								}
 							}
-							fTimeRegion[hit] |= (0x1 << fMarkCount);
-							if (hit <
-								(fTimeRegionSize - 1)) {
-							fTimeRegion[hit + 1] |= (0x1 << fMarkCount);
+						}
+					}
+				} else
+				if (type == SubTimeFrame::TDC64L) {
+					struct TDC64L::tdc64 tdc;
+					if (TDC64L::Unpack(tdcval[j], &tdc) == TDC64L::T_TDC) {
+						if (tdc.ch == ch) {
+							uint32_t hit = tdc.tdc2u + delay;
+							std::cout << "#D Mark Ch: " << std::dec << ch
+								<< " Hit: " << hit << std::endl;
+							if (hit < fTimeRegionSize) {
+								if (hit > 1) {
+								//fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
+								fTimeRegion[hit - 1] |= markbit;
+								}
+								//fTimeRegion[hit] |= (0x1 << fMarkCount);
+								fTimeRegion[hit] |= markbit;
+								if (hit < (fTimeRegionSize - 1)) {
+								//fTimeRegion[hit + 1] |= (0x1 << fMarkCount);
+								fTimeRegion[hit + 1] |= markbit;
+								}
 							}
 						}
 					}
 				}
 			}
-			fMarkMask |= (0x1 << fMarkCount);
-			fMarkCount++;
-
-			if (static_cast<unsigned int>(fMarkCount) > sizeof(uint32_t)) {
-				std::cerr << "Entry Ch. exceed " << sizeof(uint32_t) << std::endl;
-			}
-			assert(fMarkCount <= static_cast<int>(sizeof(uint32_t)));
+			//fMarkMask |= (0x1 << fMarkCount);
+			//fMarkCount++;
+			//std::cout << "#D Trig Mark entry : Module: " << fem << " Ch: " << ch << std::endl;
+			//if (static_cast<unsigned int>(fMarkCount) > sizeof(uint32_t)) {
+			//	std::cerr << "Entry Ch. exceed " << sizeof(uint32_t) << std::endl;
+			//}
+			//assert(fMarkCount <= static_cast<int>(sizeof(uint32_t)));
 		}
 	}
 
@@ -169,11 +234,13 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem)
 
 std::vector<uint32_t> *Trigger::Scan()
 {
-	std::cout << "#D Scan fMarkMask: " << std::hex << fMarkMask << std::endl;
+	//std::cout << "#D Scan fMarkMask: " << std::hex << fMarkMask << std::endl;
+	std::cout << "#D Scan fEntryMask: " << std::hex << fEntryMask << std::endl;
 	fHits.clear();
 	fHits.resize(0);
 	for (unsigned int i = 0 ; i < fTimeRegionSize ; i++) {
-		if ((fMarkMask & fTimeRegion[i]) == fMarkMask) {
+		//if ((fMarkMask & fTimeRegion[i]) == fMarkMask) {
+		if ((fEntryMask & fTimeRegion[i]) == fEntryMask) {
 			if ((i == 0) || (fHits.size() == 0)) {
 				fHits.emplace_back(i);
 			} else 
@@ -184,7 +251,8 @@ std::vector<uint32_t> *Trigger::Scan()
 		if (fTimeRegion[i] != 0) {
 			std::cout << "#D Scan Time: " << std::dec << i
 				<< " Bits: " << std::hex << fTimeRegion[i]
-				<< " Mask: " << fMarkMask << std::endl;
+				//<< " Mask: " << fMarkMask << std::endl;
+				<< " Mask: " << fEntryMask << std::endl;
 		}
 	}
 
@@ -245,7 +313,7 @@ int main(int argc, char* argv[])
 		#endif
 
 		trig.InitParam();
-		trig.Mark(reinterpret_cast<unsigned char *>(pdata), len, 1);
+		trig.Mark(reinterpret_cast<unsigned char *>(pdata), len, 1, 0);
 		std::vector<uint32_t> *nhits = trig.Scan();
 		std::cout << "# Hits: ";
 		for (auto hit : *nhits) std::cout << " " << hit;

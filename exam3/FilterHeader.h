@@ -13,7 +13,7 @@ struct Header {
   uint64_t magic       {Magic};
   uint64_t length      {0};
   uint32_t numTrigs    {0};
-  uint32_t filterId    {0};
+  uint32_t workerId    {0};
   uint32_t elapseTime  {0};
   struct timeval processTime {0, 0};
 };

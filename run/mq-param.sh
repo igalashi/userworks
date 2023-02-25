@@ -22,7 +22,14 @@ param  Sampler-3         text   piyo     rate  2       max-iterations 0
 #param Sink-2 multipart false
 #param Sink-3 multipart false
 
-param Sink-0 multipart true
-param Sink-1 multipart true 
-param Sink-2 multipart true 
-param Sink-3 multipart true 
+#param Sink-0 multipart true
+#param Sink-1 multipart true 
+#param Sink-2 multipart true 
+#param Sink-3 multipart true 
+
+param STFBuilder-0     max-hbf	3
+param STFBuilder-1     max-hbf	3
+param STFBuilder-2     max-hbf	3
+param STFBuilder-3     max-hbf	3
+
+param fltcoin-0        data-supress true
