@@ -157,14 +157,14 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 			if        ((pdata[j + 7] & 0xfc) == (TDC64H::T_TDC << 2)) {
 				std::cout << "TDC ";
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[j]));
-				if (fFe_type == 0) {
+				if (fFe_type == SubTimeFrame::TDC64H) {
 					struct TDC64H::tdc64 tdc;
 					TDC64H::Unpack(*dword, &tdc);
 					std::cout << "H :"
 						<< " CH: " << std::dec << std::setw(3) << tdc.ch
 						<< " TDC: " << std::setw(7) << tdc.tdc << std::endl;
 				} else
-				if (fFe_type == 1) {
+				if (fFe_type == SubTimeFrame::TDC64L) {
 					struct TDC64L::tdc64 tdc;
 					TDC64L::Unpack(*dword, &tdc);
 					std::cout << "L :"
@@ -298,9 +298,9 @@ bool TFdump::ConditionalRun()
 	//Receive
 	FairMQParts inParts;
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
-		assert(inParts.Size() >= 2);
+		//assert(inParts.Size() >= 2);
 
-		std::cout << "# Nmsg: " << inParts.Size() << std::endl;
+		std::cout << "# Nmsg: " << std::dec << inParts.Size() << std::endl;
 		for(auto& vmsg : inParts) CheckData(vmsg);
 
 

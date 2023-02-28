@@ -76,7 +76,7 @@ struct tdc64 {
 	int ch;
 	int tot;
 	int tdc;
-	int tdc2u;
+	int tdc4n;
 	int flag;
 	int spill;
 	int hartbeat;
@@ -91,7 +91,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch	= (data & 0x03f8'0000'0000'0000) >> 51;
 		tdc->tot      = (data & 0x0007'ffff'e000'0000) >> 29;
 		tdc->tdc      = (data & 0x0000'0000'1fff'ffff);
-		tdc->tdc2u    = (data & 0x0000'0000'1fff'ffff) >> 11;
+		tdc->tdc4n    = (data & 0x0000'0000'1fff'ffff) >> 12;
 		tdc->spill    = -1;
 		tdc->hartbeat = -1;
 	} else
@@ -99,7 +99,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
-		tdc->tdc2u    = -1;
+		tdc->tdc4n    = -1;
 		tdc->flag     = (data & 0x03ff'0000'0000'0000) >> 48;
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
@@ -108,7 +108,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
-		tdc->tdc2u    = -1;
+		tdc->tdc4n    = -1;
 		tdc->flag     = (data & 0x03ff'0000'0000'0000) >> 48;
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
@@ -116,7 +116,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
-		tdc->tdc2u    = -1;
+		tdc->tdc4n    = -1;
 		tdc->flag     = -1;
 		tdc->spill    = -1;
 		tdc->hartbeat = -1;
@@ -173,7 +173,7 @@ struct tdc64 {
 	int ch;
 	int tot;
 	int tdc;
-	int tdc2u;
+	int tdc4n;
 	int flag;
 	int spill;
 	int hartbeat;
@@ -188,7 +188,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch	= (data & 0x03f8'0000'0000'0000) >> 51;
 		tdc->tot      = (data & 0x0007'f800'0000'0000) >> 43;
 		tdc->tdc      = (data & 0x0000'07ff'ff00'0000) >> 24;
-		tdc->tdc2u    = (data & 0x0000'07ff'ff00'0000) >> 25;
+		tdc->tdc4n    = (data & 0x0000'07ff'ff00'0000) >> 26;
 		tdc->flag     = -1;
 		tdc->spill    = -1;
 		tdc->hartbeat = -1;
@@ -197,7 +197,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
-		tdc->tdc2u    = -1;
+		tdc->tdc4n    = -1;
 		tdc->flag     = (data & 0x03ff'0000'0000'0000) >> 48;
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
@@ -206,7 +206,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
-		tdc->tdc2u    = -1;
+		tdc->tdc4n    = -1;
 		tdc->flag     = (data & 0x03ff'0000'0000'0000) >> 48;
 		tdc->spill    = (data & 0x0000'ff00'0000'0000) >> 40;
 		tdc->hartbeat = (data & 0x0000'00ff'ff00'0000) >> 24;
@@ -214,7 +214,7 @@ int Unpack(uint64_t data, struct tdc64 *tdc)
 		tdc->ch	= -1;
 		tdc->tot      = -1;
 		tdc->tdc      = -1;
-		tdc->tdc2u    = -1;
+		tdc->tdc4n    = -1;
 		tdc->flag     = -1;
 		tdc->spill    = -1;
 		tdc->hartbeat = -1;
@@ -238,6 +238,7 @@ int tdc64h_dump(uint64_t data)
 			<< " CH:" << tdc.ch 
 			<< " TOT:" << tdc.tot 
 			<< " TDC:" << tdc.tdc 
+			<< " TDC4n:" << tdc.tdc4n 
 			<< " : " << std::hex << data
 			<< std::endl;
 	} else
@@ -277,6 +278,9 @@ int main(int argc, char* argv[])
 		#if 0
 		std::cout << "\r "  << i << ": " << *pdata << "  " << std::flush;
 		#endif
+	
+		tdc64h_dump(*pdata);
+
 	}
 
 	unsigned char *pcurr = reinterpret_cast<unsigned char *>(buf);
@@ -286,11 +290,13 @@ int main(int argc, char* argv[])
 		int len = TDC64H::GetHBFrame(pcurr, pend, &pnext);
 		if (len <= 0) break;
 
+		/*
 		std::cout << "#D HB frame size: " << std::dec << len
 			<< " curr: " << std::hex
 			<< reinterpret_cast<uintptr_t>(pcurr)
 			<< " next: "
 			<< reinterpret_cast<uintptr_t>(pnext) << std::endl;
+		*/
 
 		pdata = reinterpret_cast<uint64_t *>(pcurr);
 

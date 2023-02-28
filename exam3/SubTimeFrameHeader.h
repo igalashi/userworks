@@ -13,7 +13,7 @@ namespace v0 {
 constexpr uint64_t Magic  {0x444145482d465453};
 //constexpr uint32_t TDC64H {0x48434454};
 //constexpr uint32_t TDC64L {0x4c434454};
-constexpr uint32_t TDC64H {0};
+constexpr uint32_t TDC64H {2};
 constexpr uint32_t TDC64L {1};
 
 struct Header {

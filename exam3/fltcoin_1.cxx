@@ -99,6 +99,20 @@ private:
 	Trigger *fTrig;
 	bool fIsDataSupress = true;
 
+	#if 0
+	uint64_t fMaxIterations = 0;
+	uint64_t fNumIterations = 0;
+
+	struct STFBuffer {
+		FairMQParts parts;
+		std::chrono::steady_clock::time_point start;
+	};
+	std::unordered_map<uint32_t, std::vector<STFBuffer>> fTFBuffer;
+	std::unordered_set<uint64_t> fDiscarded;
+	int fNumSource = 0;
+	#endif
+
+
 };
 
 
@@ -106,6 +120,8 @@ void FltCoin::InitTask()
 {
 	using opt = OptionKey;
 
+	// Get the fMaxIterations value from the command line options (via fConfig)
+	//fMaxIterations = fConfig->GetProperty<uint64_t>("max-iterations");
 	fInputChannelName  = fConfig->GetValue<std::string>(opt::InputChannelName.data());
 	fOutputChannelName = fConfig->GetValue<std::string>(opt::OutputChannelName.data());
 
@@ -125,7 +141,6 @@ void FltCoin::InitTask()
 	LOG(info) << "InitTask: DataSupress : " << fIsDataSupress;
 
 	fTrig->SetTimeRegion(1024 * 256);
-	fTrig->ClearEntry();
 	fTrig->Entry(0xc0a802a8, 2, 0);
 	fTrig->Entry(0xc0a802a8, 4, 0);
 
@@ -190,8 +205,8 @@ bool FltCoin::CheckData(fair::mq::MessagePtr &msg)
 
 	} else {
 	       #if 1
-		for (unsigned int j = 0 ; j < msize ; j += 8) {
-		//for (unsigned int j = 0 ; j < 8 ; j += 8) {
+		//for (unsigned int j = 0 ; j < msize ; j += 8) {
+		for (unsigned int j = 0 ; j < 8 ; j += 8) {
 			std::cout << "# " << std::setw(8) << j << " : "
 				<< std::hex << std::setw(2) << std::setfill('0')
 				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 7]) << " "
@@ -206,14 +221,14 @@ bool FltCoin::CheckData(fair::mq::MessagePtr &msg)
 			if ((pdata[j + 7] & 0xfc) == (TDC64H::T_TDC << 2)) {
 				std::cout << "TDC ";
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[j]));
-				if (fe_type == SubTimeFrame::TDC64H) {
+				if (fe_type == 0) {
 					struct TDC64H::tdc64 tdc;
 					TDC64H::Unpack(*dword, &tdc);
 					std::cout << "H :" 
 						<< " CH: " << std::dec << std::setw(3) << tdc.ch
 						<< " TDC: " << std::setw(7) << tdc.tdc << std::endl;
 				} else
-				if (fe_type == SubTimeFrame::TDC64L) {
+				if (fe_type == 1) {
 					struct TDC64L::tdc64 tdc;
 					TDC64L::Unpack(*dword, &tdc);
 					std::cout << "L :" 
@@ -276,7 +291,11 @@ bool FltCoin::ConditionalRun()
 	FairMQMessagePtr msg_header(fTransportFactory->CreateMessage());
 	struct Filter::Header fltheader;
 	struct TimeFrame::Header tfheader;
+
 	std::chrono::system_clock::time_point sw_start, sw_end;
+
+
+	std::cout << "#DDDDD Trigger region size: " << std:: dec << fTrig->GetTimeRegionSize() << std::endl;;
 
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
 		assert(inParts.Size() >= 2);
@@ -288,7 +307,7 @@ bool FltCoin::ConditionalRun()
 			uint32_t FEMId;
 			uint32_t Type;
 			int HBFrame;
-			bool is_HB;
+			int index;
 			int msg_index;
 			int nTrig;
 		};
@@ -296,14 +315,14 @@ bool FltCoin::ConditionalRun()
 		std::vector<struct DataBlock> blocks;
 		std::vector< std::vector<struct DataBlock> > block_map;
 
-		//std::vector<int> hbblocks;
+		std::vector<int> hbblocks;
 		std::vector< std::vector<int> > hbblock_map;
 		std::vector<struct SubTimeFrame::Header> stf;
 
 		uint64_t femid = 0;
 		uint64_t devtype = 0;
 		int hbframe = 0;
-		//int iblock = 0;
+		int iblock = 0;
 		int ifem = 0;
 
 		//struct TimeFrame::Header tfHeader_keep;
@@ -320,7 +339,7 @@ bool FltCoin::ConditionalRun()
 			struct DataBlock dblock;
 
 			if (tfHeader->magic == TimeFrame::Magic) {
-				//iblock = 0;
+				iblock = 0;
 				ifem = -1;
 				stf.clear();
 				stf.resize(0);
@@ -330,9 +349,9 @@ bool FltCoin::ConditionalRun()
 				devtype = stfHeader->Type;
 				stf.push_back(*stfHeader);
 				if (blocks.size() > 0) block_map.push_back(blocks);
-				//if (hbblocks.size() > 0) hbblock_map.push_back(hbblocks);
-				//iblock = 0;
-				dblock.is_HB = false;
+				if (hbblocks.size() > 0) hbblock_map.push_back(hbblocks);
+				iblock = 0;
+				dblock.index = -1;
 				dblock.msg_index = -1;
 				blocks.clear();
 				blocks.resize(0);
@@ -343,50 +362,32 @@ bool FltCoin::ConditionalRun()
 				uint64_t *data = reinterpret_cast<uint64_t *>(inParts[i].GetData());
 
 				hbframe = IsHartBeat(data[0], devtype);
-
-				//std::cout << "#DDD msg " << std::dec << i << ": "
-				//	<< " HBframe: " << hbframe << std::endl;
-
 				if (hbframe < 0) {
 					dblock.FEMId = femid;
 					dblock.Type = devtype;
-					dblock.is_HB = false;
+					dblock.index = iblock;
 					dblock.msg_index = i;
 					dblock.nTrig = 0;
 				} else {
 					//data ga nakattatokimo push_back
 
 					dblock.HBFrame = hbframe;
-					//hbblocks.push_back(iblock);
+					blocks.push_back(dblock);
+					hbblocks.push_back(iblock);
 
 					dblock.FEMId = 0;
 					dblock.Type = 0;
-					dblock.is_HB = true;
-					dblock.msg_index = i;
+					dblock.index = -1;
+					dblock.msg_index = -1;
 					dblock.nTrig = 0;
 				}
-				blocks.push_back(dblock);
-				//iblock++;
+				iblock++;
 			}
 		} /// end of the for loop
 		block_map.push_back(blocks);
-		//hbblock_map.push_back(hbblocks);
+		hbblock_map.push_back(hbblocks);
 
-		int nblock = blocks.size();
-
-		#if 0
-		std::cout << "#D bloack_map.size: " << block_map.size() << std::endl;
-		for (auto& blk : block_map) {
-			std::cout << "#D block " << blk.size() << " / ";
-			for (auto& b : blk) {
-				std::cout << " " << b.msg_index << " is_HB:" << b.is_HB;
-			}
-			std::cout << std::endl;
-		}
-		std::cout << std::endl;
-		#endif
-
-		std::cout << "blocks: " << nblock << std::endl;
+		std::cout << "blocks: " << blocks.size() << std::endl;
 		int totalhits = 0;
 		for (size_t i = 0 ; i < blocks.size() ; i++) {
 
@@ -396,26 +397,14 @@ bool FltCoin::ConditionalRun()
 			for (size_t iifem = 0 ; iifem < block_map.size() ; iifem++) {
 				struct DataBlock *dbl = &block_map[iifem][i];
 				uint64_t vfemid = dbl->FEMId;
-				//int mindex = dbl->msg_index;
-				//if (mindex > 0) {
-				if (!(dbl->is_HB)) {
-					int mindex = dbl->msg_index;
+				int mindex = dbl->msg_index;
 
-					std::cout << "#D1 Mark FEM ID: "
-					<< std::hex << vfemid
+				std::cout << "#D Mark FEM ID: "
+					<< std::dec << vfemid
 					<< " Type: " << dbl->Type
-					<< " HBFrame: " << std::hex
-						<< dbl->HBFrame << std::endl;
-					std::cout << "#D1 mindex: "
-					<< std::dec << mindex
-					<< " vfemid: " << vfemid
-					<< " type: " << dbl->Type
-					<< std::endl;
+					<< " HBFrame: " << dbl->HBFrame << std::endl;
 
-					std::cout << "#D1 inParts.size: "
-					<< inParts[mindex].GetSize()
-					<< std::endl;
-
+				if (mindex > 0) {
 					fTrig->Mark(
 						reinterpret_cast<unsigned char *>(inParts[mindex].GetData()),
 						inParts[mindex].GetSize(),
@@ -424,7 +413,7 @@ bool FltCoin::ConditionalRun()
 			}
 
 			uint32_t *tr = fTrig->GetTimeRegion();
-			//std::cout << "####DDDD Hit TimeRegion: ";
+			std::cout << "####DDDD Hit TimeRegion: ";
 			for (uint32_t ii = 0 ; ii < fTrig->GetTimeRegionSize() ; ii++) {
 				if (tr[ii] != 0) {
 				std::cout << " " << std::dec << i << ":"
@@ -435,69 +424,46 @@ bool FltCoin::ConditionalRun()
 			std::cout << std::endl;
 
 			/// check coincidence
-			std::vector<uint32_t> *hits = fTrig->Scan();
-			int nhits = hits->size();
-			if (nhits > 0) {
-				std::cout << "#D1 Hits : " << hits->size() << " ";
-				for (unsigned int ii = 0 ; ii < hits->size() ; ii++) {
-					std::cout << " " << std::dec << (*hits)[ii];
-					if (ii > 10) {
-						std::cout << "...";
-						break;
-					}
-				}
-				std::cout << std::endl;
-			}
+			int nhits = fTrig->Scan()->size();
 
-			//std::cout << std::dec;
-			//std::cout << "#D flag_sendig.size() "
-			//	<< flag_sending.size() << std::endl;
-			//std::cout << "#D block_map.size() "
-			//	<< block_map.size() << std::endl;
+
+			std::vector<uint32_t> *hits = fTrig->Scan();
+			std::cout << "#DD Hits : ";
+			for (unsigned int ii = 0 ; ii < hits->size() ; ii++) {
+				std::cout << " " << std::dec << (*hits)[ii];
+				if (ii > 10) {
+					std::cout << "...";
+					break;
+				}
+			}
+			std::cout << std::endl;
+
 
 			for (size_t iifem = 0 ; iifem < block_map.size() ; iifem++) {
 				block_map[iifem][i].nTrig = nhits;
 				if (nhits == 0) {
 					int mindex = block_map[iifem][i].msg_index;
-					bool is_HB = block_map[iifem][i].is_HB;
-
-					std::cout << "#D msg_index: " << mindex
-						<< std::endl;
-
-					if ((mindex > 0) && (! is_HB)) {
-						flag_sending[mindex] = false;
-						flag_sending[mindex + 1] = false;
-					}
-
-					///// HB wo otoshitemiru
-					if ((mindex > 0) && is_HB) {
-						flag_sending[mindex] = false;
-					}
+					flag_sending[mindex] = false;
+					flag_sending[mindex + 1] = false;
 				}
 			}
 
 			totalhits += nhits;
-			std::cout << "# block: " << i << " nhits: " << nhits << std::endl;
+			std::cout << "# " << i << " nhits: " << nhits << std::endl;
 
 		}
 
 		std::cout << "#block_map size: " << block_map.size() << std::endl;
+		std::cout << "#blocks size: ";
 		for (unsigned int i = 0 ; i < block_map.size() ; i++) {
-			std::cout << "#HBFrame: " << i << "/";
-			for (unsigned int j = 0 ; j < block_map[i].size(); j++) {
-				std::cout << "  " << j << " : "
-					<< block_map[i][j].HBFrame;
-			}
-			std::cout << std::endl;
+			std::cout << " " << i << " : " << blocks.size();
 		}
 		std::cout << std::endl;
 
-		if (totalhits > 0) {
-			std::cout << "#D TotalHits: " << totalhits;
-			std::cout << " Flag: ";
-			for (const auto& v : flag_sending) std::cout << " " << v; 
-			std::cout << std::endl;
-		}
+
+		std::cout << "#Flag: ";
+		for (const auto& v : flag_sending) std::cout << " " << v; 
+		std::cout << std::endl;
 
 
 		#if 0
@@ -520,6 +486,19 @@ bool FltCoin::ConditionalRun()
 		auto tfHeader = reinterpret_cast<TimeFrame::Header*>(inParts.At(0)->GetData());
 		auto stfHeader = reinterpret_cast<SubTimeFrame::Header*>(inParts.At(0)->GetData());
 		auto stfId     = stfHeader->timeFrameId;
+
+		if (fDiscarded.find(stfId) == fDiscarded.end()) {
+			// accumulate sub time frame with same STF ID
+			if (fTFBuffer.find(stfId) == fTFBuffer.end()) {
+				fTFBuffer[stfId].reserve(fNumSource);
+			}
+			fTFBuffer[stfId].emplace_back(
+				STFBuffer {std::move(inParts),
+				std::chrono::steady_clock::now()});
+		} else {
+			// if received ID has been previously discarded.
+			LOG(warn) << "Received part from an already discarded timeframe with id " << stfId;
+		}
 		#endif
 
 		FairMQParts outParts;

@@ -26,6 +26,7 @@ public:
 	uint32_t *GetTimeRegion();
 	uint32_t GetTimeRegionSize();
 	void Entry(uint32_t, int, int);
+	void ClearEntry();
 	bool CheckEntryFEM(uint32_t);
 	void Mark(unsigned char *, int, int, uint32_t);
 	std::vector<uint32_t> *Scan();
@@ -149,6 +150,17 @@ void Trigger::Entry(uint32_t fem, int ch, int offset)
 	return;
 }
 
+void Trigger::ClearEntry()
+{
+	fEntryCh.clear();
+	fEntryChDelay.clear();
+	fEntryChBit.clear();
+	fEntryMask = 0x00000000;
+	fEntryCounts = 0;
+
+	return;
+}
+
 bool Trigger::CheckEntryFEM(uint32_t fem)
 {
 	bool rval = false;
@@ -161,15 +173,19 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 	if (fEntryCh.count(fem) >= 1) {
 		uint64_t *tdcval;
 		tdcval = reinterpret_cast<uint64_t *>(pdata);
+
 		//for (auto ch : fEntryCh[fem]) {
 		for (unsigned int i = 0 ; i < fEntryCh[fem].size() ; i++) {
 			int ch = fEntryCh[fem][i];
 			int delay = fEntryChDelay[fem][i];
 			uint32_t markbit = fEntryChBit[fem][i];
 
-			//std::cout << "#DD Trigger::Mark " 
-			//	<< " FEM: " << fem << " Ch: " << ch
-			//	<< " MarkBit: " << markbit << std::endl;
+			#if 0
+			std::cout << "#DD Trigger::Mark " 
+				<< " FEM: " << std::hex << fem
+				<< " Ch: " << std::dec << ch
+				<< " MarkBit: " << markbit << std::endl;
+			#endif
 
 			for (unsigned int j = 0 ; j < (len / sizeof(uint64_t)) ; j++) {
 
@@ -177,7 +193,7 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 					struct TDC64H::tdc64 tdc;
 					if (TDC64H::Unpack(tdcval[j], &tdc) == TDC64H::T_TDC) {
 						if (tdc.ch == ch) {
-							uint32_t hit = tdc.tdc2u + delay;
+							uint32_t hit = tdc.tdc4n + delay;
 							std::cout << "#D Mark Ch: " << std::dec << ch
 								<< " Hit: " << hit << std::endl;
 							if (hit < fTimeRegionSize) {
@@ -199,7 +215,7 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 					struct TDC64L::tdc64 tdc;
 					if (TDC64L::Unpack(tdcval[j], &tdc) == TDC64L::T_TDC) {
 						if (tdc.ch == ch) {
-							uint32_t hit = tdc.tdc2u + delay;
+							uint32_t hit = tdc.tdc4n + delay;
 							std::cout << "#D Mark Ch: " << std::dec << ch
 								<< " Hit: " << hit << std::endl;
 							if (hit < fTimeRegionSize) {
@@ -235,7 +251,7 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 std::vector<uint32_t> *Trigger::Scan()
 {
 	//std::cout << "#D Scan fMarkMask: " << std::hex << fMarkMask << std::endl;
-	std::cout << "#D Scan fEntryMask: " << std::hex << fEntryMask << std::endl;
+	//std::cout << "#D Scan fEntryMask: " << std::hex << fEntryMask << std::endl;
 	fHits.clear();
 	fHits.resize(0);
 	for (unsigned int i = 0 ; i < fTimeRegionSize ; i++) {
@@ -244,7 +260,9 @@ std::vector<uint32_t> *Trigger::Scan()
 			if ((i == 0) || (fHits.size() == 0)) {
 				fHits.emplace_back(i);
 			} else 
-			if ((fHits.size() > 0) && (fHits.back() != (i - 1))) {
+			if ((fHits.size() > 0)
+				&& (fHits.back() != (i - 1))
+				&& (fHits.back() != (i - 2))) {
 				fHits.emplace_back(i);
 			}
 		}
