@@ -194,8 +194,8 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 					if (TDC64H::Unpack(tdcval[j], &tdc) == TDC64H::T_TDC) {
 						if (tdc.ch == ch) {
 							uint32_t hit = tdc.tdc4n + delay;
-							std::cout << "#D Mark Ch: " << std::dec << ch
-								<< " Hit: " << hit << std::endl;
+							//std::cout << "#D Mark Ch: " << std::dec << ch
+							//	<< " Hit: " << hit << std::endl;
 							if (hit < fTimeRegionSize) {
 								if (hit > 1) {
 								//fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
@@ -216,8 +216,8 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 					if (TDC64L::Unpack(tdcval[j], &tdc) == TDC64L::T_TDC) {
 						if (tdc.ch == ch) {
 							uint32_t hit = tdc.tdc4n + delay;
-							std::cout << "#D Mark Ch: " << std::dec << ch
-								<< " Hit: " << hit << std::endl;
+							//std::cout << "#D Mark Ch: " << std::dec << ch
+							//	<< " Hit: " << hit << std::endl;
 							if (hit < fTimeRegionSize) {
 								if (hit > 1) {
 								//fTimeRegion[hit - 1] |= (0x1 << fMarkCount);

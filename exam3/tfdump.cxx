@@ -96,8 +96,10 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
 	uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(pdata));
 
+	#if 0
 	std::cout << "#Msg TopData(8B): " << std::hex << msg_magic
 		<< " Size: " << std::dec << msize << std::endl;
+	#endif
 
 	if (msg_magic == Filter::Magic) {
 		Filter::Header *pflt
@@ -176,6 +178,22 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 
 			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_HB << 2)) {
 				std::cout << "Hart beat" << std::endl;
+
+				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[j]));
+				struct TDC64H::tdc64 tdc;
+				TDC64H::Unpack(*dword, &tdc);
+				int hbflag = tdc.flag;
+			        if (hbflag > 0) {
+					if ((hbflag & 0x200) == 0x200)
+						std::cout << "#E HB Data lost" << std::endl;
+					if ((hbflag & 0x100) == 0x100)
+						std::cout << "#E HB Data confiliction" << std::endl;
+					if ((hbflag & 0x080) == 0x080)
+						std::cout << "#E HB LFN mismatch" << std::endl;
+					if ((hbflag & 0x040) == 0x040)
+						std::cout << "#E HB GFN mismatch" << std::endl;
+        			}
+
 			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_S_START << 2)) {
 				std::cout << "SPILL Start" << std::endl;
 			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_S_END << 2)) {
@@ -295,12 +313,41 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 
 bool TFdump::ConditionalRun()
 {
+
 	//Receive
 	FairMQParts inParts;
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
 		//assert(inParts.Size() >= 2);
 
-		std::cout << "# Nmsg: " << std::dec << inParts.Size() << std::endl;
+		static std::chrono::system_clock::time_point start
+			= std::chrono::system_clock::now();
+		static uint64_t counts = 0;
+		static double freq = 0;
+
+		const double kDURA = 10;
+		auto now = std::chrono::system_clock::now();
+		auto elapse = std::chrono::duration_cast<std::chrono::milliseconds>
+			(now - start).count();
+		if (elapse > (1000 * kDURA)) {
+			freq = static_cast<double>(counts)
+				/ static_cast<double>(elapse) * 1000;
+			counts = 0;
+			start = std::chrono::system_clock::now();
+		}
+
+		std::cout << "Nmsg: " << std::dec << inParts.Size();
+		std::cout << "  Freq: " << freq << " el " << elapse
+			<< " c " << counts  << std::endl;
+
+		#if 0
+		static std::chrono::system_clock::time_point last;
+		std::cout << " Elapsed time:"
+			<< std::chrono::duration_cast<std::chrono::microseconds>
+			(now - last).count();
+		last = now;
+		std::cout << std::endl;
+		#endif
+
 		for(auto& vmsg : inParts) CheckData(vmsg);
 
 
@@ -323,8 +370,9 @@ bool TFdump::ConditionalRun()
 			LOG(warn) << "Received part from an already discarded timeframe with id " << stfId;
 		}
 		#endif
-	}
 
+		counts++;
+	}
 
 
 	return true;

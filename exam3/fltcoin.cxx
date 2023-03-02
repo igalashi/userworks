@@ -128,6 +128,8 @@ void FltCoin::InitTask()
 	fTrig->ClearEntry();
 	fTrig->Entry(0xc0a802a8, 2, 0);
 	fTrig->Entry(0xc0a802a8, 4, 0);
+	fTrig->Entry(0xc0a802a8, 6, 0);
+	fTrig->Entry(0xc0a802a8, 8, 0);
 
 }
 
@@ -249,20 +251,30 @@ bool FltCoin::CheckData(fair::mq::MessagePtr &msg)
 
 int FltCoin::IsHartBeat(uint64_t val, uint32_t type)
 {
+	int hbflag = -1;
 	int hbframe = -1;
 	if (type == SubTimeFrame::TDC64H) {
 		struct TDC64H::tdc64 tdc;
 		if (TDC64H::Unpack(val, &tdc) == TDC64H::T_HB) {
 			hbframe = tdc.hartbeat;
+			hbflag = tdc.flag;
 		}
 	} else
 	if (type == SubTimeFrame::TDC64L) {
 		struct TDC64L::tdc64 tdc;
 		if (TDC64L::Unpack(val, &tdc) == TDC64L::T_HB) {
 			hbframe = tdc.hartbeat;
+			hbflag = tdc.flag;
 		}
 	} else {
 		std::cout << "Unknown device : " << std::hex << type << std::endl;
+	}
+
+	if (hbflag > 0) {
+		if ((hbflag & 0x200) == 0x200) std::cout << "#E HB Data lost" << std::endl;
+		if ((hbflag & 0x100) == 0x100) std::cout << "#E HB Data confiliction" << std::endl;
+		if ((hbflag & 0x080) == 0x080) std::cout << "#E HB LFN mismatch" << std::endl;
+		if ((hbflag & 0x040) == 0x040) std::cout << "#E HB GFN mismatch" << std::endl;
 	}
 
 	return hbframe;
@@ -280,7 +292,7 @@ bool FltCoin::ConditionalRun()
 
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
 		assert(inParts.Size() >= 2);
-		std::cout << "# Nmsg: " << inParts.Size() << std::endl;
+		std::cout << "#Nmsg: " << std::dec << inParts.Size() << std::endl;
 
 		sw_start = std::chrono::system_clock::now();
 
@@ -302,8 +314,7 @@ bool FltCoin::ConditionalRun()
 
 		uint64_t femid = 0;
 		uint64_t devtype = 0;
-		int hbframe = 0;
-		//int iblock = 0;
+		//int hbframe = 0;
 		int ifem = 0;
 
 		//struct TimeFrame::Header tfHeader_keep;
@@ -313,7 +324,7 @@ bool FltCoin::ConditionalRun()
 		//for(auto& vmsg : inParts) {
 		for(int i = 0 ; i < inParts.Size() ; i++) {
 			flag_sending.push_back(true);
-			CheckData(inParts.At(i));
+			// CheckData(inParts.At(i));
 
 			auto tfHeader = reinterpret_cast<struct TimeFrame::Header *>(inParts[i].GetData());
 			auto stfHeader = reinterpret_cast<struct SubTimeFrame::Header *>(inParts[i].GetData());
@@ -342,7 +353,7 @@ bool FltCoin::ConditionalRun()
 
 				uint64_t *data = reinterpret_cast<uint64_t *>(inParts[i].GetData());
 
-				hbframe = IsHartBeat(data[0], devtype);
+				int hbframe = IsHartBeat(data[0], devtype);
 
 				//std::cout << "#DDD msg " << std::dec << i << ": "
 				//	<< " HBframe: " << hbframe << std::endl;
@@ -353,6 +364,7 @@ bool FltCoin::ConditionalRun()
 					dblock.is_HB = false;
 					dblock.msg_index = i;
 					dblock.nTrig = 0;
+					dblock.HBFrame = 0;
 				} else {
 					//data ga nakattatokimo push_back
 
@@ -372,9 +384,8 @@ bool FltCoin::ConditionalRun()
 		block_map.push_back(blocks);
 		//hbblock_map.push_back(hbblocks);
 
-		int nblock = blocks.size();
-
 		#if 0
+		int nblock = blocks.size();
 		std::cout << "#D bloack_map.size: " << block_map.size() << std::endl;
 		for (auto& blk : block_map) {
 			std::cout << "#D block " << blk.size() << " / ";
@@ -386,7 +397,7 @@ bool FltCoin::ConditionalRun()
 		std::cout << std::endl;
 		#endif
 
-		std::cout << "blocks: " << nblock << std::endl;
+		//std::cout << "blocks: " << nblock << std::endl;
 		int totalhits = 0;
 		for (size_t i = 0 ; i < blocks.size() ; i++) {
 
@@ -401,6 +412,7 @@ bool FltCoin::ConditionalRun()
 				if (!(dbl->is_HB)) {
 					int mindex = dbl->msg_index;
 
+					#if 0
 					std::cout << "#D1 Mark FEM ID: "
 					<< std::hex << vfemid
 					<< " Type: " << dbl->Type
@@ -411,10 +423,10 @@ bool FltCoin::ConditionalRun()
 					<< " vfemid: " << vfemid
 					<< " type: " << dbl->Type
 					<< std::endl;
-
 					std::cout << "#D1 inParts.size: "
 					<< inParts[mindex].GetSize()
 					<< std::endl;
+					#endif
 
 					fTrig->Mark(
 						reinterpret_cast<unsigned char *>(inParts[mindex].GetData()),
@@ -423,8 +435,9 @@ bool FltCoin::ConditionalRun()
 				}
 			}
 
+			#if 0
 			uint32_t *tr = fTrig->GetTimeRegion();
-			//std::cout << "####DDDD Hit TimeRegion: ";
+			std::cout << "####DDDD Hit TimeRegion: ";
 			for (uint32_t ii = 0 ; ii < fTrig->GetTimeRegionSize() ; ii++) {
 				if (tr[ii] != 0) {
 				std::cout << " " << std::dec << i << ":"
@@ -433,6 +446,20 @@ bool FltCoin::ConditionalRun()
 				}
 			}
 			std::cout << std::endl;
+			#endif
+
+			#if 0
+			std::cout << "# HB: " << std::dec << i;
+			for (size_t iifem = 0 ; iifem < block_map.size() ; iifem++) {
+				struct DataBlock *dbl = &block_map[iifem][i];
+				//uint64_t vfemid = dbl->FEMId;
+				uint64_t vhbframe = dbl->HBFrame;
+				//std::cout << "# HB: " << std::dec << i
+				//<< " FEM: " << std::hex << vfemid
+				std::cout << " " << std::dec << vhbframe;
+			}
+			std::cout << std::endl;
+			#endif
 
 			/// check coincidence
 			std::vector<uint32_t> *hits = fTrig->Scan();
@@ -461,8 +488,8 @@ bool FltCoin::ConditionalRun()
 					int mindex = block_map[iifem][i].msg_index;
 					bool is_HB = block_map[iifem][i].is_HB;
 
-					std::cout << "#D msg_index: " << mindex
-						<< std::endl;
+					//std::cout << "#D msg_index: " << mindex
+					//	<< std::endl;
 
 					if ((mindex > 0) && (! is_HB)) {
 						flag_sending[mindex] = false;
@@ -477,20 +504,21 @@ bool FltCoin::ConditionalRun()
 			}
 
 			totalhits += nhits;
-			std::cout << "# block: " << i << " nhits: " << nhits << std::endl;
+			//std::cout << "# block: " << i << " nhits: " << nhits << std::endl;
 
 		}
 
-		std::cout << "#block_map size: " << block_map.size() << std::endl;
+		#if 1
+		//std::cout << "#block_map size: " << block_map.size() << std::endl;
 		for (unsigned int i = 0 ; i < block_map.size() ; i++) {
 			std::cout << "#HBFrame: " << i << "/";
 			for (unsigned int j = 0 ; j < block_map[i].size(); j++) {
-				std::cout << "  " << j << " : "
-					<< block_map[i][j].HBFrame;
+				std::cout << "  " << j << ": "
+					<< std::setw(5) << block_map[i][j].HBFrame;
 			}
 			std::cout << std::endl;
 		}
-		std::cout << std::endl;
+		//std::cout << std::endl;
 
 		if (totalhits > 0) {
 			std::cout << "#D TotalHits: " << totalhits;
@@ -498,6 +526,7 @@ bool FltCoin::ConditionalRun()
 			for (const auto& v : flag_sending) std::cout << " " << v; 
 			std::cout << std::endl;
 		}
+		#endif
 
 
 		#if 0
@@ -528,17 +557,34 @@ bool FltCoin::ConditionalRun()
 		//double elapse = std::chrono::duration_cast<std::chrono::microseconds>(
 		uint32_t elapse = std::chrono::duration_cast<std::chrono::microseconds>(
 			sw_end - sw_start).count();
-		std::cout << "#elapse: " << elapse << std::endl;
+		std::cout << "#Elapse: " << std::dec << elapse << " us"
+			<< " Hits: " << totalhits << std::endl;
 
 		//make header message
+
+		auto tp = std::chrono::system_clock::now() ;
+		auto d = tp.time_since_epoch();
+		uint64_t sec = std::chrono::duration_cast
+			<std::chrono::seconds>(d).count();
+		uint64_t usec = std::chrono::duration_cast
+			<std::chrono::microseconds>(d).count();
+
+		uint64_t dlen = 0;
+		for (int ii = 0 ; ii < inParts.Size() ; ii++) {
+			if (flag_sending[ii] || (! fIsDataSupress)) {
+				dlen += (inParts.AtRef(ii)).GetSize();
+			}
+		}
+		dlen += sizeof(struct Filter::Header);
+	
 		auto fltHeader = std::make_unique<struct Filter::Header>();
 		fltHeader->magic = Filter::Magic;
-		fltHeader->length = sizeof(struct Filter::Header);
+		fltHeader->length = dlen;
 		fltHeader->numTrigs = totalhits;
 		fltHeader->workerId = fId;
 		fltHeader->elapseTime = elapse;
-		fltHeader->processTime.tv_sec = 0;
-		fltHeader->processTime.tv_usec = 0;
+		fltHeader->processTime.tv_sec = sec;
+		fltHeader->processTime.tv_usec = usec;
 		outParts.AddPart(MessageUtil::NewMessage(*this, std::move(fltHeader)));
 
 		//Copy
