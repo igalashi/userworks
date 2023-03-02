@@ -24,6 +24,7 @@
 #include "TimeFrameHeader.h"
 #include "FilterHeader.h"
 
+#include "ktimer.cxx"
 #include "trigger.cxx"
 
 
@@ -45,6 +46,7 @@ struct FltCoin : fair::mq::Device
 		//OnData("in", &FltCoin::HandleData);
 
 		fTrig = new Trigger();
+		fKt = new KTimer(1000);
 	}
 
 	void InitTask() override;
@@ -98,7 +100,7 @@ private:
 	uint32_t fId {0};
 	Trigger *fTrig;
 	bool fIsDataSupress = true;
-
+	KTimer *fKt;
 };
 
 
@@ -193,7 +195,6 @@ bool FltCoin::CheckData(fair::mq::MessagePtr &msg)
 	} else {
 	       #if 1
 		for (unsigned int j = 0 ; j < msize ; j += 8) {
-		//for (unsigned int j = 0 ; j < 8 ; j += 8) {
 			std::cout << "# " << std::setw(8) << j << " : "
 				<< std::hex << std::setw(2) << std::setfill('0')
 				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 7]) << " "
@@ -292,7 +293,9 @@ bool FltCoin::ConditionalRun()
 
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
 		assert(inParts.Size() >= 2);
-		std::cout << "#Nmsg: " << std::dec << inParts.Size() << std::endl;
+		if (fKt->Check()) {
+			std::cout << "#Nmsg: " << std::dec << inParts.Size() << std::endl;
+		}
 
 		sw_start = std::chrono::system_clock::now();
 
@@ -324,7 +327,9 @@ bool FltCoin::ConditionalRun()
 		//for(auto& vmsg : inParts) {
 		for(int i = 0 ; i < inParts.Size() ; i++) {
 			flag_sending.push_back(true);
-			// CheckData(inParts.At(i));
+			#if 0
+			CheckData(inParts.At(i));
+			#endif
 
 			auto tfHeader = reinterpret_cast<struct TimeFrame::Header *>(inParts[i].GetData());
 			auto stfHeader = reinterpret_cast<struct SubTimeFrame::Header *>(inParts[i].GetData());
@@ -509,22 +514,24 @@ bool FltCoin::ConditionalRun()
 		}
 
 		#if 1
-		//std::cout << "#block_map size: " << block_map.size() << std::endl;
-		for (unsigned int i = 0 ; i < block_map.size() ; i++) {
-			std::cout << "#HBFrame: " << i << "/";
-			for (unsigned int j = 0 ; j < block_map[i].size(); j++) {
-				std::cout << "  " << j << ": "
-					<< std::setw(5) << block_map[i][j].HBFrame;
+		if (fKt->Check()) {
+			//std::cout << "#block_map size: " << block_map.size() << std::endl;
+			for (unsigned int i = 0 ; i < block_map.size() ; i++) {
+				std::cout << "#HBFrame: " << i << "/";
+				for (unsigned int j = 0 ; j < block_map[i].size(); j++) {
+					std::cout << "  " << j << ": "
+						<< std::setw(5) << block_map[i][j].HBFrame;
+				}
+				std::cout << std::endl;
 			}
-			std::cout << std::endl;
-		}
-		//std::cout << std::endl;
+			//std::cout << std::endl;
 
-		if (totalhits > 0) {
-			std::cout << "#D TotalHits: " << totalhits;
-			std::cout << " Flag: ";
-			for (const auto& v : flag_sending) std::cout << " " << v; 
-			std::cout << std::endl;
+			if (totalhits > 0) {
+				std::cout << "#D TotalHits: " << totalhits;
+				std::cout << " Flag: ";
+				for (const auto& v : flag_sending) std::cout << " " << v; 
+				std::cout << std::endl;
+			}
 		}
 		#endif
 
@@ -554,7 +561,6 @@ bool FltCoin::ConditionalRun()
 		FairMQParts outParts;
 
 		sw_end = std::chrono::system_clock::now();
-		//double elapse = std::chrono::duration_cast<std::chrono::microseconds>(
 		uint32_t elapse = std::chrono::duration_cast<std::chrono::microseconds>(
 			sw_end - sw_start).count();
 		std::cout << "#Elapse: " << std::dec << elapse << " us"
@@ -604,8 +610,7 @@ bool FltCoin::ConditionalRun()
 				LOG(info) << "Device is not RUNNING";
 				break;
 			}
-			//LOG(error) << "Failed to queue time frame : TF = " << h->timeFrameId;
-			LOG(error) << "Failed to queue time frame";
+			LOG(error) << "Failed to queue output-channel";
 		}
 
 	}
@@ -655,8 +660,8 @@ void addCustomOptions(bpo::options_description& options)
 	using opt = FltCoin::OptionKey;
 
 	options.add_options()
-		("max-iterations", bpo::value<uint64_t>()->default_value(0),
-		"Maximum number of iterations of Run/ConditionalRun/OnData (0 - infinite)")
+		//("max-iterations", bpo::value<uint64_t>()->default_value(0),
+		//"Maximum number of iterations of Run/ConditionalRun/OnData (0 - infinite)")
 		(opt::InputChannelName.data(),
 			bpo::value<std::string>()->default_value("in"),
 			"Name of the input channel")

@@ -174,7 +174,6 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 		uint64_t *tdcval;
 		tdcval = reinterpret_cast<uint64_t *>(pdata);
 
-		//for (auto ch : fEntryCh[fem]) {
 		for (unsigned int i = 0 ; i < fEntryCh[fem].size() ; i++) {
 			int ch = fEntryCh[fem][i];
 			int delay = fEntryChDelay[fem][i];
@@ -266,12 +265,14 @@ std::vector<uint32_t> *Trigger::Scan()
 				fHits.emplace_back(i);
 			}
 		}
+		#if 0
 		if (fTimeRegion[i] != 0) {
 			std::cout << "#D Scan Time: " << std::dec << i
 				<< " Bits: " << std::hex << fTimeRegion[i]
 				//<< " Mask: " << fMarkMask << std::endl;
 				<< " Mask: " << fEntryMask << std::endl;
 		}
+		#endif
 	}
 
 	return &fHits;
