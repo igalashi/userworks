@@ -46,9 +46,7 @@ struct FltCoin : fair::mq::Device
 		//OnData("in", &FltCoin::HandleData);
 
 		fTrig = new Trigger();
-		fKt1 = new KTimer(1000);
-		fKt2 = new KTimer(1000);
-		fKt3 = new KTimer(1000);
+		fKt = new KTimer(1000);
 	}
 
 	void InitTask() override;
@@ -102,9 +100,7 @@ private:
 	uint32_t fId {0};
 	Trigger *fTrig;
 	bool fIsDataSupress = true;
-	KTimer *fKt1;
-	KTimer *fKt2;
-	KTimer *fKt3;
+	KTimer *fKt;
 };
 
 
@@ -293,12 +289,12 @@ bool FltCoin::ConditionalRun()
 
 	FairMQMessagePtr msg_header(fTransportFactory->CreateMessage());
 	struct Filter::Header fltheader;
-	struct TimeFrame::Header *i_tfHeader;
+	struct TimeFrame::Header tfheader;
 	std::chrono::system_clock::time_point sw_start, sw_end;
 
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
 		assert(inParts.Size() >= 2);
-		if (fKt1->Check()) {
+		if (fKt->Check()) {
 			std::cout << "#Nmsg: " << std::dec << inParts.Size() << std::endl;
 		}
 
@@ -317,7 +313,7 @@ bool FltCoin::ConditionalRun()
 		std::vector< std::vector<struct DataBlock> > block_map;
 
 		//std::vector<int> hbblocks;
-		//std::vector< std::vector<int> > hbblock_map;
+		std::vector< std::vector<int> > hbblock_map;
 		std::vector<struct SubTimeFrame::Header> stf;
 
 		uint64_t femid = 0;
@@ -325,6 +321,7 @@ bool FltCoin::ConditionalRun()
 		//int hbframe = 0;
 		int ifem = 0;
 
+		//struct TimeFrame::Header tfHeader_keep;
 
 		std::vector<bool> flag_sending;
 
@@ -344,13 +341,12 @@ bool FltCoin::ConditionalRun()
 				ifem = -1;
 				stf.clear();
 				stf.resize(0);
-				i_tfHeader = tfHeader;
 			} else
 			if (stfHeader->magic == SubTimeFrame::Magic) {
 				femid = stfHeader->FEMId;
 				devtype = stfHeader->Type;
-				if (blocks.size() > 0) block_map.push_back(blocks);
 				stf.push_back(*stfHeader);
+				if (blocks.size() > 0) block_map.push_back(blocks);
 				//if (hbblocks.size() > 0) hbblock_map.push_back(hbblocks);
 				//iblock = 0;
 				dblock.is_HB = false;
@@ -381,8 +377,8 @@ bool FltCoin::ConditionalRun()
 					dblock.HBFrame = hbframe;
 					//hbblocks.push_back(iblock);
 
-					dblock.FEMId = femid;
-					dblock.Type = devtype;
+					dblock.FEMId = 0;
+					dblock.Type = 0;
 					dblock.is_HB = true;
 					dblock.msg_index = i;
 					dblock.nTrig = 0;
@@ -474,8 +470,6 @@ bool FltCoin::ConditionalRun()
 			/// check coincidence
 			std::vector<uint32_t> *hits = fTrig->Scan();
 			int nhits = hits->size();
-
-			#if 0
 			if (nhits > 0) {
 				std::cout << "#D1 Hits : " << hits->size() << " ";
 				for (unsigned int ii = 0 ; ii < hits->size() ; ii++) {
@@ -487,10 +481,9 @@ bool FltCoin::ConditionalRun()
 				}
 				std::cout << std::endl;
 			}
-			#endif
 
 			//std::cout << std::dec;
-			//std::cout << "#D flag_sending.size() "
+			//std::cout << "#D flag_sendig.size() "
 			//	<< flag_sending.size() << std::endl;
 			//std::cout << "#D block_map.size() "
 			//	<< block_map.size() << std::endl;
@@ -501,12 +494,8 @@ bool FltCoin::ConditionalRun()
 					int mindex = block_map[iifem][i].msg_index;
 					bool is_HB = block_map[iifem][i].is_HB;
 
-					//std::cout << "#D msg_index: " << mindex << std::end;;
-					//std::cout << "#D mindex: " << mindex
-					//	<< " h: " << is_HB
-					//	<< " t: " << block_map[iifem][i].Type
-					//	<< " i: " << std::hex << block_map[iifem][i].FEMId
-					//	<< std::dec << std::endl;;
+					//std::cout << "#D msg_index: " << mindex
+					//	<< std::endl;
 
 					if ((mindex > 0) && (! is_HB)) {
 						flag_sending[mindex] = false;
@@ -517,15 +506,6 @@ bool FltCoin::ConditionalRun()
 					if ((mindex > 0) && is_HB) {
 						flag_sending[mindex] = false;
 					}
-				} else {
-					//int mindex = block_map[iifem][i].msg_index;
-					//bool is_HB = block_map[iifem][i].is_HB;
-					//std::cout << "#D H mindex: " << mindex
-					//	<< " h: " << is_HB
-					//	<< " t: " << block_map[iifem][i].Type
-					//	<< " i: " << std::hex << block_map[iifem][i].FEMId
-					//	<< " Nhits: " << std::dec << nhits
-					//	<< std::endl;;
 				}
 			}
 
@@ -535,7 +515,7 @@ bool FltCoin::ConditionalRun()
 		}
 
 		#if 1
-		if (fKt2->Check()) {
+		if (fKt->Check()) {
 			//std::cout << "#block_map size: " << block_map.size() << std::endl;
 			for (unsigned int i = 0 ; i < block_map.size() ; i++) {
 				std::cout << "#HBFrame: " << i << "/";
@@ -547,12 +527,12 @@ bool FltCoin::ConditionalRun()
 			}
 			//std::cout << std::endl;
 
-			//if (totalhits > 0) {
-			//	std::cout << "#D TotalHits: " << totalhits;
-			//	std::cout << " Flag: ";
-			//	for (const auto& v : flag_sending) std::cout << " " << v; 
-			//	std::cout << std::endl;
-			//}
+			if (totalhits > 0) {
+				std::cout << "#D TotalHits: " << totalhits;
+				std::cout << " Flag: ";
+				for (const auto& v : flag_sending) std::cout << " " << v; 
+				std::cout << std::endl;
+			}
 		}
 		#endif
 
@@ -584,67 +564,13 @@ bool FltCoin::ConditionalRun()
 		sw_end = std::chrono::system_clock::now();
 		uint32_t elapse = std::chrono::duration_cast<std::chrono::microseconds>(
 			sw_end - sw_start).count();
-		if (fKt3->Check()) {
+		if (fKt->Check()) {
 			std::cout << "#Elapse: " << std::dec << elapse << " us"
 				<< " Hits: " << totalhits << std::endl;
 		}
 
-
-		//Modify SubTimeFrameHeader, TimeFrameHeader
-		uint32_t tf_len = 0;
-		if (fIsDataSupress) {
-			for (int ii = 0 ; ii < inParts.Size() ; ii++) {
-				auto stfh = reinterpret_cast<struct SubTimeFrame::Header *>
-					(inParts[ii].GetData());
-				if (stfh->magic == SubTimeFrame::Magic) {
-					uint32_t len_stf = 0;
-					int kk = ii + 1;
-					for (int jj = ii + 1 ; jj < inParts.Size() ; jj++) {
-						auto sstf =
-							reinterpret_cast<struct SubTimeFrame::Header *>
-							(inParts[jj].GetData());
-						if (sstf->magic == SubTimeFrame::Magic) {
-							kk = jj;
-							break;
-						} else
-						if (flag_sending[jj]) {
-							len_stf += inParts[jj].GetSize();
-						}
-					}
-					if (len_stf == 0 ) {
-						flag_sending[ii] = false;
-					} else {
-						stfh->length
-							= len_stf
-							+ sizeof(struct SubTimeFrame::Header);
-					}
-					ii = kk - 1;
-				}
-			}
-
-			// TimeFrameHeader
-			for (int ii = 0 ; ii < inParts.Size() ; ii++) {
-				if (flag_sending[ii] || (! fIsDataSupress)) {
-					tf_len += (inParts.AtRef(ii)).GetSize();
-				}
-			}
-			i_tfHeader->length = tf_len;
-		} else {
-			tf_len = i_tfHeader->length;
-		}
-
-		#if 0
-		if (totalhits > 0) {
-			std::cout << "#DD TotalHits: " << totalhits;
-			std::cout << " Flag: ";
-			for (const auto& v : flag_sending) std::cout << v; 
-			std::cout << std::endl;
-		}
-		#endif
-		
 		//make header message
 
-		//FilterHeader
 		auto tp = std::chrono::system_clock::now() ;
 		auto d = tp.time_since_epoch();
 		uint64_t sec = std::chrono::duration_cast
@@ -652,24 +578,22 @@ bool FltCoin::ConditionalRun()
 		uint64_t usec = std::chrono::duration_cast
 			<std::chrono::microseconds>(d).count();
 
-		//uint64_t dlen = 0;
-		//for (int ii = 0 ; ii < inParts.Size() ; ii++) {
-		//	if (flag_sending[ii] || (! fIsDataSupress)) {
-		//		dlen += (inParts.AtRef(ii)).GetSize();
-		//	}
-		//}
-		//dlen += sizeof(struct Filter::Header);
-		uint64_t flt_len = tf_len + sizeof(struct Filter::Header);	
-		
+		uint64_t dlen = 0;
+		for (int ii = 0 ; ii < inParts.Size() ; ii++) {
+			if (flag_sending[ii] || (! fIsDataSupress)) {
+				dlen += (inParts.AtRef(ii)).GetSize();
+			}
+		}
+		dlen += sizeof(struct Filter::Header);
+	
 		auto fltHeader = std::make_unique<struct Filter::Header>();
 		fltHeader->magic = Filter::Magic;
-		fltHeader->length = flt_len;
+		fltHeader->length = dlen;
 		fltHeader->numTrigs = totalhits;
 		fltHeader->workerId = fId;
 		fltHeader->elapseTime = elapse;
 		fltHeader->processTime.tv_sec = sec;
 		fltHeader->processTime.tv_usec = usec;
-
 		outParts.AddPart(MessageUtil::NewMessage(*this, std::move(fltHeader)));
 
 		//Copy
