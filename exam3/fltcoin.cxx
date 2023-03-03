@@ -35,9 +35,10 @@ namespace bpo = boost::program_options;
 struct FltCoin : fair::mq::Device
 {
 	struct OptionKey {
-		static constexpr std::string_view InputChannelName  {"in-chan-name"};
+		static constexpr std::string_view InputChannelName   {"in-chan-name"};
 		static constexpr std::string_view OutputChannelName  {"out-chan-name"};
-		static constexpr std::string_view DataSupress  {"data-supress"};
+		static constexpr std::string_view DataSupress        {"data-supress"};
+		static constexpr std::string_view PollTimeout        {"poll-timeout"};
 	};
 
 	FltCoin()
@@ -99,6 +100,11 @@ private:
 	std::string fInputChannelName;
 	std::string fOutputChannelName;
 	std::string fName;
+
+	int fNumDestination {0};
+	uint32_t fDirection {0};
+	int fPollTimeoutMS  {0};
+
 	uint32_t fId {0};
 	Trigger *fTrig;
 	bool fIsDataSupress = true;
@@ -117,6 +123,9 @@ void FltCoin::InitTask()
 
 	LOG(info) << "InitTask: Input Channel : " << fInputChannelName
 		<< " Output Channel : " << fOutputChannelName;
+
+	fNumDestination = GetNumSubChannels(fOutputChannelName);
+	fPollTimeoutMS  = std::stoi(fConfig->GetProperty<std::string>(opt::PollTimeout.data()));
 
         fName = fConfig->GetProperty<std::string>("id");
         std::istringstream ss(fName.substr(fName.rfind("-") + 1));
@@ -634,12 +643,12 @@ bool FltCoin::ConditionalRun()
 		}
 
 		#if 0
-		if (totalhits > 0) {
+		//if (totalhits > 0) {
 			std::cout << "#DD TotalHits: " << totalhits;
 			std::cout << " Flag: ";
 			for (const auto& v : flag_sending) std::cout << v; 
 			std::cout << std::endl;
-		}
+		//}
 		#endif
 		
 		//make header message
@@ -681,8 +690,11 @@ bool FltCoin::ConditionalRun()
 				outParts.AddPart(std::move(msgCopy));
 			}
 		}
+
+		//std::cout << "#DDD outParts.Size: " << outParts.Size() << std::endl;
 	
 		//Send
+		#if 0
 		while (Send(outParts, fOutputChannelName) < 0) {
 			// timeout
 			if (GetCurrentState() != fair::mq::State::Running) {
@@ -691,7 +703,24 @@ bool FltCoin::ConditionalRun()
 			}
 			LOG(error) << "Failed to queue output-channel";
 		}
-
+		#else
+		auto poller = NewPoller(fOutputChannelName);
+		while (!NewStatePending()) {
+			auto direction = (fDirection++) % fNumDestination;
+			poller->Poll(fPollTimeoutMS);
+			if (poller->CheckOutput(fOutputChannelName, direction)) {
+				if (Send(outParts, fOutputChannelName, direction) > 0) {
+					// successfully sent
+					break;
+				} else {
+					LOG(error) << "Failed to queue output-channel";
+				}
+			}
+			if (fNumDestination==1) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			}
+		}
+		#endif
 	}
 
 	return true;
@@ -750,6 +779,9 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::DataSupress.data(),
 			bpo::value<std::string>()->default_value("true"),
 			"Data supression enable")
+		(opt::PollTimeout.data(), 
+			bpo::value<std::string>()->default_value("1"),
+			"Timeout of polling (in msec)")
     		;
 
 }
