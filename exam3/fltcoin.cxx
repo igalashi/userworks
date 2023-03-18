@@ -549,7 +549,7 @@ bool FltCoin::ConditionalRun()
 			for (unsigned int i = 0 ; i < block_map.size() ; i++) {
 				std::cout << "#HBFrame: " << i << "/";
 				for (unsigned int j = 0 ; j < block_map[i].size(); j++) {
-					std::cout << "  " << j << ": "
+					std::cout << "  " << j << ":"
 						<< std::setw(5) << block_map[i][j].HBFrame;
 				}
 				std::cout << std::endl;
@@ -594,6 +594,7 @@ bool FltCoin::ConditionalRun()
 		uint32_t elapse = std::chrono::duration_cast<std::chrono::microseconds>(
 			sw_end - sw_start).count();
 		if (fKt3->Check()) {
+		//if (totalhits > 0) {
 			std::cout << "#Elapse: " << std::dec << elapse << " us"
 				<< " Hits: " << totalhits << std::endl;
 		}

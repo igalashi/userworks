@@ -30,6 +30,8 @@ public:
 	bool CheckEntryFEM(uint32_t);
 	void Mark(unsigned char *, int, int, uint32_t);
 	std::vector<uint32_t> *Scan();
+	void SetMarkLen(int val) {fMarkLen = val;};
+	int GetMarkLen() {return fMarkLen;};
 protected:
 private:
 	//std::vector<struct CoinCh> fEntry;
@@ -45,6 +47,7 @@ private:
 	//int fMarkCount = 0;
 	//uint32_t fMarkMask = 0;
 	std::vector<uint32_t> fHits;
+	int fMarkLen = 5;
 };
 
 Trigger::Trigger()
@@ -195,6 +198,8 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 							uint32_t hit = tdc.tdc4n + delay;
 							//std::cout << "#D Mark Ch: " << std::dec << ch
 							//	<< " Hit: " << hit << std::endl;
+
+							#if 0
 							if (hit < fTimeRegionSize) {
 								if (hit > 1) {
 								//fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
@@ -207,6 +212,15 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 								fTimeRegion[hit + 1] |= markbit;
 								}
 							}
+							#else
+							if (hit < fTimeRegionSize - (fMarkLen/2)) {
+								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
+									if (hit + k > 0) {
+										fTimeRegion[hit + k] |= markbit;
+									}
+								}
+							}
+							#endif
 						}
 					}
 				} else
@@ -217,6 +231,8 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 							uint32_t hit = tdc.tdc4n + delay;
 							//std::cout << "#D Mark Ch: " << std::dec << ch
 							//	<< " Hit: " << hit << std::endl;
+
+							#if 1
 							if (hit < fTimeRegionSize) {
 								if (hit > 1) {
 								//fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
@@ -229,6 +245,15 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 								fTimeRegion[hit + 1] |= markbit;
 								}
 							}
+							#else
+							if (hit < fTimeRegionSize - (fMarkLen/2)) {
+								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
+									if (hit + k > 0) {
+										fTimeRegion[hit + k] |= markbit;
+									}
+								}
+							}
+							#endif
 						}
 					}
 				}
@@ -253,6 +278,8 @@ std::vector<uint32_t> *Trigger::Scan()
 	//std::cout << "#D Scan fEntryMask: " << std::hex << fEntryMask << std::endl;
 	fHits.clear();
 	fHits.resize(0);
+
+	#if 0
 	for (unsigned int i = 0 ; i < fTimeRegionSize ; i++) {
 		//if ((fMarkMask & fTimeRegion[i]) == fMarkMask) {
 		if ((fEntryMask & fTimeRegion[i]) == fEntryMask) {
@@ -265,6 +292,15 @@ std::vector<uint32_t> *Trigger::Scan()
 				fHits.emplace_back(i);
 			}
 		}
+	#else
+	for (unsigned int i = 0 ; i < fTimeRegionSize - 1; i++) {
+		if (((fEntryMask & fTimeRegion[i]) != fEntryMask)
+		&& ((fEntryMask & fTimeRegion[i + 1]) == fEntryMask)) {
+			fHits.emplace_back(i + 1);
+		}
+	#endif
+
+
 		#if 0
 		if (fTimeRegion[i] != 0) {
 			std::cout << "#D Scan Time: " << std::dec << i
