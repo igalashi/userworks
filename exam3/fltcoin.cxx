@@ -50,6 +50,7 @@ struct FltCoin : fair::mq::Device
 		fKt1 = new KTimer(1000);
 		fKt2 = new KTimer(1000);
 		fKt3 = new KTimer(1000);
+		fKt4 = new KTimer(1000);
 	}
 
 	void InitTask() override;
@@ -111,6 +112,7 @@ private:
 	KTimer *fKt1;
 	KTimer *fKt2;
 	KTimer *fKt3;
+	KTimer *fKt4;
 };
 
 
@@ -144,8 +146,8 @@ void FltCoin::InitTask()
 	fTrig->ClearEntry();
 	fTrig->Entry(0xc0a802a8, 2, 0);
 	fTrig->Entry(0xc0a802a8, 4, 0);
-	//fTrig->Entry(0xc0a802a8, 6, 0);
-	//fTrig->Entry(0xc0a802a8, 8, 0);
+	fTrig->Entry(0xc0a802a8, 6, 0);
+	fTrig->Entry(0xc0a802a8, 8, 0);
 
 }
 
@@ -335,6 +337,23 @@ bool FltCoin::ConditionalRun()
 		int ifem = 0;
 
 
+		#if 1
+		if (fKt4->Check()) {
+			std::cout << "#DDDD " << std::hex;
+			for(int i = 0 ; i < inParts.Size() ; i++) {
+				uint64_t *top = reinterpret_cast<uint64_t *>(inParts[i].GetData());
+				struct SubTimeFrame::Header *stbh = reinterpret_cast<SubTimeFrame::Header *>(inParts[i].GetData());
+				if (stbh->magic == SubTimeFrame::Magic) {
+					std::cout << std::endl << "*" << std::setw(8) << stbh->timeFrameId;
+				} else {
+					std::cout << " " << std::setw(8) << IsHartBeat(top[0], SubTimeFrame::TDC64H);
+				}
+			}
+			std::cout << std::dec << std::endl;
+		}
+		#endif
+
+
 		std::vector<bool> flag_sending;
 
 		//for(auto& vmsg : inParts) {
@@ -522,7 +541,7 @@ bool FltCoin::ConditionalRun()
 						flag_sending[mindex + 1] = false;
 					}
 
-					///// HB wo otoshitemiru
+					// HB wo otoshitemiru
 					if ((mindex > 0) && is_HB) {
 						flag_sending[mindex] = false;
 					}
@@ -556,12 +575,12 @@ bool FltCoin::ConditionalRun()
 			}
 			//std::cout << std::endl;
 
-			//if (totalhits > 0) {
-			//	std::cout << "#D TotalHits: " << totalhits;
-			//	std::cout << " Flag: ";
-			//	for (const auto& v : flag_sending) std::cout << " " << v; 
-			//	std::cout << std::endl;
-			//}
+			if (totalhits > 0) {
+				std::cout << "#D TotalHits: " << totalhits;
+				std::cout << " Flag: ";
+				for (const auto& v : flag_sending) std::cout << " " << v; 
+				std::cout << std::endl;
+			}
 		}
 		#endif
 

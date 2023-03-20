@@ -57,7 +57,10 @@ Trigger::Trigger()
 
 Trigger::~Trigger()
 {
-	if (fTimeRegion != nullptr) delete[] fTimeRegion;
+	if (fTimeRegion != nullptr) {
+		delete[] fTimeRegion;
+		fTimeRegion = nullptr;
+	}
 	return;
 }
 
@@ -79,6 +82,7 @@ bool Trigger::SetTimeRegion(int size)
 	fTimeRegionSize = size;
 	if (fTimeRegion != nullptr) {
 		delete[] fTimeRegion;
+		fTimeRegion = nullptr;
 	}
 	fTimeRegion = new uint32_t[size];
 
@@ -232,7 +236,7 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 							//std::cout << "#D Mark Ch: " << std::dec << ch
 							//	<< " Hit: " << hit << std::endl;
 
-							#if 1
+							#if 0
 							if (hit < fTimeRegionSize) {
 								if (hit > 1) {
 								//fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
