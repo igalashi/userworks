@@ -200,31 +200,28 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 					if (TDC64H::Unpack(tdcval[j], &tdc) == TDC64H::T_TDC) {
 						if (tdc.ch == ch) {
 							uint32_t hit = tdc.tdc4n + delay;
-							//std::cout << "#D Mark Ch: " << std::dec << ch
-							//	<< " Hit: " << hit << std::endl;
 
 							#if 0
-							if (hit < fTimeRegionSize) {
-								if (hit > 1) {
-								//fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
-								fTimeRegion[hit - 1] |= markbit;
-								}
-								//fTimeRegion[hit] |= (0x1 << fMarkCount);
-								fTimeRegion[hit] |= markbit;
-								if (hit < (fTimeRegionSize - 1)) {
-								//fTimeRegion[hit + 1] |= (0x1 << fMarkCount);
-								fTimeRegion[hit + 1] |= markbit;
-								}
-							}
-							#else
+							std::cout << "#D Mark"
+								<< " FEM: " << std::hex << fem
+								<< " Ch: " << std::dec << ch
+								<< " Hit: " << hit
+								<< std::endl;
+							#endif
+
 							if (hit < fTimeRegionSize - (fMarkLen/2)) {
 								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
-									if (hit + k > 0) {
+									if ((hit + k) < fTimeRegionSize) {
 										fTimeRegion[hit + k] |= markbit;
+									} else {
+										std::cout << "#E Over range hit!"
+											<< " FEM: " << std::hex << fem
+											<< " Ch: " << std::dec << ch
+											<< " Hit: " << hit
+											<< std::endl;
 									}
 								}
 							}
-							#endif
 						}
 					}
 				} else
@@ -233,35 +230,28 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 					if (TDC64L::Unpack(tdcval[j], &tdc) == TDC64L::T_TDC) {
 						if (tdc.ch == ch) {
 							uint32_t hit = tdc.tdc4n + delay;
+
 							//std::cout << "#D Mark Ch: " << std::dec << ch
 							//	<< " Hit: " << hit << std::endl;
 
-							#if 0
-							if (hit < fTimeRegionSize) {
-								if (hit > 1) {
-								//fTimeRegion[hit - 1] |= (0x1 << fMarkCount);
-								fTimeRegion[hit - 1] |= markbit;
-								}
-								//fTimeRegion[hit] |= (0x1 << fMarkCount);
-								fTimeRegion[hit] |= markbit;
-								if (hit < (fTimeRegionSize - 1)) {
-								//fTimeRegion[hit + 1] |= (0x1 << fMarkCount);
-								fTimeRegion[hit + 1] |= markbit;
-								}
-							}
-							#else
 							if (hit < fTimeRegionSize - (fMarkLen/2)) {
 								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
-									if (hit + k > 0) {
+									if ((hit + k) < fTimeRegionSize) {
 										fTimeRegion[hit + k] |= markbit;
+									} else {
+										std::cout << "#E Over range hit!"
+											<< " FEM: " << std::hex << fem
+											<< " Ch: " << std::dec << ch
+											<< " Hit: " << hit
+											<< std::endl;
 									}
 								}
 							}
-							#endif
 						}
 					}
 				}
 			}
+
 			//fMarkMask |= (0x1 << fMarkCount);
 			//fMarkCount++;
 			//std::cout << "#D Trig Mark entry : Module: " << fem << " Ch: " << ch << std::endl;

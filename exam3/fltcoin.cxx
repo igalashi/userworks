@@ -141,7 +141,7 @@ void FltCoin::InitTask()
 	}
 	LOG(info) << "InitTask: DataSupress : " << fIsDataSupress;
 
-	//fTrig->SetTimeRegion(1024 * 256);
+	//fTrig->SetTimeRegion(1024 * 512);
 	fTrig->SetTimeRegion(1024 * 128);
 	fTrig->ClearEntry();
 	fTrig->Entry(0xc0a802a8, 2, 0);
@@ -288,10 +288,10 @@ int FltCoin::IsHartBeat(uint64_t val, uint32_t type)
 	}
 
 	if (hbflag > 0) {
-		if ((hbflag & 0x200) == 0x200) std::cout << "#E HB Data lost" << std::endl;
-		if ((hbflag & 0x100) == 0x100) std::cout << "#E HB Data confiliction" << std::endl;
-		if ((hbflag & 0x080) == 0x080) std::cout << "#E HB LFN mismatch" << std::endl;
-		if ((hbflag & 0x040) == 0x040) std::cout << "#E HB GFN mismatch" << std::endl;
+		if ((hbflag & 0x200) == 0x200) LOG(warn) << "HB Data lost";
+		if ((hbflag & 0x100) == 0x100) LOG(warn) << "HB Data confiliction";
+		if ((hbflag & 0x080) == 0x080) LOG(warn) << "HB LFN mismatch";
+		if ((hbflag & 0x040) == 0x040) LOG(warn) << "HB GFN mismatch";
 	}
 
 	return hbframe;
@@ -467,7 +467,8 @@ bool FltCoin::ConditionalRun()
 					#endif
 
 					fTrig->Mark(
-						reinterpret_cast<unsigned char *>(inParts[mindex].GetData()),
+						reinterpret_cast<unsigned char *>(
+							inParts[mindex].GetData()),
 						inParts[mindex].GetSize(),
 						vfemid, dbl->Type);
 				}
@@ -562,7 +563,7 @@ bool FltCoin::ConditionalRun()
 
 		}
 
-		#if 1
+		#if 0
 		if (fKt2->Check()) {
 			//std::cout << "#block_map size: " << block_map.size() << std::endl;
 			for (unsigned int i = 0 ; i < block_map.size() ; i++) {
