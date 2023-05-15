@@ -42,6 +42,8 @@ public:
         static constexpr std::string_view MaxHBF            {"max-hbf"};
         static constexpr std::string_view SplitMethod       {"split"};
         static constexpr std::string_view TimeFrameIdType   {"time-frame-id-type"};
+        static constexpr std::string_view MaxIterations     {"max-iterations"};
+        static constexpr std::string_view PollTimeout       {"poll-timeout"};
     };
 
     STFBFilePlayer();
@@ -61,13 +63,16 @@ private:
     bool HandleData(FairMQMessagePtr&, int index);
     void InitTask() override;
     void PostRun() override;
+    void PreRun() override;
 
     uint64_t fFEMId   {0};
     uint64_t fFEMType {0};
-    int         fNumDestination {0};
     std::string fInputChannelName;
     std::string fOutputChannelName;
     std::string fDQMChannelName;
+
+    //std::string fMaxIterations;
+    //std::string fPollTimeoutMS;
 
     std::string fInputFileName;
     std::ifstream fInputFile;
@@ -81,6 +86,12 @@ private:
     // int fH_flag {0};
     TimeFrameIdType fTimeFrameIdType;
     int32_t fSTFId{-1}; // 8-bit spill counter and 16-bit HB frame from heartbeat delimiter
+
+    int64_t fNumIteration   {0};
+    int64_t fMaxIterations  {0};
+    int     fDirection      {0};
+    int     fNumDestination {0};
+    int     fPollTimeoutMS  {0};
 
     bool mdebug;
     RecvBuffer fInputPayloads;
