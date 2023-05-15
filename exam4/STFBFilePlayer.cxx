@@ -232,7 +232,7 @@ void STFBFilePlayer::FinalizeSTF()
 {
     namespace STF  = SubTimeFrame;
     //LOG(debug) << " FinalizeSTF()";
-    auto stfHeader          = std::make_unique<STF::Header>();
+    auto stfHeader = std::make_unique<STF::Header>();
     if (fTimeFrameIdType==TimeFrameIdType::SequenceNumberOfTimeFrames) {
         stfHeader->timeFrameId = fSTFSequenceNumber;
     } else {
@@ -566,6 +566,30 @@ bool STFBFilePlayer::ConditionalRun()
     //std::for_each(reinterpret_cast<uint64_t*>(bufBegin), reinterpret_cast<uint64_t*>(bufBegin)+buf.size()/sizeof(uint64_t), nestdaq::HexDump());
 #endif
 
+    outParts.AddPart(NewMessage(sizeof(STF::Header)));
+    auto &msgSTFHeader = outParts[0];
+    fInputFile.read(reinterpret_cast<char*>(msgSTFHeader.GetData()), msgSTFHeader.GetSize());
+    if (static_cast<size_t>(fInputFile.gcount()) < msgSTFHeader.GetSize()) {
+        LOG(warn) << "No data read. request = " << msgSTFHeader.GetSize()
+                  << " bytes. gcount = " << fInputFile.gcount();
+        return false;
+    }
+    auto stfHeader = reinterpret_cast<STF::Header*>(msgSTFHeader.GetData());
+
+    std::vector<char> buf(stfHeader->length - sizeof(STF::Header));
+    fInputFile.read(buf.data(), buf.size());
+
+    if (static_cast<size_t>(fInputFile.gcount()) < msgSTFHeader.GetSize()) {
+        LOG(warn) << "No data read. request = " << msgSTFHeader.GetSize()
+                  << " bytes. gcount = " << fInputFile.gcount();
+        return false;
+    }
+    LOG(debug4) << " buf size = " << buf.size();
+    auto bufBegin = buf.data();
+    std::for_each(reinterpret_cast<uint64_t*>(bufBegin),
+        reinterpret_cast<uint64_t*>(bufBegin)+buf.size()/sizeof(uint64_t),
+       	HexDump());
+
 
     //for (auto i=0u; i<tfHeader->numSource; ++i) {
 
@@ -581,9 +605,11 @@ bool STFBFilePlayer::ConditionalRun()
         std::memcpy(header, bufBegin, headerNBytes);
         auto stfHeader = reinterpret_cast<STF::Header*>(header);
 
-        LOG(debug4) << fmt::format("STF header: magic = {:016x}, tf-id = {:d}, rsv = {:08x}, FEM-type = {:08x}, FEM-id = {:08x}, bytes = {:d}, n-msg = {:d}, sec = {:d}, usec = {:d}",
-            stfHeader->magic, stfHeader->timeFrameId, stfHeader->reserve, stfHeader->FEMType, stfHeader->FEMId, stfHeader->length, stfHeader->numMessages, stfHeader->time_sec, stfHeader->time_usec);
-
+        LOG(debug4) << fmt::format(
+            "STF header: magic = {:016x}, tf-id = {:d}, rsv = {:08x}, FEM-type = {:08x}, FEM-id = {:08x}, bytes = {:d}, n-msg = {:d}, sec = {:d}, usec = {:d}",
+            stfHeader->magic, stfHeader->timeFrameId, stfHeader->reserved, stfHeader->FEMType,
+	    stfHeader->FEMId, stfHeader->length, stfHeader->numMessages, stfHeader->time_sec,
+	    stfHeader->time_usec);
 
         auto wordBegin = reinterpret_cast<uint64_t*>(bufBegin + headerNBytes);
         auto bodyNBytes = stfHeader->length - headerNBytes;
@@ -609,8 +635,12 @@ bool STFBFilePlayer::ConditionalRun()
                 auto & msg = outParts[outParts.Size()-1];
                 LOG(debug4) << " found Heartbeat data. " << msg.GetSize() << " bytes";
                 std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
-                LOG(debug4) << " dump";
-                //std::for_each(reinterpret_cast<uint64_t*>(msg.GetData()), reinterpret_cast<uint64_t*>(msg.GetData())+msg.GetSize()/sizeof(uint64_t), nestdaq::HexDump());
+                //LOG(debug4) << " dump";
+                //std::for_each(reinterpret_cast<uint64_t*>(
+		//    msg.GetData()),
+		//    reinterpret_cast<uint64_t*>(msg.GetData())+msg.GetSize()/sizeof(uint64_t),
+		//    nestdaq::HexDump());
+
                 wBegin = ptr+1;
                 break;
             }
@@ -619,7 +649,7 @@ bool STFBFilePlayer::ConditionalRun()
                 break;
             }
         }
-        bufBegin += stfHeader->length;
+    //    bufBegin += stfHeader->length;
     //}
     LOG(debug4) << " n-iteration = " << fNumIteration << ": out parts.size() = " << outParts.Size();
 
@@ -637,7 +667,8 @@ bool STFBFilePlayer::ConditionalRun()
                 // successfully sent
                 break;
             } else {
-                LOG(warn) << "Failed to enqueue time frame : TF = " << tfHeader->timeFrameId;
+                //LOG(warn) << "Failed to enqueue time frame : TF = " << tfHeader->timeFrameId;
+                LOG(warn) << "Failed to enqueue time frame : STF = " << stfHeader->timeFrameId;
             }
         }
     }
@@ -712,7 +743,7 @@ void addCustomOptions(bpo::options_description& options)
     (opt::MaxIterations.data(), bpo::value<std::string>()->default_value("0"),
      "maximum number of iterations")
     (opt::PollTimeout.data(),   bpo::value<std::string>()->default_value("0"),
-     "Timeout of send-socket polling (in msec)");
+     "Timeout of send-socket polling (in msec)")
 
     (opt::MaxHBF.data(),            bpo::value<std::string>()->default_value("1"),
      "maximum number of heartbeat frame in one sub time frame")
