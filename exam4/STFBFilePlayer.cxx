@@ -593,17 +593,21 @@ bool STFBFilePlayer::ConditionalRun()
 
     //for (auto i=0u; i<tfHeader->numSource; ++i) {
 
+#if 0
         outParts.AddPart(NewMessage(sizeof(STF::Header)));
         //LOG(debug4) << " i-sub = " << i << " size = " << outParts.Size();
         LOG(debug4) << " size = " << outParts.Size();
-
         auto &msgSTFHeader = outParts[outParts.Size()-1];
         LOG(debug4) << " STF header size =  " << msgSTFHeader.GetSize();
+#endif
 
         auto header = reinterpret_cast<char*>(msgSTFHeader.GetData());
         auto headerNBytes = msgSTFHeader.GetSize();
         std::memcpy(header, bufBegin, headerNBytes);
+
+#if 0
         auto stfHeader = reinterpret_cast<STF::Header*>(header);
+#endif
 
         LOG(debug4) << fmt::format(
             "STF header: magic = {:016x}, tf-id = {:d}, rsv = {:08x}, FEM-type = {:08x}, FEM-id = {:08x}, bytes = {:d}, n-msg = {:d}, sec = {:d}, usec = {:d}",
