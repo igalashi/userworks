@@ -52,15 +52,18 @@ public:
     ~STFBFilePlayer() = default;
 
 private:
+
+#if 0
     void BuildFrame(FairMQMessagePtr& msg, int index);
     void FillData(AmQStrTdc::Data::Word* first,
                   AmQStrTdc::Data::Word* last,
                   bool isSpillEnd);
     void FinalizeSTF();
     void NewData();
+    bool HandleData(FairMQMessagePtr&, int index);
+#endif
 
     bool ConditionalRun() override;
-    bool HandleData(FairMQMessagePtr&, int index);
     void InitTask() override;
     void PostRun() override;
     void PreRun() override;

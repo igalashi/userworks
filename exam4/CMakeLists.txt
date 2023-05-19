@@ -23,6 +23,7 @@ foreach(lvar IN ITEMS
 
   target_link_libraries(${EXEC} PUBLIC 
     ${Boost_LIBRARIES};  
+    ${fmt_LIB};
     FairMQ;
     FairMQStateMachine;
     FairLogger;
