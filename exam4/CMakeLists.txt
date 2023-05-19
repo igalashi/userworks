@@ -12,7 +12,7 @@ foreach(lvar IN ITEMS
     ${Boost_INCLUDE_DIRS};  
     ${FairMQ_INCDIR};
     ${FairMQ_INCDIR}/fairmq;
-    ${FairMQ_INCDIR}/fairlogger/bundled;
+    #${FairMQ_INCDIR}/fairlogger/bundled;
     ${CMAKE_SOURCE_DIR};
   )
 

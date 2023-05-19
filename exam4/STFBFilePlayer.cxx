@@ -11,7 +11,7 @@
 #include <sstream>
 #include <sys/time.h>
 
-#include <fairlogger/bundled/fmt/core.h>
+#include <fmt/core.h>
 
 #include <fairmq/runDevice.h>
 
@@ -426,8 +426,11 @@ void STFBFilePlayer::InitTask()
 
     fTimeFrameIdType   = static_cast<TimeFrameIdType>(
                          std::stoi(fConfig->GetProperty<std::string>(opt::TimeFrameIdType.data())));
-    fSTFId = -1;
 
+    fInputFileName     = fConfig->GetProperty<std::string>(opt::InputFileName.data());
+
+
+    fSTFId = -1;
 
 #if 0
     //////
@@ -500,9 +503,14 @@ void STFBFilePlayer::PreRun()
     fDirection = 0;
     fInputFile.open(fInputFileName.data(), std::ios::binary);
     if (!fInputFile) {
-        LOG(error) << " failed to open file = " << fInputFileName;
+        LOG(error) << "PreRun: failed to open file = " << fInputFileName;
+
+	assert(!fInputFile);
+
         return;
     }
+
+    LOG(info) << "PreRun: Input file: " << fInputFileName;
 
     // check FileSinkHeaderBlock
     uint64_t buf{0};
@@ -512,6 +520,9 @@ void STFBFilePlayer::PreRun()
         return;
     }
     LOG(info) << "check FS header";
+
+    std::cout << "# File Top " << buf << " " << nestdaq::FileSinkHeaderBlock::kMagic << std::endl;
+
     //if (buf == SubTimeFrame::Magic) {
     if (buf != nestdaq::FileSinkHeaderBlock::kMagic) {
         fInputFile.seekg(0, std::ios_base::beg);
@@ -582,6 +593,8 @@ bool STFBFilePlayer::ConditionalRun()
 
     std::vector<char> buf(stfHeader->length - sizeof(STF::Header));
     fInputFile.read(buf.data(), buf.size());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     if (static_cast<size_t>(fInputFile.gcount()) < msgSTFHeader.GetSize()) {
         LOG(warn) << "No data read. request = " << msgSTFHeader.GetSize()
@@ -661,10 +674,8 @@ bool STFBFilePlayer::ConditionalRun()
         }
     //    bufBegin += stfHeader->length;
     //}
+
     LOG(debug4) << " n-iteration = " << fNumIteration << ": out parts.size() = " << outParts.Size();
-
-
-
 
 
     auto poller = NewPoller(fOutputChannelName);
@@ -688,6 +699,7 @@ bool STFBFilePlayer::ConditionalRun()
         LOG(info) << "number of iterations of ConditionalRun() reached maximum.";
         return false;
     }
+
     return true;
 }
 

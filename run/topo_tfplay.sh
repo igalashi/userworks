@@ -40,6 +40,7 @@ endpoint     tdcemulator      out            type pair  method bind
 endpoint     stfbuilder       in            type pair  method connect 
 endpoint     stfbuilder       out           type push  method connect autoSubChannel true
 #endpoint     stfbuilder       dqm           type push  method bind 
+endpoint     STFBFilePlayer   out           type push  method bind 
 
 #
 #endpoint     tfbuilder       in            type pull  method bind autoSubChannel true
@@ -75,5 +76,6 @@ echo "---------------------------------------------------------------------"
 #link    tfbuilder         out            tfdump       in
 #link    stfbuilder        out            tfdump    in
 #link    TFBFilePlayer     out            tfdump    in
-link    TFBFilePlayer     out            fltcoin      in
-link    fltcoin           out            tfdump       in
+#link    TFBFilePlayer     out            fltcoin      in
+#link    fltcoin           out            tfdump       in
+link    STFBFilePlayer     out            tfdump      in
