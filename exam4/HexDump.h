@@ -43,7 +43,7 @@ public:
             ret += p[b];
          }
       } else {
-         sattic_assert(false_v<T>);
+         static_assert(false_v<T>);
       }
       return ret;
    }

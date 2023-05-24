@@ -38,12 +38,11 @@ public:
         static constexpr std::string_view InputChannelName  {"in-chan-name"};
         static constexpr std::string_view OutputChannelName {"out-chan-name"};
         static constexpr std::string_view DQMChannelName    {"dqm-chan-name"};
-        static constexpr std::string_view StripHBF          {"strip-hbf"};
-        static constexpr std::string_view MaxHBF            {"max-hbf"};
-        static constexpr std::string_view SplitMethod       {"split"};
-        static constexpr std::string_view TimeFrameIdType   {"time-frame-id-type"};
         static constexpr std::string_view MaxIterations     {"max-iterations"};
         static constexpr std::string_view PollTimeout       {"poll-timeout"};
+
+        static constexpr std::string_view SplitMethod       {"split"};
+        static constexpr std::string_view TimeFrameIdType   {"time-frame-id-type"};
     };
 
     STFBFilePlayer();
@@ -80,7 +79,6 @@ private:
     std::string fInputFileName;
     std::ifstream fInputFile;
 
-    int fMaxHBF {1};
     int fHBFCounter {0};
     uint32_t fSTFSequenceNumber {0};
     int fSplitMethod {0};
@@ -88,7 +86,7 @@ private:
 
     // int fH_flag {0};
     TimeFrameIdType fTimeFrameIdType;
-    int32_t fSTFId{-1}; // 8-bit spill counter and 16-bit HB frame from heartbeat delimiter
+    //int32_t fSTFId{-1}; // 8-bit spill counter and 16-bit HB frame from heartbeat delimiter
 
     int64_t fNumIteration   {0};
     int64_t fMaxIterations  {0};
