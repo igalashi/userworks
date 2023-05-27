@@ -48,29 +48,29 @@ void STFBFilePlayer::InitTask()
                              std::stoi(fConfig->GetProperty<std::string>(opt::TimeFrameIdType.data())));
     fInputFileName     = fConfig->GetProperty<std::string>(opt::InputFileName.data());
     fSplitMethod       = std::stoi(
-                             fConfig->GetProperty<std::string>(opt::SplitMethod.data());
+                             fConfig->GetProperty<std::string>(opt::SplitMethod.data()));
 
-                       fSTFSequenceNumber = 0;
-                       fHBFCounter = 0;
+    fSTFSequenceNumber = 0;
+    fHBFCounter = 0;
 
-                       LOG(debug) << " output channels: name = " << fOutputChannelName
-                       << " num = " << GetNumSubChannels(fOutputChannelName);
-                       fNumDestination = GetNumSubChannels(fOutputChannelName);
-                       LOG(debug) << " number of desntination = " << fNumDestination;
+    LOG(debug) << " output channels: name = " << fOutputChannelName
+               << " num = " << GetNumSubChannels(fOutputChannelName);
+    fNumDestination = GetNumSubChannels(fOutputChannelName);
+    LOG(debug) << " number of desntination = " << fNumDestination;
     if (fNumDestination < 1) {
-    LOG(warn) << " number of destination is non-positive";
+        LOG(warn) << " number of destination is non-positive";
     }
 
     LOG(debug) << "DQM channels: name = " << fDQMChannelName;
 
-               //	       << " num = " << fChannels.count(fDQMChannelName);
-               //    if (fChannels.count(fDQMChannelName)) {
-               //        LOG(debug) << " data quality monitoring channels: name = " << fDQMChannelName
-               //                   << " num = " << fChannels.at(fDQMChannelName).size();
-               //    }
+    //	       << " num = " << fChannels.count(fDQMChannelName);
+    //    if (fChannels.count(fDQMChannelName)) {
+    //        LOG(debug) << " data quality monitoring channels: name = " << fDQMChannelName
+    //                   << " num = " << fChannels.at(fDQMChannelName).size();
+    //    }
 
 #if 0
-               OnData(fInputChannelName, &STFBFilePlayer::HandleData);
+    OnData(fInputChannelName, &STFBFilePlayer::HandleData);
 #endif
 
 }
@@ -213,7 +213,7 @@ bool STFBFilePlayer::ConditionalRun()
                 std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
 
 #if 1
-                std::cout << "Msg: " << outParts.size();
+                std::cout << "Msg: " << outParts.Size();
                 std::for_each(
                     reinterpret_cast<uint64_t*>(msg.GetData()),
                     reinterpret_cast<uint64_t*>(msg.GetData())+msg.GetSize()/sizeof(uint64_t),
@@ -239,7 +239,7 @@ bool STFBFilePlayer::ConditionalRun()
                 std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
 
 #if 1
-                std::cout << "Msg: " << outParts.size();
+                std::cout << "Msg: " << outParts.Size();
                 std::for_each(
                     reinterpret_cast<uint64_t*>(msg.GetData()),
                     reinterpret_cast<uint64_t*>(msg.GetData())+msg.GetSize()/sizeof(uint64_t),
