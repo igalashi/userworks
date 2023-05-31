@@ -49,6 +49,8 @@ void STFBFilePlayer::InitTask()
     fInputFileName     = fConfig->GetProperty<std::string>(opt::InputFileName.data());
     fSplitMethod       = std::stoi(
                              fConfig->GetProperty<std::string>(opt::SplitMethod.data()));
+    fWait              = std::stoi(
+                             fConfig->GetProperty<std::string>(opt::IterationWait.data()));
 
     fSTFSequenceNumber = 0;
     fHBFCounter = 0;
@@ -154,9 +156,6 @@ bool STFBFilePlayer::ConditionalRun()
     std::vector<char> buf(stfHeader->length - sizeof(STF::Header));
     fInputFile.read(buf.data(), buf.size());
 
-    std::cout << "#D1 maigic : " << std::hex << stfHeader->magic << std::endl;
-
-
     if (static_cast<size_t>(fInputFile.gcount()) < msgSTFHeader.GetSize()) {
         LOG(warn) << "No data read. request = " << msgSTFHeader.GetSize()
                   << " bytes. gcount = " << fInputFile.gcount();
@@ -193,7 +192,8 @@ bool STFBFilePlayer::ConditionalRun()
 
     auto wBegin = wordBegin;
     auto wEnd   = wordBegin + nWords;
-    for (auto ptr = wBegin; ptr!=wEnd; ++ptr) {
+    AmQStrTdc::Data::Bits *prev;
+    for (auto ptr = wBegin ; ptr != wEnd ; ++ptr) {
         auto d = reinterpret_cast<AmQStrTdc::Data::Bits*>(ptr);
 
 #if 0
@@ -213,7 +213,7 @@ bool STFBFilePlayer::ConditionalRun()
                 std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
 
 #if 1
-                std::cout << "Msg: " << outParts.Size();
+                std::cout << "mode 0: Msg: " << std::dec << outParts.Size();
                 std::for_each(
                     reinterpret_cast<uint64_t*>(msg.GetData()),
                     reinterpret_cast<uint64_t*>(msg.GetData())+msg.GetSize()/sizeof(uint64_t),
@@ -233,20 +233,40 @@ bool STFBFilePlayer::ConditionalRun()
             case AmQStrTdc::Data::SpillEnd:
             //-----------------------------
             case AmQStrTdc::Data::Heartbeat: {
-                outParts.AddPart(NewMessage(sizeof(uint64_t) * (ptr - wBegin + 1)));
-                auto & msg = outParts[outParts.Size()-1];
-                LOG(debug4) << " found Heartbeat data. " << msg.GetSize() << " bytes";
-                std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
+
+		if ((ptr - wBegin) > 0) {
+
+                //fair::mq::Message & msg;
+                fair::mq::Message * pmsg;
+                if (prev->head == AmQStrTdc::Data::Heartbeat) {
+                    outParts.AddPart(NewMessage(sizeof(uint64_t) * (ptr - wBegin + 1)));
+                    //auto & msg = outParts[outParts.Size() - 1];
+                    pmsg = &outParts[outParts.Size() - 1];
+                    auto & msg = *pmsg;
+                    LOG(debug4) << " found Heartbeat data. " << msg.GetSize() << " bytes";
+                    std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
+                    wBegin = ptr + 1;
+                } else {
+                    outParts.AddPart(NewMessage(sizeof(uint64_t) * (ptr - wBegin)));
+                    //auto & msg = outParts[outParts.Size() - 1];
+                    pmsg = &outParts[outParts.Size() - 1];
+                    auto & msg = *pmsg;
+                    LOG(debug4) << " found Heartbeat data. " << msg.GetSize() << " bytes";
+                    std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
+                    wBegin = ptr;
+                }
 
 #if 1
-                std::cout << "Msg: " << outParts.Size();
+                auto & msg = *pmsg;
+                std::cout << "mode 1: Msg: " << std::dec << outParts.Size()
+                          << " size: " << outParts[outParts.Size() - 1].GetSize();
                 std::for_each(
                     reinterpret_cast<uint64_t*>(msg.GetData()),
                     reinterpret_cast<uint64_t*>(msg.GetData())+msg.GetSize()/sizeof(uint64_t),
                     HexDump(4));
 #endif
+		}
 
-                wBegin = ptr+1;
                 break;
             }
             //-----------------------------
@@ -255,11 +275,11 @@ bool STFBFilePlayer::ConditionalRun()
 
             }
         }
+        prev = d;
     }
 
     LOG(debug4) << " n-iteration = " << fNumIteration
                 << ": out parts.size() = " << outParts.Size();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     auto poller = NewPoller(fOutputChannelName);
     while (!NewStatePending()) {
@@ -281,6 +301,8 @@ bool STFBFilePlayer::ConditionalRun()
         LOG(info) << "number of iterations of ConditionalRun() reached maximum.";
         return false;
     }
+
+    if (fWait != 0) std::this_thread::sleep_for(std::chrono::milliseconds(fWait));
 
     return true;
 }
@@ -316,13 +338,15 @@ void addCustomOptions(bpo::options_description& options)
     (opt::DQMChannelName.data(),    bpo::value<std::string>()->default_value("dqm"),
      "Name of the data quality monitoring")
 
-    (opt::MaxIterations.data(), bpo::value<std::string>()->default_value("0"),
+    (opt::MaxIterations.data(),     bpo::value<std::string>()->default_value("0"),
      "maximum number of iterations")
-    (opt::PollTimeout.data(),   bpo::value<std::string>()->default_value("0"),
+    (opt::PollTimeout.data(),       bpo::value<std::string>()->default_value("0"),
      "Timeout of send-socket polling (in msec)")
 
-    (opt::SplitMethod.data(),       bpo::value<std::string>()->default_value("0"),
+    (opt::SplitMethod.data(),       bpo::value<std::string>()->default_value("1"),
      "STF split method")
+    (opt::IterationWait.data(),     bpo::value<std::string>()->default_value("0"),
+     "Iteration wait time (ms)")
     (opt::TimeFrameIdType.data(),   bpo::value<std::string>()->default_value("0"),
      "Time frame ID type:"
      " 0 = first HB delimiter,"

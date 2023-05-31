@@ -202,6 +202,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 				std::cout << std::endl;
 			}
 		}
+		std::cout <<  "#----" << std::endl;
 
 		#else
 		std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;

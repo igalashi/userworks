@@ -42,6 +42,8 @@ public:
         static constexpr std::string_view PollTimeout       {"poll-timeout"};
 
         static constexpr std::string_view SplitMethod       {"split"};
+        static constexpr std::string_view IterationWait     {"wait"};
+
         static constexpr std::string_view TimeFrameIdType   {"time-frame-id-type"};
     };
 
@@ -73,9 +75,6 @@ private:
     std::string fOutputChannelName;
     std::string fDQMChannelName;
 
-    //std::string fMaxIterations;
-    //std::string fPollTimeoutMS;
-
     std::string fInputFileName;
     std::ifstream fInputFile;
 
@@ -93,6 +92,7 @@ private:
     int     fDirection      {0};
     int     fNumDestination {0};
     int     fPollTimeoutMS  {0};
+    int     fWait           {0};
 
     bool mdebug;
     RecvBuffer fInputPayloads;
