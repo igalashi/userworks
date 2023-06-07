@@ -38,6 +38,7 @@ struct FltCoin : fair::mq::Device
 		static constexpr std::string_view InputChannelName   {"in-chan-name"};
 		static constexpr std::string_view OutputChannelName  {"out-chan-name"};
 		static constexpr std::string_view DataSupress        {"data-supress"};
+		static constexpr std::string_view RemoveHB           {"remove-hb"};
 		static constexpr std::string_view PollTimeout        {"poll-timeout"};
 	};
 
@@ -50,7 +51,6 @@ struct FltCoin : fair::mq::Device
 		fKt1 = new KTimer(1000);
 		fKt2 = new KTimer(1000);
 		fKt3 = new KTimer(1000);
-		fKt4 = new KTimer(1000);
 	}
 
 	void InitTask() override;
@@ -109,10 +109,10 @@ private:
 	uint32_t fId {0};
 	Trigger *fTrig;
 	bool fIsDataSupress = true;
+	bool fIsRemoveHB = true;
 	KTimer *fKt1;
 	KTimer *fKt2;
 	KTimer *fKt3;
-	KTimer *fKt4;
 };
 
 
@@ -141,13 +141,32 @@ void FltCoin::InitTask()
 	}
 	LOG(info) << "InitTask: DataSupress : " << fIsDataSupress;
 
+	std::string sIsRemoveHB = fConfig->GetValue<std::string>(opt::RemoveHB.data());
+	if (sIsRemoveHB == "true") {
+		fIsRemoveHB = true;
+	} else {
+		fIsRemoveHB = false;
+	}
+	LOG(info) << "InitTask: RemoveHB : " << fIsRemoveHB;
+
+
 	//fTrig->SetTimeRegion(1024 * 512);
 	fTrig->SetTimeRegion(1024 * 128);
 	fTrig->ClearEntry();
+
+#if 0
 	fTrig->Entry(0xc0a802a8, 2, 0);
 	fTrig->Entry(0xc0a802a8, 4, 0);
 	fTrig->Entry(0xc0a802a8, 6, 0);
 	fTrig->Entry(0xc0a802a8, 8, 0);
+
+	fTrig->SetLogic(4);
+#else
+	fTrig->Entry(0xc0a802a8, 0, 0);
+	fTrig->Entry(0xc0a802a8, 1, 0);
+
+	fTrig->SetLogic(2);
+#endif
 
 }
 
@@ -309,10 +328,6 @@ bool FltCoin::ConditionalRun()
 
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
 		assert(inParts.Size() >= 2);
-		if (fKt1->Check()) {
-			std::cout << "#Nmsg: " << std::dec << inParts.Size() << std::endl;
-		}
-
 		sw_start = std::chrono::system_clock::now();
 
 		struct DataBlock {
@@ -326,27 +341,28 @@ bool FltCoin::ConditionalRun()
 
 		std::vector<struct DataBlock> blocks;
 		std::vector< std::vector<struct DataBlock> > block_map;
-
-		//std::vector<int> hbblocks;
-		//std::vector< std::vector<int> > hbblock_map;
 		std::vector<struct SubTimeFrame::Header> stf;
-
-		uint64_t femid = 0;
-		uint64_t devtype = 0;
-		//int hbframe = 0;
-		int ifem = 0;
 
 
 		#if 1
-		if (fKt4->Check()) {
-			std::cout << "#DDDD " << std::hex;
+		if (fKt1->Check()) {
+			std::cout << "#Nmsg: " << std::dec << inParts.Size() << std::endl;
+			std::cout << "# " << std::hex;
 			for(int i = 0 ; i < inParts.Size() ; i++) {
 				uint64_t *top = reinterpret_cast<uint64_t *>(inParts[i].GetData());
-				struct SubTimeFrame::Header *stbh = reinterpret_cast<SubTimeFrame::Header *>(inParts[i].GetData());
+				struct TimeFrame::Header *tbh
+					= reinterpret_cast<TimeFrame::Header *>(inParts[i].GetData());
+				struct SubTimeFrame::Header *stbh
+					= reinterpret_cast<SubTimeFrame::Header *>(inParts[i].GetData());
+				if (tbh->magic == TimeFrame::Magic) {
+					std::cout << "TF Id: " << tbh->timeFrameId  << " Nsrc: " << tbh->numSource;
+				} else
 				if (stbh->magic == SubTimeFrame::Magic) {
-					std::cout << std::endl << "*" << std::setw(8) << stbh->timeFrameId;
+					std::cout << std::endl << "* STF : "
+						<< std::setw(8) << stbh->timeFrameId << " :"; 
 				} else {
-					std::cout << " " << std::setw(8) << IsHartBeat(top[0], SubTimeFrame::TDC64H);
+					std::cout << " " << std::setw(8) << std::setfill('0')
+						<< IsHartBeat(top[0], SubTimeFrame::TDC64H);
 				}
 			}
 			std::cout << std::dec << std::endl;
@@ -354,9 +370,10 @@ bool FltCoin::ConditionalRun()
 		#endif
 
 
+		uint64_t femid = 0;
+		uint64_t devtype = 0;
+		int ifem = 0;
 		std::vector<bool> flag_sending;
-
-		//for(auto& vmsg : inParts) {
 		for(int i = 0 ; i < inParts.Size() ; i++) {
 			flag_sending.push_back(true);
 			#if 0
@@ -368,7 +385,6 @@ bool FltCoin::ConditionalRun()
 			struct DataBlock dblock;
 
 			if (tfHeader->magic == TimeFrame::Magic) {
-				//iblock = 0;
 				ifem = -1;
 				stf.clear();
 				stf.resize(0);
@@ -379,8 +395,6 @@ bool FltCoin::ConditionalRun()
 				devtype = stfHeader->FEMType;
 				if (blocks.size() > 0) block_map.push_back(blocks);
 				stf.push_back(*stfHeader);
-				//if (hbblocks.size() > 0) hbblock_map.push_back(hbblocks);
-				//iblock = 0;
 				dblock.is_HB = false;
 				dblock.msg_index = -1;
 				blocks.clear();
@@ -390,7 +404,6 @@ bool FltCoin::ConditionalRun()
 				// make block map;
 
 				uint64_t *data = reinterpret_cast<uint64_t *>(inParts[i].GetData());
-
 				int hbframe = IsHartBeat(data[0], devtype);
 
 				//std::cout << "#DDD msg " << std::dec << i << ": "
@@ -404,11 +417,24 @@ bool FltCoin::ConditionalRun()
 					dblock.nTrig = 0;
 					dblock.HBFrame = 0;
 				} else {
-					//data ga nakattatokimo push_back
+					//data ga nakattatokimo push_back dummy
+					if (   (blocks.size() == 0)
+					    || (blocks.back().is_HB == true)) {
+
+						std::cout << "#W no data frame Msg:" << i
+							<< " " << inParts.Size() << std::endl;
+						//assert(0);
+
+						dblock.FEMId = femid;
+						dblock.Type = SubTimeFrame::NULDEV;
+						dblock.is_HB = false;
+						dblock.msg_index = i - 1;
+						dblock.nTrig = 0;
+						dblock.HBFrame = 0;
+						blocks.push_back(dblock);
+					}
 
 					dblock.HBFrame = hbframe;
-					//hbblocks.push_back(iblock);
-
 					dblock.FEMId = femid;
 					dblock.Type = devtype;
 					dblock.is_HB = true;
@@ -416,11 +442,9 @@ bool FltCoin::ConditionalRun()
 					dblock.nTrig = 0;
 				}
 				blocks.push_back(dblock);
-				//iblock++;
 			}
 		} /// end of the for loop
 		block_map.push_back(blocks);
-		//hbblock_map.push_back(hbblocks);
 
 		#if 0
 		int nblock = blocks.size();
@@ -466,11 +490,13 @@ bool FltCoin::ConditionalRun()
 					<< std::endl;
 					#endif
 
-					fTrig->Mark(
-						reinterpret_cast<unsigned char *>(
-							inParts[mindex].GetData()),
-						inParts[mindex].GetSize(),
-						vfemid, dbl->Type);
+					if (mindex >= 0) {
+						fTrig->Mark(
+							reinterpret_cast<unsigned char *>(
+								inParts[mindex].GetData()),
+							inParts[mindex].GetSize(),
+							vfemid, dbl->Type);
+					}
 				}
 			}
 
@@ -529,8 +555,8 @@ bool FltCoin::ConditionalRun()
 				if (nhits == 0) {
 					int mindex = block_map[iifem][i].msg_index;
 					bool is_HB = block_map[iifem][i].is_HB;
+					uint32_t dtype = block_map[iifem][i].Type;
 
-					//std::cout << "#D msg_index: " << mindex << std::end;;
 					//std::cout << "#D mindex: " << mindex
 					//	<< " h: " << is_HB
 					//	<< " t: " << block_map[iifem][i].Type
@@ -538,14 +564,20 @@ bool FltCoin::ConditionalRun()
 					//	<< std::dec << std::endl;;
 
 					if ((mindex > 0) && (! is_HB)) {
-						flag_sending[mindex] = false;
-						flag_sending[mindex + 1] = false;
+						if (dtype != SubTimeFrame::NULDEV) {
+							flag_sending[mindex] = false;
+						}
+						if (fIsRemoveHB) {
+							flag_sending[mindex + 1] = false;
+						}
 					}
 
+					#if 0
 					// HB wo otoshitemiru
 					if ((mindex > 0) && is_HB) {
 						flag_sending[mindex] = false;
 					}
+					#endif
 				} else {
 					//int mindex = block_map[iifem][i].msg_index;
 					//bool is_HB = block_map[iifem][i].is_HB;
@@ -800,6 +832,9 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::DataSupress.data(),
 			bpo::value<std::string>()->default_value("true"),
 			"Data supression enable")
+		(opt::RemoveHB.data(),
+			bpo::value<std::string>()->default_value("true"),
+			"Remove HB without hit")
 		(opt::PollTimeout.data(), 
 			bpo::value<std::string>()->default_value("1"),
 			"Timeout of polling (in msec)")

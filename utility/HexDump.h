@@ -7,7 +7,7 @@
 #include <vector>
 #include <string>
 
-namespace highp::e50 {
+namespace nestdaq {
 
 class HexDump {
 public:

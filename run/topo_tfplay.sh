@@ -40,12 +40,14 @@ endpoint     tdcemulator      out            type pair  method bind
 endpoint     stfbuilder       in            type pair  method connect 
 endpoint     stfbuilder       out           type push  method connect autoSubChannel true
 #endpoint     stfbuilder       dqm           type push  method bind 
-endpoint     STFBFilePlayer   out           type push  method bind 
+endpoint     STFBFilePlayer   out           type push  method connect 
 
 #
 #endpoint     tfbuilder       in            type pull  method bind autoSubChannel true
 endpoint     tfbuilder       in            type pull  method bind
 endpoint     tfbuilder       out           type push  method bind 
+endpoint     TimeFrameBuilder  in          type pull  method bind
+endpoint     TimeFrameBuilder  out         type push  method bind 
 
 endpoint     TFBFilePlayer   out           type push  method bind 
 
@@ -66,16 +68,30 @@ echo "---------------------------------------------------------------------"
 echo " config link"
 echo "---------------------------------------------------------------------"
 #---------------------------------------------------------------------------
-#       service1         channel1        service2     channel2      
+#       service1          channel1       service2     channel2      
 #---------------------------------------------------------------------------
 
 #link    Sampler           data           Sink         in
 #link    BenchmarkSampler  out            MQSink       in
+
+#link    tdcemulator       out            stfbuilder   in
+#link    stfbuilder        out            tfdump       in
+
 #link    tdcemulator       out            stfbuilder   in
 #link    stfbuilder        out            tfbuilder    in
 #link    tfbuilder         out            tfdump       in
-#link    stfbuilder        out            tfdump    in
-#link    TFBFilePlayer     out            tfdump    in
-#link    TFBFilePlayer     out            fltcoin      in
-#link    fltcoin           out            tfdump       in
-link    STFBFilePlayer     out            tfdump      in
+
+#link    TFBFilePlayer     out            tfdump       in
+
+#link    STFBFilePlayer    out            tfdump       in
+
+link    TFBFilePlayer     out            fltcoin      in
+link    fltcoin           out            tfdump       in
+
+#link    STFBFilePlayer    out            TimeFrameBuilder in
+#link    TimeFrameBuilder  out            fltcoin          in
+#link    fltcoin           out            tfdump           in
+
+#link    STFBFilePlayer    out            tfbuilder        in
+#link    tfbuilder         out            fltcoin          in
+#link    fltcoin           out            tfdump           in

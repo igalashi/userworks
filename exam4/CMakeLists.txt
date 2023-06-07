@@ -1,7 +1,8 @@
 #==============================================================================
 #foreach(lvar IN ITEMS Sampler; Sink; NullDevice;
 foreach(lvar IN ITEMS
-	tfdump; fltcoin; TFBFilePlayer; STFBFilePlayer
+	tfdump; fltcoin; TimeFrameBuilder;
+	TFBFilePlayer; STFBFilePlayer
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 

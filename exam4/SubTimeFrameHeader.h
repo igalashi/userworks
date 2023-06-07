@@ -16,6 +16,8 @@ constexpr uint64_t Magic  {0x444145482d465453};
 constexpr uint32_t TDC64H {2};
 constexpr uint32_t TDC64L {1};
 
+constexpr uint32_t NULDEV {0};
+
 struct Header {
     uint64_t magic        {Magic};
     uint32_t timeFrameId  {0}; 

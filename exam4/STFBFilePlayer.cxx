@@ -360,3 +360,29 @@ std::unique_ptr<fair::mq::Device> getDevice(FairMQProgOptions&)
 {
     return std::make_unique<STFBFilePlayer>();
 }
+
+
+#if 0
+// memo
+
+auto hoge = [&]() -> decltype(auto) {
+    if (prev->head == AmQStrTdc::Data::Heartbeat) {
+        outParts.AddPart(NewMessage(sizeof(uint64_t) * (ptr - wBegin + 1)));
+        auto & msg = outParts[outParts.Size() - 1];
+        LOG(debug4) << " found Heartbeat data. " << msg.GetSize() << " bytes";
+        std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
+        wBegin = ptr + 1;
+        return msg;
+    } else {
+        outParts.AddPart(NewMessage(sizeof(uint64_t) * (ptr - wBegin)));
+        auto & msg = outParts[outParts.Size() - 1];
+        LOG(debug4) << " found Heartbeat data. " << msg.GetSize() << " bytes";
+        std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
+        wBegin = ptr;
+        return msg;
+    }
+}
+
+auto& msg = hoge();  
+std::cout << "mode 1: Msg: " << std::dec << outParts.Size();
+#endif
