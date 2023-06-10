@@ -1,9 +1,9 @@
 /********************************************************************************
  *    Copyright (C) 2014 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH    *
- *									      *
- *	      This software is distributed under the terms of the	     *
- *	      GNU Lesser General Public Licence (LGPL) version 3,	     *
- *		  copied verbatim in the file "LICENSE"		       *
+ *										*
+ *	      This software is distributed under the terms of the		*
+ *	      GNU Lesser General Public Licence (LGPL) version 3,		*
+ *		  copied verbatim in the file "LICENSE"				*
  ********************************************************************************/
 
 #include <fairmq/Device.h>
@@ -17,7 +17,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "MessageUtil.h"
+#include "utility/MessageUtil.h"
 
 #include "HulStrTdcData.h"
 #include "SubTimeFrameHeader.h"
@@ -37,9 +37,10 @@ struct FltCoin : fair::mq::Device
 	struct OptionKey {
 		static constexpr std::string_view InputChannelName   {"in-chan-name"};
 		static constexpr std::string_view OutputChannelName  {"out-chan-name"};
-		static constexpr std::string_view DataSupress        {"data-supress"};
+		static constexpr std::string_view DataSuppress       {"data-suppress"};
 		static constexpr std::string_view RemoveHB           {"remove-hb"};
 		static constexpr std::string_view PollTimeout        {"poll-timeout"};
+		static constexpr std::string_view SplitMethod        {"split"};
 	};
 
 	FltCoin()
@@ -105,10 +106,11 @@ private:
 	int fNumDestination {0};
 	uint32_t fDirection {0};
 	int fPollTimeoutMS  {0};
+	int fSplitMethod    {0};
 
 	uint32_t fId {0};
 	Trigger *fTrig;
-	bool fIsDataSupress = true;
+	bool fIsDataSuppress = true;
 	bool fIsRemoveHB = true;
 	KTimer *fKt1;
 	KTimer *fKt2;
@@ -129,17 +131,21 @@ void FltCoin::InitTask()
 	fNumDestination = GetNumSubChannels(fOutputChannelName);
 	fPollTimeoutMS  = std::stoi(fConfig->GetProperty<std::string>(opt::PollTimeout.data()));
 
-        fName = fConfig->GetProperty<std::string>("id");
-        std::istringstream ss(fName.substr(fName.rfind("-") + 1));
-        ss >> fId;
+	fName = fConfig->GetProperty<std::string>("id");
+	std::istringstream ss(fName.substr(fName.rfind("-") + 1));
+	ss >> fId;
 
-	std::string sIsDataSupress = fConfig->GetValue<std::string>(opt::DataSupress.data());
-	if (sIsDataSupress == "true") {
-		fIsDataSupress = true;
+	fSplitMethod    = std::stoi(
+		fConfig->GetProperty<std::string>(opt::SplitMethod.data()));
+	LOG(info) << "InitTask: SplitMethod : " << fSplitMethod;
+
+	std::string sIsDataSuppress = fConfig->GetValue<std::string>(opt::DataSuppress.data());
+	if (sIsDataSuppress == "true") {
+		fIsDataSuppress = true;
 	} else {
-		fIsDataSupress = false;
+		fIsDataSuppress = false;
 	}
-	LOG(info) << "InitTask: DataSupress : " << fIsDataSupress;
+	LOG(info) << "InitTask: DataSuppress : " << fIsDataSuppress;
 
 	std::string sIsRemoveHB = fConfig->GetValue<std::string>(opt::RemoveHB.data());
 	if (sIsRemoveHB == "true") {
@@ -149,12 +155,11 @@ void FltCoin::InitTask()
 	}
 	LOG(info) << "InitTask: RemoveHB : " << fIsRemoveHB;
 
-
 	//fTrig->SetTimeRegion(1024 * 512);
 	fTrig->SetTimeRegion(1024 * 128);
 	fTrig->ClearEntry();
 
-#if 0
+#if 1
 	fTrig->Entry(0xc0a802a8, 2, 0);
 	fTrig->Entry(0xc0a802a8, 4, 0);
 	fTrig->Entry(0xc0a802a8, 6, 0);
@@ -347,7 +352,7 @@ bool FltCoin::ConditionalRun()
 		#if 1
 		if (fKt1->Check()) {
 			std::cout << "#Nmsg: " << std::dec << inParts.Size() << std::endl;
-			std::cout << "# " << std::hex;
+			std::cout << "# " << std::dec;
 			for(int i = 0 ; i < inParts.Size() ; i++) {
 				uint64_t *top = reinterpret_cast<uint64_t *>(inParts[i].GetData());
 				struct TimeFrame::Header *tbh
@@ -355,10 +360,11 @@ bool FltCoin::ConditionalRun()
 				struct SubTimeFrame::Header *stbh
 					= reinterpret_cast<SubTimeFrame::Header *>(inParts[i].GetData());
 				if (tbh->magic == TimeFrame::Magic) {
-					std::cout << "TF Id: " << tbh->timeFrameId  << " Nsrc: " << tbh->numSource;
+					std::cout << "TF Id: "
+						<< tbh->timeFrameId  << " Nsrc: " << tbh->numSource;
 				} else
 				if (stbh->magic == SubTimeFrame::Magic) {
-					std::cout << std::endl << "* STF : "
+					std::cout << std::endl << "* STF : " << std::hex
 						<< std::setw(8) << stbh->timeFrameId << " :"; 
 				} else {
 					std::cout << " " << std::setw(8) << std::setfill('0')
@@ -417,21 +423,23 @@ bool FltCoin::ConditionalRun()
 					dblock.nTrig = 0;
 					dblock.HBFrame = 0;
 				} else {
-					//data ga nakattatokimo push_back dummy
-					if (   (blocks.size() == 0)
-					    || (blocks.back().is_HB == true)) {
+					if (fSplitMethod > 0) {
+						//data ga nakattatokimo push_back dummy
+						if (   (blocks.size() == 0)
+						    || (blocks.back().is_HB == true)) {
 
-						std::cout << "#W no data frame Msg:" << i
-							<< " " << inParts.Size() << std::endl;
-						//assert(0);
+							std::cout << "#W no data frame Msg:" << i
+								<< " " << inParts.Size() << std::endl;
+							//assert(0);
 
-						dblock.FEMId = femid;
-						dblock.Type = SubTimeFrame::NULDEV;
-						dblock.is_HB = false;
-						dblock.msg_index = i - 1;
-						dblock.nTrig = 0;
-						dblock.HBFrame = 0;
-						blocks.push_back(dblock);
+							dblock.FEMId = femid;
+							dblock.Type = SubTimeFrame::NULDEV;
+							dblock.is_HB = false;
+							dblock.msg_index = i - 1;
+							dblock.nTrig = 0;
+							dblock.HBFrame = 0;
+							blocks.push_back(dblock);
+						}
 					}
 
 					dblock.HBFrame = hbframe;
@@ -447,7 +455,6 @@ bool FltCoin::ConditionalRun()
 		block_map.push_back(blocks);
 
 		#if 0
-		int nblock = blocks.size();
 		std::cout << "#D bloack_map.size: " << block_map.size() << std::endl;
 		for (auto& blk : block_map) {
 			std::cout << "#D block " << blk.size() << " / ";
@@ -459,7 +466,9 @@ bool FltCoin::ConditionalRun()
 		std::cout << std::endl;
 		#endif
 
-		//std::cout << "blocks: " << nblock << std::endl;
+		#if 0
+		std::cout << "blocks: " << blocks.size() << std::endl;
+		#endif
 		int totalhits = 0;
 		for (size_t i = 0 ; i < blocks.size() ; i++) {
 
@@ -517,11 +526,11 @@ bool FltCoin::ConditionalRun()
 			std::cout << "# HB: " << std::dec << i;
 			for (size_t iifem = 0 ; iifem < block_map.size() ; iifem++) {
 				struct DataBlock *dbl = &block_map[iifem][i];
-				//uint64_t vfemid = dbl->FEMId;
+				uint64_t vfemid = dbl->FEMId;
 				uint64_t vhbframe = dbl->HBFrame;
 				//std::cout << "# HB: " << std::dec << i
 				//<< " FEM: " << std::hex << vfemid
-				std::cout << " " << std::dec << vhbframe;
+				std::cout << " " << std::dec << (vfemid  & 0xff) << ":" << vhbframe;
 			}
 			std::cout << std::endl;
 			#endif
@@ -646,7 +655,6 @@ bool FltCoin::ConditionalRun()
 		uint32_t elapse = std::chrono::duration_cast<std::chrono::microseconds>(
 			sw_end - sw_start).count();
 		if (fKt3->Check()) {
-		//if (totalhits > 0) {
 			std::cout << "#Elapse: " << std::dec << elapse << " us"
 				<< " Hits: " << totalhits << std::endl;
 		}
@@ -654,7 +662,7 @@ bool FltCoin::ConditionalRun()
 
 		//Modify SubTimeFrameHeader, TimeFrameHeader
 		uint32_t tf_len = 0;
-		if (fIsDataSupress) {
+		if (fIsDataSuppress) {
 			for (int ii = 0 ; ii < inParts.Size() ; ii++) {
 				auto stfh = reinterpret_cast<struct SubTimeFrame::Header *>
 					(inParts[ii].GetData());
@@ -686,7 +694,7 @@ bool FltCoin::ConditionalRun()
 
 			// TimeFrameHeader
 			for (int ii = 0 ; ii < inParts.Size() ; ii++) {
-				if (flag_sending[ii] || (! fIsDataSupress)) {
+				if (flag_sending[ii] || (! fIsDataSuppress)) {
 					tf_len += (inParts.AtRef(ii)).GetSize();
 				}
 			}
@@ -716,7 +724,7 @@ bool FltCoin::ConditionalRun()
 
 		//uint64_t dlen = 0;
 		//for (int ii = 0 ; ii < inParts.Size() ; ii++) {
-		//	if (flag_sending[ii] || (! fIsDataSupress)) {
+		//	if (flag_sending[ii] || (! fIsDataSuppress)) {
 		//		dlen += (inParts.AtRef(ii)).GetSize();
 		//	}
 		//}
@@ -737,14 +745,22 @@ bool FltCoin::ConditionalRun()
 		//Copy
 		unsigned int msg_size = inParts.Size();
 		for (unsigned int ii = 0 ; ii < msg_size ; ii++) {
-			if (flag_sending[ii] || (! fIsDataSupress)) {
+			if (flag_sending[ii] || (! fIsDataSuppress)) {
 				FairMQMessagePtr msgCopy(fTransportFactory->CreateMessage());
 				msgCopy->Copy(inParts.AtRef(ii));
 				outParts.AddPart(std::move(msgCopy));
 			}
 		}
 
-		//std::cout << "#DDD outParts.Size: " << outParts.Size() << std::endl;
+		std::cout << "#DDD outParts.Size: " << outParts.Size() << std::endl;
+		std::cout << "#DDD flag_sending: ";
+		int flagcount = 0;
+		for (unsigned int ii = 0 ; ii < msg_size ; ii++) {
+			if ((ii % 11) == 1) std::cout << std::endl;
+			std::cout << flag_sending[ii];
+			if (flag_sending[ii]) flagcount++;
+		}
+		std::cout << " : " << flagcount << std::endl;
 	
 		//Send
 		#if 0
@@ -829,15 +845,17 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::OutputChannelName.data(),
 			bpo::value<std::string>()->default_value("out"),
 			"Name of the output channel")
-		(opt::DataSupress.data(),
+		(opt::DataSuppress.data(),
 			bpo::value<std::string>()->default_value("true"),
-			"Data supression enable")
+			"Data suppression enable")
 		(opt::RemoveHB.data(),
 			bpo::value<std::string>()->default_value("true"),
 			"Remove HB without hit")
 		(opt::PollTimeout.data(), 
 			bpo::value<std::string>()->default_value("1"),
 			"Timeout of polling (in msec)")
+		(opt::SplitMethod.data(),       bpo::value<std::string>()->default_value("1"),
+			"STF split method")
     		;
 
 }

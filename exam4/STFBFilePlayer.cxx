@@ -15,8 +15,8 @@
 
 #include <fairmq/runDevice.h>
 
-#include "HexDump.h"
-#include "MessageUtil.h"
+#include "utility/HexDump.h"
+#include "utility/MessageUtil.h"
 #include "SubTimeFrameHeader.h"
 #include "AmQStrTdcData.h"
 #include "FileSinkHeaderBlock.h"
