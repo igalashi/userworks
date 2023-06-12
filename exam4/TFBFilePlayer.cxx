@@ -124,12 +124,24 @@ bool TFBFilePlayer::ConditionalRun()
                 FairMQMessage *pmsg;
                 if (fSplitMethod == 0) {
                     outParts.AddPart(NewMessage(sizeof(uint64_t) * (ptr - wBegin + 1)));
-                    auto & msg = outParts[outParts.Size()-1];
+                    auto & msg = outParts[outParts.Size() - 1];
                     std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
                     pmsg = &msg;
-                    wBegin = ptr+1;
+                    wBegin = ptr + 1;
                 } else {
-                    if ((ptr - wBegin) > 1) {
+                    //std::cout << "#D " << (ptr - wBegin) << " : "
+                    //    << std::hex << (d-1)->head << " " << d->head << std::endl;
+                    if ((ptr - wBegin) == 0) {
+                        continue;
+                    } else
+                    if ( ((ptr - wBegin) > 1)
+                        || (((ptr - wBegin) == 1)
+                        && ((((d - 1)->head) != AmQStrTdc::Data::Heartbeat))) ) {
+                    //if ((ptr - wBegin) > 1) {
+                    //if ((((d - 1)->head) != AmQStrTdc::Data::Heartbeat) 
+                    //    || ( (((d - 1)->head) == AmQStrTdc::Data::Heartbeat)
+                    //        && (((d - 2)->head) == AmQStrTdc::Data::Heartbeat) )
+                    //         ) {
                         outParts.AddPart(NewMessage(sizeof(uint64_t) * (ptr - wBegin)));
                         auto & msg = outParts[outParts.Size() - 1];
                         std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
@@ -140,7 +152,7 @@ bool TFBFilePlayer::ConditionalRun()
                         auto & msg = outParts[outParts.Size() - 1];
                         std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
                         pmsg = &msg;
-                        wBegin = ptr+1;
+                        wBegin = ptr + 1;
                     }
                 }
 

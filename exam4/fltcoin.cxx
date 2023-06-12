@@ -412,8 +412,11 @@ bool FltCoin::ConditionalRun()
 				uint64_t *data = reinterpret_cast<uint64_t *>(inParts[i].GetData());
 				int hbframe = IsHartBeat(data[0], devtype);
 
-				//std::cout << "#DDD msg " << std::dec << i << ": "
-				//	<< " HBframe: " << hbframe << std::endl;
+				#if 0
+				std::cout << "#DDD msg " << std::dec << i << ": "
+					<< " HBFrame: " << hbframe
+					<< " blocks.size(): " << blocks.size() << std::endl;
+				#endif
 
 				if (hbframe < 0) {
 					dblock.FEMId = femid;
@@ -426,11 +429,23 @@ bool FltCoin::ConditionalRun()
 					if (fSplitMethod > 0) {
 						//data ga nakattatokimo push_back dummy
 						if (   (blocks.size() == 0)
-						    || (blocks.back().is_HB == true)) {
+							|| ((blocks.size() > 0)
+							&& (blocks.back().is_HB == true)) ) {
 
-							std::cout << "#W no data frame Msg:" << i
-								<< " " << inParts.Size() << std::endl;
+							#if 0
+							std::cout << "#W no data frame Msg:"
+								<< std::dec << i
+								<< " " << inParts.Size()
+								<< " " << blocks.size()
+								<< " is_HB:" << hbframe
+								<< " " << std::hex << data[0];
+							if (blocks.size() > 0) {
+								std::cout << " p_is_HB:"
+									<< blocks.back().is_HB;
+							}
+							std::cout << std::endl;
 							//assert(0);
+							#endif
 
 							dblock.FEMId = femid;
 							dblock.Type = SubTimeFrame::NULDEV;
@@ -668,6 +683,7 @@ bool FltCoin::ConditionalRun()
 					(inParts[ii].GetData());
 				if (stfh->magic == SubTimeFrame::Magic) {
 					uint32_t len_stf = 0;
+					uint32_t nmsg_stf = 0;
 					int kk = ii + 1;
 					for (int jj = ii + 1 ; jj < inParts.Size() ; jj++) {
 						auto sstf =
@@ -679,14 +695,16 @@ bool FltCoin::ConditionalRun()
 						} else
 						if (flag_sending[jj]) {
 							len_stf += inParts[jj].GetSize();
+							nmsg_stf++;
 						}
 					}
-					if (len_stf == 0 ) {
+					if (len_stf == 0) { // STF header kara ankunaru? OK?
 						flag_sending[ii] = false;
 					} else {
 						stfh->length
 							= len_stf
 							+ sizeof(struct SubTimeFrame::Header);
+						stfh->numMessages = nmsg_stf;
 					}
 					ii = kk - 1;
 				}
@@ -752,15 +770,27 @@ bool FltCoin::ConditionalRun()
 			}
 		}
 
-		std::cout << "#DDD outParts.Size: " << outParts.Size() << std::endl;
-		std::cout << "#DDD flag_sending: ";
+		#if 0
+		std::cout << "#D Blocks" << std::endl;
+		for (unsigned int ii = 0 ; ii < block_map.size() ; ii++) {
+			auto lblocks = block_map[ii];
+			for (unsigned int jj = 0 ; jj < lblocks.size() ; jj++) {
+				std::cout << " " << lblocks[jj].is_HB << ":" << lblocks[jj].HBFrame;
+			}
+			std::cout << std::endl;
+		}
+		std::cout << "#DD outParts.Size: " << outParts.Size() << std::endl;
+		std::cout << "#DD flag_sending: ";
 		int flagcount = 0;
 		for (unsigned int ii = 0 ; ii < msg_size ; ii++) {
-			if ((ii % 11) == 1) std::cout << std::endl;
+			auto stfHeader = reinterpret_cast<struct SubTimeFrame::Header *>
+				(inParts[ii].GetData());
+			if (stfHeader->magic == SubTimeFrame::Magic) std::cout << std::endl;
 			std::cout << flag_sending[ii];
 			if (flag_sending[ii]) flagcount++;
 		}
 		std::cout << " : " << flagcount << std::endl;
+		#endif
 	
 		//Send
 		#if 0
