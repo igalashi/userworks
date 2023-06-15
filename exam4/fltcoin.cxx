@@ -52,6 +52,7 @@ struct FltCoin : fair::mq::Device
 		fKt1 = new KTimer(1000);
 		fKt2 = new KTimer(1000);
 		fKt3 = new KTimer(1000);
+		fKt4 = new KTimer(1000);
 	}
 
 	void InitTask() override;
@@ -112,9 +113,13 @@ private:
 	Trigger *fTrig;
 	bool fIsDataSuppress = true;
 	bool fIsRemoveHB = true;
+
+	int fHBflag = 0;
+
 	KTimer *fKt1;
 	KTimer *fKt2;
 	KTimer *fKt3;
+	KTimer *fKt4;
 };
 
 
@@ -160,12 +165,20 @@ void FltCoin::InitTask()
 	fTrig->ClearEntry();
 
 #if 1
-	fTrig->Entry(0xc0a802a8, 2, 0);
-	fTrig->Entry(0xc0a802a8, 4, 0);
-	fTrig->Entry(0xc0a802a8, 6, 0);
-	fTrig->Entry(0xc0a802a8, 8, 0);
+	fTrig->Entry(0xc0a802a9, 16, 0);
+	fTrig->Entry(0xc0a802a9, 17, 0);
+	fTrig->Entry(0xc0a802a9, 18, 0);
+	fTrig->Entry(0xc0a802a9, 19, 0);
+	fTrig->Entry(0xc0a802a9, 20, 0);
+	fTrig->Entry(0xc0a802a9, 21, 0);
+	fTrig->Entry(0xc0a802a9, 22, 0);
+	fTrig->Entry(0xc0a802a9, 23, 0);
+	fTrig->Entry(0xc0a802a9, 24, 0);
+	fTrig->Entry(0xc0a802a9, 25, 0);
+	fTrig->Entry(0xc0a802a9, 26, 0);
+	fTrig->Entry(0xc0a802a9, 27, 0);
 
-	fTrig->SetLogic(4);
+	fTrig->SetLogic(12);
 #else
 	fTrig->Entry(0xc0a802a8, 0, 0);
 	fTrig->Entry(0xc0a802a8, 1, 0);
@@ -311,11 +324,16 @@ int FltCoin::IsHartBeat(uint64_t val, uint32_t type)
 		std::cout << "Unknown device : " << std::hex << type << std::endl;
 	}
 
-	if (hbflag > 0) {
-		if ((hbflag & 0x200) == 0x200) LOG(warn) << "HB Data lost";
-		if ((hbflag & 0x100) == 0x100) LOG(warn) << "HB Data confiliction";
-		if ((hbflag & 0x080) == 0x080) LOG(warn) << "HB LFN mismatch";
-		if ((hbflag & 0x040) == 0x040) LOG(warn) << "HB GFN mismatch";
+
+	if (hbflag > 0) fHBflag |= hbflag;
+	if (fKt4->Check()) {
+		if (fHBflag > 0) {
+			if ((fHBflag & 0x200) == 0x200) LOG(warn) << "HB Data lost";
+			if ((fHBflag & 0x100) == 0x100) LOG(warn) << "HB Data confiliction";
+			if ((fHBflag & 0x080) == 0x080) LOG(warn) << "HB LFN mismatch";
+			if ((fHBflag & 0x040) == 0x040) LOG(warn) << "HB GFN mismatch";
+		}
+		fHBflag = 0;
 	}
 
 	return hbframe;
@@ -476,7 +494,8 @@ bool FltCoin::ConditionalRun()
 		} /// end of the for loop
 		block_map.push_back(blocks);
 
-		#if 0
+		#if 1
+		if (fKt2->Check()) {
 		std::cout << "#D block_map.size: " << std::dec << block_map.size() << std::endl;
 		for (auto& blk : block_map) {
 			std::cout << "#D block " << std::setw(2) << blk.size() << " /";
@@ -486,13 +505,14 @@ bool FltCoin::ConditionalRun()
 			std::cout << std::endl;
 		}
 		std::cout << std::endl;
+		}
 		#endif
 
 		size_t bsize_min = block_map[0].size();
 		for (auto& blk : block_map) {
 			if (blk.size() < bsize_min) {
 				LOG(warn) << "Unmatched number of stf in TF "
-					<< bsize_min << " " << blk.size() << std::endl;
+					<< bsize_min << " " << blk.size();
 				bsize_min = blk.size();
 			}
 		}

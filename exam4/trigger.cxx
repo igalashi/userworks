@@ -285,7 +285,7 @@ std::vector<uint32_t> *Trigger::Scan()
 	fHits.resize(0);
 
 	for (unsigned int i = 0 ; i < fTimeRegionSize - 1; i++) {
-		#if 1
+		#if 0
 		if (((fEntryMask & fTimeRegion[i]) != fEntryMask)
 		&& ((fEntryMask & fTimeRegion[i + 1]) == fEntryMask)) {
 			fHits.emplace_back(i + 1);
