@@ -157,7 +157,7 @@ void TimeFrameBuilder::InitTask()
     fOutputChannelName = fConfig->GetProperty<std::string>(opt::OutputChannelName.data());
     auto numSubChannels = GetNumSubChannels(fInputChannelName);
     fNumSource = 0;
-    for (auto i=0; i<numSubChannels; ++i) {
+    for (auto i=0u; i<numSubChannels; ++i) {
         fNumSource += GetNumberOfConnectedPeers(fInputChannelName, i);
     }
 
