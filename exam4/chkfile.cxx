@@ -22,7 +22,8 @@
 #include "FilterHeader.h"
 #include "UnpackTdc.h"
 
-#include "FileSinkHeaderBlock.h"
+//#include "FileSinkHeaderBlock.h"
+#include "FileSinkHeader.h"
 
 
 
@@ -182,10 +183,25 @@ int reader(char *file)
 	char *fileheader = new char[512];
 	char *top = new char[1024*1024];
 	struct Filter::Header *flt = reinterpret_cast<struct Filter::Header *>(top);
+	struct FileSinkHeader::Header *sink = reinterpret_cast<struct FileSinkHeader::Header *>(top);
+
 	char *data = top + sizeof(struct Filter::Header);
 	std::ifstream ifs(file);
 
-	ifs.read(fileheader, sizeof(class nestdaq::FileSinkHeaderBlock));	
+	std::cout << "File: " << file << std::endl;
+	ifs.read(fileheader, sizeof(struct FileSinkHeader::Header));	
+	std::cout << " " << ifs.gcount() << std::endl;
+	std::cout << "Magic: " << std::hex << sink->magic << std::dec
+		<< "Magic: " << reinterpret_cast<char *>(&(sink->magic))
+		<< " Size: " << sink->size
+		<< " Type: " << sink->fairMQDeviceType
+		<< " Run: " << sink->runNumber
+		<< std::endl
+		<< " Start: " << ctime(&(sink->startUnixtime))
+		<< " Stop: " << ctime(&(sink->stopUnixtime))
+		<< std::endl;
+	std::cout << "Comment: " << sink->comments << std::endl;
+
 	while (true) {
 		ifs.read(top, sizeof(struct Filter::Header));
 		if (!ifs) break;

@@ -2,7 +2,8 @@
 #foreach(lvar IN ITEMS Sampler; Sink; NullDevice;
 foreach(lvar IN ITEMS
 	tfdump; fltcoin; TimeFrameBuilder;
-	TFBFilePlayer; STFBFilePlayer
+	TFBFilePlayer; STFBFilePlayer;
+	display
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 
@@ -15,11 +16,13 @@ foreach(lvar IN ITEMS
     ${FairMQ_INCDIR}/fairmq;
     #${FairMQ_INCDIR}/fairlogger/bundled;
     ${CMAKE_SOURCE_DIR};
+    ${ROOT_INCLUDE_DIRS}
   )
 
   target_link_directories(${EXEC} PUBLIC
     ${Boost_LIBRARY_DIRS}; 
     ${FairMQ_LIBDIR};
+    #${ROOT_LIBRARIES};
   )
 
   target_link_libraries(${EXEC} PUBLIC 
@@ -28,6 +31,7 @@ foreach(lvar IN ITEMS
     FairMQ;
     FairMQStateMachine;
     FairLogger;
+    ${ROOT_LIBRARIES};
   )
 
   install(TARGETS

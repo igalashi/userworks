@@ -131,6 +131,13 @@ if(fmt_DIR)
   message(STATUS "fmt_LIB: ${fmt_LIB}")
 endif()
 
+find_package(ROOT)
+if(ROOT_FOUND)
+  message(STATUS "ROOT found")
+  message(STATUS "ROOT_INCLUDE_DIRS ${ROOT_INCLUDE_DIRS}")
+  message(STATUS "ROOT_LIBRARIES ${ROOT_LIBRARIES}")
+endif()
+
 
 #------------------------------------------------------------------------------
 #add_subdirectory(plugins)

@@ -53,7 +53,7 @@ void TriggerMap::MakeTable(int nsignal)
 		fLut[i] = bval;
 		#endif
 
-		#if 1
+		#if 0
 		bool bval = false;
 		for (unsigned int j = 0 ;  j < (fNsignal / 2) ; j++) {
 			bval |= ExtractBit(i, (j * 2)) && ExtractBit(i, (j * 2) + 1);
@@ -68,6 +68,20 @@ void TriggerMap::MakeTable(int nsignal)
 		}
 		fLut[i] = bval;
 		#endif
+
+		#if 1
+		//bool bval = false;
+		bool dtof = false;
+		bool utof = false;
+		for (unsigned int j = 0 ;  j < 3 ; j++) {
+			dtof |= ExtractBit(i, (j * 2)) && ExtractBit(i, (j * 2) + 1);
+		}
+		for (unsigned int j = 0 ;  j < 2 ; j++) {
+			utof |= ExtractBit(i, (j * 2) + 6) && ExtractBit(i, (j * 2) + 6 + 1);
+		}
+		fLut[i] = utof && dtof;
+		#endif
+
 	}
 
 	return;
@@ -96,7 +110,7 @@ void TriggerMap::Dump()
 #ifdef TRIGGERMAP_TEST_MAIN
 int main(int argc, char *argv[])
 {
-	const int nsignal = 12;
+	const int nsignal = 10;
 	TriggerMap trig;
 
 	trig.MakeTable(nsignal);
