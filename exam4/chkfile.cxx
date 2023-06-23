@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <fstream>
+#include <filesystem>
 
 #include "HulStrTdcData.h"
 #include "SubTimeFrameHeader.h"
@@ -24,6 +25,7 @@
 
 //#include "FileSinkHeaderBlock.h"
 #include "FileSinkHeader.h"
+#include "FileSinkTrailer.h"
 
 
 
@@ -180,27 +182,32 @@ bool CheckData(char *buf)
 
 int reader(char *file)
 {
-	char *fileheader = new char[512];
+	char *fileheader = new char[sizeof(struct FileSinkHeader::Header)];
+	//char *filetrailer = new char[sizeof(struct FileSinkTrailer::Trailer)];
 	char *top = new char[1024*1024];
 	struct Filter::Header *flt = reinterpret_cast<struct Filter::Header *>(top);
-	struct FileSinkHeader::Header *sink = reinterpret_cast<struct FileSinkHeader::Header *>(top);
+	struct FileSinkHeader::Header *fsh = reinterpret_cast<struct FileSinkHeader::Header *>(fileheader);
+	//struct FileSinkTrailer::Trailer *fst = reinterpret_cast<struct FileSinkTrailer::Trailer *>(fileheader);
+	char *data = top + sizeof(struct FileSinkHeader::Header);
 
-	char *data = top + sizeof(struct Filter::Header);
+	std::filesystem::path path_to_file(file);
+	std::uintmax_t file_size = std::filesystem::file_size(path_to_file);
+	std::cout << "File size is " << file_size << " bytes." << std::endl;
+
 	std::ifstream ifs(file);
-
-	std::cout << "File: " << file << std::endl;
 	ifs.read(fileheader, sizeof(struct FileSinkHeader::Header));	
-	std::cout << " " << ifs.gcount() << std::endl;
-	std::cout << "Magic: " << std::hex << sink->magic << std::dec
-		<< "Magic: " << reinterpret_cast<char *>(&(sink->magic))
-		<< " Size: " << sink->size
-		<< " Type: " << sink->fairMQDeviceType
-		<< " Run: " << sink->runNumber
+	if (!ifs) return 1;
+	std::cout << "File: " << file << " Size: " << ifs.gcount() << std::endl;
+
+	std::cout << "Magic: " << std::hex << fsh->magic << std::dec << std::endl
+		<< "Magic: " << reinterpret_cast<char *>(&(fsh->magic))
+		<< " Size: " << fsh->size
+		<< " Type: " << fsh->fairMQDeviceType
+		<< " Run: " << fsh->runNumber
 		<< std::endl
-		<< " Start: " << ctime(&(sink->startUnixtime))
-		<< " Stop: " << ctime(&(sink->stopUnixtime))
-		<< std::endl;
-	std::cout << "Comment: " << sink->comments << std::endl;
+		<< " Start: " << ctime(&(fsh->startUnixtime))
+		<< " Stop : " << ctime(&(fsh->stopUnixtime));;;;
+	std::cout << "Comment: " << fsh->comments << std::endl;
 
 	while (true) {
 		ifs.read(top, sizeof(struct Filter::Header));

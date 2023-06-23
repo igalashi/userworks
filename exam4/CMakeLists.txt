@@ -40,3 +40,14 @@ foreach(lvar IN ITEMS
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 endforeach()
+
+add_executable(chkfile
+	chkfile.cxx
+	TimeFrameBuilder.h
+	SubTimeFrameHeader.h
+	FilterHeader.h
+	FileSinkHeader.h)
+set(CMAKE_CXX_FLAGS "-Wall -O -g")
+target_link_libraries(chkfile
+	stdc++fs
+}
