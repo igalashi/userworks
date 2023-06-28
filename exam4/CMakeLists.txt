@@ -3,7 +3,7 @@
 foreach(lvar IN ITEMS
 	tfdump; fltcoin; TimeFrameBuilder;
 	TFBFilePlayer; STFBFilePlayer;
-	display
+	onlinedisplay
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 
@@ -50,4 +50,4 @@ add_executable(chkfile
 set(CMAKE_CXX_FLAGS "-Wall -O -g")
 target_link_libraries(chkfile
 	stdc++fs
-}
+)

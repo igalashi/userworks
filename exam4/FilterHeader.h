@@ -6,7 +6,7 @@
 
 namespace Filter {
 
-// "DAEH-FT@" : little endian of "FLT-COIN"
+// "NIOC-TLF" : little endian of "FLT-COIN"
 constexpr uint64_t Magic {0x4e494f43'2d544c46};
 
 struct Header {
