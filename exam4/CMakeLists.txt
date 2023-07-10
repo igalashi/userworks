@@ -47,7 +47,18 @@ add_executable(chkfile
 	SubTimeFrameHeader.h
 	FilterHeader.h
 	FileSinkHeader.h)
-set(CMAKE_CXX_FLAGS "-Wall -O -g")
+target_compile_options(chkfile
+	PRIVATE -Wall -O -g)
 target_link_libraries(chkfile
 	stdc++fs
 )
+
+add_executable(LogiCalc
+	LogiCalc.cxx)
+target_compile_options(LogiCalc
+	PRIVATE -Wall -O -g -D LOGICALC_TEST_MAIN)
+
+add_executable(TriggerMap
+	TriggerMap.cxx)
+target_compile_options(TriggerMap
+	PRIVATE -Wall -O -g -D TRIGGERMAP_TEST_MAIN)

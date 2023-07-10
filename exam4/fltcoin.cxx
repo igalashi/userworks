@@ -166,7 +166,6 @@ void FltCoin::InitTask()
 	//fTrig->SetTimeRegion(1024 * 512);
 	fTrig->SetTimeRegion(1024 * 128);
 	fTrig->ClearEntry();
-
 	fTrig->SetMarkLen(10);
 #if 0
 	fTrig->Entry(0xc0a802a9, 16, 0); // ML
@@ -181,7 +180,9 @@ void FltCoin::InitTask()
 	fTrig->Entry(0xc0a802a9, 25, 0); // MR
 	fTrig->Entry(0xc0a802a9, 26, 0); // ML
 	fTrig->Entry(0xc0a802a9, 27, 0); // MR
-	fTrig->SetLogic(12);
+	//fTrig->SetLogic(12);
+	fTrig->MakeTable(12,
+		"0 1 & 2 3 & | 4 5 & | 6 7 & | 8 9 & | 10 11 & |");
 #endif
 
 #if 1
@@ -197,14 +198,14 @@ void FltCoin::InitTask()
 	fTrig->Entry(0xc0a802aa, 34, 0); //UR
 	fTrig->Entry(0xc0a802aa, 35, 0); //UR
 
-	fTrig->SetLogic(10);
+	std::string form("0 1 & 2 3 & | 4 5 & | 6 7 & 8 9 & | &");
+	fTrig->MakeTable(form);
 #endif
 
 #if 0
 	fTrig->Entry(0xc0a802a8, 0, 0);
 	fTrig->Entry(0xc0a802a8, 1, 0);
-
-	fTrig->SetLogic(2);
+	fTrig->MakeTable(2, "0 1 &");
 #endif
 
 }
@@ -374,7 +375,7 @@ bool FltCoin::ConditionalRun()
 
 	FairMQMessagePtr msg_header(fTransportFactory->CreateMessage());
 	struct Filter::Header fltheader;
-	struct TimeFrame::Header *i_tfHeader;
+	struct TimeFrame::Header *i_tfHeader = nullptr;
 	std::chrono::system_clock::time_point sw_start, sw_end;
 
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {

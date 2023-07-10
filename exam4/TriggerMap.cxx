@@ -8,15 +8,18 @@
 
 #include <iostream>
 #include <iomanip>
+#include <string>
 #include <vector>
 #include <stack>
+
+#include "LogiCalc.cxx"
 
 class TriggerMap
 {
 public:
 	TriggerMap(){};
 	virtual ~TriggerMap(){};
-	void MakeTable(int);
+	void MakeTable(std::string &);
 	bool LookUp(uint32_t);
 	void Dump();
 protected:
@@ -37,11 +40,15 @@ bool TriggerMap::ExtractBit(uint32_t val, int digit)
 	}
 }
 
-void TriggerMap::MakeTable(int nsignal)
+void TriggerMap::MakeTable(std::string & formula)
 {
-	fNsignal = nsignal;
-	fMapSize = 0x1 << nsignal;
+	LogiCalc calc;
+	calc.SetFormula(formula);
+
+	fNsignal = calc.GetSigMax() + 1;
+	fMapSize = 0x1 << fNsignal;
 	fLut.resize(fMapSize);
+
 
 	for (uint32_t i = 0 ; i < fMapSize ; i++) {
 	
@@ -69,8 +76,7 @@ void TriggerMap::MakeTable(int nsignal)
 		fLut[i] = bval;
 		#endif
 
-		#if 1
-		//bool bval = false;
+		#if 0
 		bool dtof = false;
 		bool utof = false;
 		for (unsigned int j = 0 ;  j < 3 ; j++) {
@@ -81,6 +87,8 @@ void TriggerMap::MakeTable(int nsignal)
 		}
 		fLut[i] = utof && dtof;
 		#endif
+
+		fLut[i] = calc.Calc(i);
 
 	}
 
@@ -110,10 +118,16 @@ void TriggerMap::Dump()
 #ifdef TRIGGERMAP_TEST_MAIN
 int main(int argc, char *argv[])
 {
-	const int nsignal = 10;
+	std::string form;
+	if (argc > 1) {
+		form = argv[1];
+	} else {
+		form = "0 1 & 2 3 & | 4 5 & | 6 7 & 8 9 & | &";
+	}
+
 	TriggerMap trig;
 
-	trig.MakeTable(nsignal);
+	trig.MakeTable(form);
 	for (uint32_t i = 0 ; i < 32 ; i++) {
 		std::cout  << trig.LookUp(i);
 	}
