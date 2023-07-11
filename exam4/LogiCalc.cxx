@@ -33,7 +33,7 @@ private:
 	std::stack<bool> fStack;
 	int fNsigMax = 32;
 	int fSigMax = 0;
-	const std::vector<std::string> fFuncs = {"&", "|", "!", "x"};
+	const std::vector<std::string> fFuncs = {"&", "|", "!", "x", "d"};
 	const std::string fSeparator = std::string(" ");
 
 };
@@ -128,10 +128,23 @@ bool LogiCalc::Calc(uint32_t val)
 				auto vtop = fStack.top(); fStack.pop();
 				fStack.push(! vtop);
 			}
+			if ((com == "d") || (com == "p")) {
+				if (fStack.size() > 0) {
+					fStack.pop();
+				} else {
+					std::cout << "#E empty stack" << std::endl;
+				}
+			}
 		}
 	}
 
-	bool ret = fStack.top(); fStack.pop();
+	bool ret;
+	if (fStack.size() > 0) {
+		ret = fStack.top(); fStack.pop();
+	} else {
+		std::cout << "#E empty stack result" << std::endl;
+		ret = false;
+	}
 	return ret;
 }
 
@@ -146,12 +159,12 @@ int main(int argc, char *argv[])
 		formula = "0 1 & 2 3 & | 4 5 & 6 7 & | &";
 	}
 
+	LogiCalc calc;
 
+	#if 0
 	const std::vector<std::string> form = {
 		"1  2 & 3 4 & |",
 		"32 && 3 4 & | *"};
-	LogiCalc calc;
-
 	for (auto & f : form) {
 		auto & commands = calc.SetFormula(f);
 		for (auto & com : commands) {
@@ -159,21 +172,26 @@ int main(int argc, char *argv[])
 		}
 		std::cout << std::endl;
 	}
+	#endif
 
 	auto & commands = calc.SetFormula(formula);
 
+	std::cout << "Formula(RPN): ";
 	for (auto & com : commands) std::cout  << " " << com;
-	std::cout << std::endl;
 
-	for (uint32_t i = 0 ; i < 256 ; i++) {
+	uint32_t range = 1 << (calc.GetSigMax() +1);
+	for (uint32_t i = 0 ; i < range ; i++) {
 		if ((i % 16) == 0) std::cout << std::endl;
 		std::cout << " " << calc.Calc(i);
 	}
-	std::cout << std::dec << std::endl;
-	for (uint32_t i = 0 ; i < 256 ; i++) {
+
+	#if 1
+	for (uint32_t i = 0 ; i < range ; i++) {
 		if ((i % 16) == 0) std::cout << std::endl;
 		std::cout << " " << std::hex << std::setw(2) << i << ":" << calc.Calc(i);
 	}
+	#endif
+
 	std::cout << std::dec << std::endl;
 	
 	return 0;

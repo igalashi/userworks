@@ -20,7 +20,7 @@
 #include "TimeFrameHeader.h"
 #include "FilterHeader.h"
 #include "UnpackTdc.h"
-#include "ktimer.cxx"
+#include "KTimer.cxx"
 
 namespace bpo = boost::program_options;
 

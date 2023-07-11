@@ -23,7 +23,7 @@
 #include "TimeFrameHeader.h"
 #include "FilterHeader.h"
 #include "UnpackTdc.h"
-#include "ktimer.cxx"
+#include "KTimer.cxx"
 
 #define USE_THREAD
 

@@ -24,8 +24,8 @@
 #include "TimeFrameHeader.h"
 #include "FilterHeader.h"
 
-#include "ktimer.cxx"
-#include "trigger.cxx"
+#include "KTimer.cxx"
+#include "Trigger.cxx"
 
 
 //std::atomic<int> gQdepth = 0;
