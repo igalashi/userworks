@@ -10,6 +10,7 @@
 #include "FileSinkTrailer.h"
 #include "SubTimeFrameHeader.h"
 #include "TimeFrameHeader.h"
+#include "FilterHeader.h"
 #include "utility/HexDump.h"
 
 #include "TFBFilePlayer.h"
@@ -59,34 +60,55 @@ bool TFBFilePlayer::ConditionalRun()
         return false;
     }
 
+    uint64_t magic;
+    char tempbuf[sizeof(struct Filter::Header)];
+    fInputFile.read(reinterpret_cast<char*>(&magic), sizeof(uint64_t));
+
+    if (magic == Filter::Magic) {
+        fInputFile.read(tempbuf, sizeof(struct Filter::Header) - sizeof(uint64_t));
+    } else 
+    if (magic == FST::Magic) {
+        FST::Trailer fst;
+        fst.magic = magic;
+        fInputFile.read(reinterpret_cast<char *>(&fst) + sizeof(uint64_t),
+            sizeof(FST::Trailer) - sizeof(uint64_t));
+	    LOG(info) << "magic : " << std::hex << fst.magic
+		      << " size : " << std::dec << fst.size << std::endl;
+	    return false;
+    } else
+    if (magic != TF::Magic) {
+        char hmagic[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        for (int i = 0 ; i < 8 ; i++) hmagic[i] = *(reinterpret_cast<char *>(&magic) + i);
+        LOG(error) << "Unkown magic = " << std::hex << magic << "(" << hmagic << ")";
+        return false;
+    }
+
+
     FairMQParts outParts;
 
     // TF header
     outParts.AddPart(NewMessage(sizeof(TF::Header)));
     auto &msgTFHeader = outParts[0];
-    fInputFile.read(reinterpret_cast<char*>(msgTFHeader.GetData()), msgTFHeader.GetSize());
-    if (static_cast<size_t>(fInputFile.gcount()) < msgTFHeader.GetSize()) {
-        LOG(warn) << "No data read. request = " << msgTFHeader.GetSize() << " bytes. gcount = " << fInputFile.gcount();
+
+    if (magic == TF::Magic) {
+        *(reinterpret_cast<uint64_t *>(msgTFHeader.GetData())) = magic;
+        fInputFile.read(reinterpret_cast<char*>(msgTFHeader.GetData()) + sizeof(uint64_t),
+            msgTFHeader.GetSize() - sizeof(uint64_t));
+    } else {
+        fInputFile.read(reinterpret_cast<char*>(msgTFHeader.GetData()),
+            msgTFHeader.GetSize());
+    }
+
+    if (static_cast<size_t>(fInputFile.gcount()) < (msgTFHeader.GetSize() - sizeof(uint64_t))) {
+        LOG(warn) << "No data read. request = " << msgTFHeader.GetSize()
+            << " bytes. gcount = " << fInputFile.gcount();
         return false;
     }
     auto tfHeader = reinterpret_cast<TF::Header*>(msgTFHeader.GetData());
     
-//    LOG(debug4) << fmt::format("TF header: magic = {:016x}, tf-id = {:d}, n-src = {:d}, bytes = {:d}",
-//                               tfHeader->magic, tfHeader->timeFrameId, tfHeader->numSource, tfHeader->length);
-    
-    // This code may not be beautiful. This can be rewritten by Takahashi-san or Igarashi-san. Nobu 2023.06.15
-    if (tfHeader->magic != TF::Magic) {
-        if (tfHeader->magic == FST::Magic) {
-            auto fsTrailer = reinterpret_cast<FST::Trailer*>(tfHeader);
-	    LOG(info) << "maigic : " << std::hex << fsTrailer->magic
-		      << " size : " << std::dec << fsTrailer->size << std::endl;
-	    return false;
-	}else{
-	    LOG(error) << "Unkown magic = " << tfHeader->magic;
-	    return false;
-	}
-    }
-    
+    LOG(debug4) << fmt::format("TF header: magic = {:016x}, tf-id = {:d}, n-src = {:d}, bytes = {:d}",
+        tfHeader->magic, tfHeader->timeFrameId, tfHeader->numSource, tfHeader->length);
+
     std::vector<char> buf(tfHeader->length - sizeof(TF::Header));
     fInputFile.read(buf.data(), buf.size());
     if (static_cast<size_t>(fInputFile.gcount()) < msgTFHeader.GetSize()) {

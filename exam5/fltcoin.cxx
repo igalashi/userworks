@@ -748,7 +748,8 @@ bool FltCoin::ConditionalRun()
 		int_processed_hbf += bsize_min / 2;
 		if (fKt3->Check()) {
 			if (int_processed_hbf > 0) {
-				trig_ratio = static_cast<double>(int_hits) / static_cast<double>(int_processed_hbf);
+				trig_ratio = static_cast<double>(int_hits)
+					/ static_cast<double>(int_processed_hbf);
 			}
 
 			std::cout << "#Elapse: " << std::dec << elapse << " us"
@@ -902,7 +903,9 @@ bool FltCoin::ConditionalRun()
 				std::cout << "+" << std::flush;
 			}
 		} else {
+			#if 0
 			std::cout << "NoDQM socket" << std::endl;
+			#endif
 		}
 		#endif
 
