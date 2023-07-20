@@ -32,7 +32,7 @@ void addCustomOptions(bpo::options_description& options)
         "Timeout of send-socket polling (in msec)")
     (opt::IterationWait.data(),     bpo::value<std::string>()->default_value("0"),
         "Iteration wait time (ms)")
-    (opt::SplitMethod.data(),       bpo::value<std::string>()->default_value("1"),
+    (opt::SplitMethod.data(),       bpo::value<std::string>()->default_value("2"),
         "STF split method")
     ;
 }
@@ -72,9 +72,9 @@ bool TFBFilePlayer::ConditionalRun()
         fst.magic = magic;
         fInputFile.read(reinterpret_cast<char *>(&fst) + sizeof(uint64_t),
             sizeof(FST::Trailer) - sizeof(uint64_t));
-	    LOG(info) << "magic : " << std::hex << fst.magic
-		      << " size : " << std::dec << fst.size << std::endl;
-	    return false;
+        LOG(info) << "magic : " << std::hex << fst.magic
+            << " size : " << std::dec << fst.size << std::endl;
+        return false;
     } else
     if (magic != TF::Magic) {
         char hmagic[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -106,8 +106,10 @@ bool TFBFilePlayer::ConditionalRun()
     }
     auto tfHeader = reinterpret_cast<TF::Header*>(msgTFHeader.GetData());
     
+    #if 0
     LOG(debug4) << fmt::format("TF header: magic = {:016x}, tf-id = {:d}, n-src = {:d}, bytes = {:d}",
         tfHeader->magic, tfHeader->timeFrameId, tfHeader->numSource, tfHeader->length);
+    #endif
 
     std::vector<char> buf(tfHeader->length - sizeof(TF::Header));
     fInputFile.read(buf.data(), buf.size());
@@ -165,7 +167,7 @@ bool TFBFilePlayer::ConditionalRun()
                     std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
                     pmsg = &msg;
                     wBegin = ptr + 1;
-                } else {
+                } else if (fSplitMethod == 1) {
                     //std::cout << "#D " << (ptr - wBegin) << " : "
                     //    << std::hex << (d-1)->head << " " << d->head << std::endl;
                     if ((ptr - wBegin) == 0) {
@@ -191,6 +193,18 @@ bool TFBFilePlayer::ConditionalRun()
                         pmsg = &msg;
                         wBegin = ptr + 1;
                     }
+                } else {
+                    if ((d + 1)->head == AmQStrTdc::Data::Heartbeat) {
+                        ptr++;
+                    } else {
+                        LOG(warn) << "Single Heartbeat) :"
+                            << std::hex << (*ptr) << " " << (*(ptr + 1));
+                    }
+                    outParts.AddPart(NewMessage(sizeof(uint64_t) * (ptr - wBegin + 1)));
+                    auto & msg = outParts[outParts.Size() - 1];
+                    std::memcpy(msg.GetData(), reinterpret_cast<char*>(wBegin), msg.GetSize());
+                    pmsg = &msg;
+                    wBegin = ptr + 1;
                 }
 
                 #if 1
@@ -293,8 +307,8 @@ void TFBFilePlayer::PreRun()
     } else if (buf == FileSinkHeader::Magic) { /* For new FileSinkHeader after 2023.06.15 */
         uint64_t hsize{0};
         fInputFile.read(reinterpret_cast<char*>(&hsize), sizeof(hsize));
-	LOG(debug) << "New FS header (Order: Magic + FS header size)";
-	fInputFile.seekg(hsize - 2*sizeof(uint64_t), std::ios_base::cur);
+        LOG(debug) << "New FS header (Order: Magic + FS header size)";
+        fInputFile.seekg(hsize - 2*sizeof(uint64_t), std::ios_base::cur);
     } else { /* For old FileSinkHeader before 2023.06.15 */
         uint64_t magic{0};
         fInputFile.read(reinterpret_cast<char*>(&magic), sizeof(magic));
