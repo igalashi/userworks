@@ -100,7 +100,7 @@ struct FltTrig : fair::mq::Device
 
 private:
 	int IsHartBeat(uint64_t, uint32_t);
-	int RemoveData(fair::mq::Part &, int);
+	int RemoveData(fair::mq::Parts &, int);
 
 	std::string fInputChannelName;
 	std::string fOutputChannelName;
@@ -369,40 +369,75 @@ int FltTrig::IsHartBeat(uint64_t val, uint32_t type)
 	return hbframe;
 }
 
-int RemoveData(fair::mq::Parts &parts, int index)
+int FltTrig::RemoveData(fair::mq::Parts &parts, int index)
 {
 	const int HB_SIZE = sizeof(uint64_t) * 2;
 	const uint64_t HB_HEAD = 0x7000'0000'0000'0000;
 
 	int rval = 0;
 	
-	fair::mq::MessagePtr msg = parts[index];
-	unsigned char *pdata = reinterpret_cast<char *>(msg->GetData());
-	uint64_t *pdata64 = reinterpret_cast<uint64_t *>(msg->GetData());
-	unsigned int msize = msg->GetSize();
+	fair::mq::Message & msg = parts[index];
+	//fair::mq::MessagePtr & msg = parts.At(index);
+	//auto & msg = parts[index];
+	char *pdata = reinterpret_cast<char *>(msg.GetData());
+	uint64_t *pdata64 = reinterpret_cast<uint64_t *>(msg.GetData());
+	unsigned int msize = msg.GetSize();
 
 	if (msize > HB_SIZE) {
 
-		for (int i = 0 ; i < (msize / sizeof(uint64_t)) ; i++) {
+		for (unsigned int i = 0 ; i < (msize / sizeof(uint64_t)) ; i++) {
 			std::cout << std::hex << pdata64[i] << std::endl;
 		}
 
-		auto hbp = std::make_unique<char hb[sizeof(uint64_t) * 2]>();
+		#if 0
+		auto hbp = std::make_unique<char[]>(HB_SIZE);
 		strncpy(hbp.get(), pdata + (msize - HB_SIZE), HB_SIZE);
-		uint64_t *v = reinterpret_cast<uint64_t *>(hbp.get());
-		for (int i = 0 ; i < (HB_SIZE / sizeof(uint64_t)) ; i++) {
+		auto hbmsg = MessageUtil::NewMessage(*this, std::move(hbp));
+		#endif
+
+		#if 1
+		auto hb = std::make_unique< std::vector<char> > (HB_SIZE);
+		strncpy(hb->data(), pdata + (msize - HB_SIZE), HB_SIZE);
+		auto hbmsg = MessageUtil::NewMessage(*this, std::move(hb));
+		#endif
+
+		#if 0
+		auto hb = new char[HB_SIZE];
+		fair::mq::MessagePtr hbmsg(
+			NewMessage(
+			reinterpret_cast<char *>(hb),
+			sizeof(hb),
+			[](void* ppdata, void*) {
+				char *p = reinterpret_cast<char *>(ppdata);
+				delete p;
+			},
+			nullptr)
+		);
+		auto phbchar = reinterpret_cast<char *>(hbmsg->GetData());
+		strncpy(phbchar, pdata + (msize - HB_SIZE), HB_SIZE);
+		#endif
+
+		uint64_t *v = reinterpret_cast<uint64_t *>(hbmsg->GetData());
+		for (unsigned int i = 0 ; i < (HB_SIZE / sizeof(uint64_t)) ; i++) {
 			if ((v[i] & 0xfc00'0000'0000'0000) != HB_HEAD) {
 				rval = -1;
 				std::cout << "#E not HB Tail " << v[i];
 			}
 		}
 
+		auto it = parts.fParts.begin();
+		std::advance(it, index);
+		parts.fParts.insert(it, std::move(hbmsg));
+		parts.fParts.erase(it + 1);
 
-		//////////////////// remove syori ///
-
-	
-		//auto fltHeader = std::make_unique<struct Filter::Header>();
-		//outParts.AddPart(MessageUtil::NewMessage(*this, std::move(fltHeader)));
+		#if 1
+		for (int i = 0 ; i < parts.Size() ; i++) {
+			auto phead = reinterpret_cast<uint64_t *>(parts[i].GetData());
+			std::cout << "#D " << i
+				<< " " << std::hex << phead[0] << " " << std::hex << phead[1]
+				<< " " << std::dec << parts[i].GetSize() << std::endl;
+		}
+		#endif
 	
 	}
 
