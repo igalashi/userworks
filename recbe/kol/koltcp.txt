@@ -1,0 +1,8 @@
+// koltcp.txt
+
+- 10-July 2006
+ ostream:
+   basic_ostream<charT,traits>& put(char_type c);
+   basic_ostream& write(const char_type* s, streamsize n);
+   basic_ostream& flush();
+ these function return *this;

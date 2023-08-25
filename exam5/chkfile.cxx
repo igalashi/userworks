@@ -466,8 +466,8 @@ int reader(char *file)
 
 int main(int argc, char* argv[])
 {
-	
-	reader(argv[1]);
+
+	if (argc > 1) reader(argv[1]);
 
 	return 0;
 }
