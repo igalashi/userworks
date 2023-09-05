@@ -35,13 +35,13 @@ echo "---------------------------------------------------------------------"
 #endpoint     BenchmarkSampler       out           type push  method bind 
 #endpoint     HulStrTdcEmulator      out           type push  method bind 
 #endpoint     tdcemulator      out            type pair  method bind 
-endpoint     RecbeSampler     out           type push method bind
+endpoint     RecbeSampler     out           type push method connect
 
 #
 #endpoint     stfbuilder       in            type pair  method connect 
 #endpoint     stfbuilder       out           type push  method connect autoSubChannel true
 #endpoint     stfbuilder       dqm           type push  method bind 
-endpoint     STFBFilePlayer   out           type push  method connect 
+#endpoint     STFBFilePlayer   out           type push  method connect 
 
 #
 #endpoint     tfbuilder       in            type pull  method bind autoSubChannel true
@@ -96,4 +96,5 @@ echo "---------------------------------------------------------------------"
 #link    tfbuilder         out            fltcoin          in
 #link    fltcoin           out            tfdump           in
 
-link    RecbeSampler       out            rawdump           in
+link    RecbeSampler       out            TimeFrameBuilder in
+link    TimeFrameBuilder   out            rawdump          in

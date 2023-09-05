@@ -92,8 +92,8 @@ int CliSock::Receive(char* data_buf, unsigned int length, int& flag)
 	while(revd_size < length) {
 		int nread = recv(fSocket, data_buf + revd_size, length -revd_size, 0);
 
-		if(nread == 0) break;
-		if(nread < 0) {
+		//if(nread == 0) break;
+		if(nread <= 0) {
 			flag = errno;
 			perror("CliSock::Receive");
 			break;

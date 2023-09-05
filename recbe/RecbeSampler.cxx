@@ -51,6 +51,7 @@ protected:
 	void PreRun() override;
 	//bool PreRun() override;
 	void Run() override;
+	bool CheckRecbeHeader(char*);
 
 private:
 	uint64_t fNumIterations = 0;
@@ -134,6 +135,26 @@ void RecbeSampler::InitTask()
 }
 
 
+bool RecbeSampler::CheckRecbeHeader(char *buf)
+{
+	int htype[] = {
+		Recbe::T_RAW, Recbe::T_SUPPRESS, Recbe::T_BOTH,
+		Recbe::T_RAW_OLD, Recbe::T_SUPPRESS_OLD
+	};
+	
+	struct Recbe::Header *h = reinterpret_cast<Recbe::Header *>(buf);
+	bool ret = false;
+	for (auto i : htype) {
+		if (h->type == i) {
+			ret = true;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+
 bool RecbeSampler::ConditionalRun()
 {
 	#if 0
@@ -146,7 +167,7 @@ bool RecbeSampler::ConditionalRun()
 	parts.AddPart(NewMessage(sizeof(SubTimeFrame::Header)));
 	auto &msgSTFHeader = parts[0];
 
-	int hsize = sizeof(struct recbe_header);
+	int hsize = sizeof(struct Recbe::Header);
 	parts.AddPart(NewMessage(hsize));
 	auto &msgRHeader = parts[1];
 	int flag;
@@ -156,8 +177,8 @@ bool RecbeSampler::ConditionalRun()
 		LOG(error) << "irregal data size" << nread << "/" << hsize;
 		if (flag == EAGAIN) LOG(error) << "Timeout";
 	}
-	struct recbe_header *pheader;
-	pheader = reinterpret_cast<struct recbe_header *>(msgRHeader.GetData());
+	struct Recbe::Header *pheader;
+	pheader = reinterpret_cast<struct Recbe::Header *>(msgRHeader.GetData());
 	int bodysize = static_cast<int>(ntohs(pheader->len));
 	int trig = static_cast<int>(ntohl(pheader->trig_count));
 
@@ -187,7 +208,7 @@ bool RecbeSampler::ConditionalRun()
 	pstfheader->timeFrameId = static_cast<uint32_t>(trig);
 	pstfheader->FEMType = static_cast<uint32_t>(pheader->type) & 0xff;
 	pstfheader->FEMId = static_cast<uint32_t>(pheader->id) & 0xff;
-	pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct recbe_header) + bodysize;
+	pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct Recbe::Header) + bodysize;
 	pstfheader->numMessages = 3;
 	struct timeval now;
 	gettimeofday(&now, nullptr);

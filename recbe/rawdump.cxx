@@ -270,7 +270,7 @@ bool RawDump::DumpMsgData(fair::mq::MessagePtr& msg)
 
 	uint32_t *wordBegin = reinterpret_cast<uint32_t *>(msg->GetData());
 	uint32_t *wordEnd = wordBegin + msize / sizeof(uint32_t);
-	std::for_each(wordBegin, wordEnd, nestdaq::HexDump(4));
+	std::for_each(wordBegin, wordEnd, HexDump(4));
 
 	return true;
 }
@@ -287,6 +287,11 @@ bool RawDump::ConditionalRun()
 		static uint64_t counts = 0;
 		static double freq = 0;
 
+
+		static int integraldatasize = 0;
+		for (auto &i : inParts) integraldatasize += i->GetSize();
+		static double pspeed = 0;;
+
 		const double kDURA = 10;
 		auto now = std::chrono::system_clock::now();
 		auto elapse = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -294,8 +299,12 @@ bool RawDump::ConditionalRun()
 		if (elapse > (1000 * kDURA)) {
 			freq = static_cast<double>(counts)
 				/ static_cast<double>(elapse) * 1000;
-			counts = 0;
 			start = std::chrono::system_clock::now();
+			counts = 0;
+			pspeed = static_cast<double>(integraldatasize)
+				/ static_cast<double>(elapse) * 1000;
+			integraldatasize = 0;
+			// std::cout << "#D pspeed: " << pspeed << std::endl;
 		}
 
 		#if 0
@@ -308,16 +317,22 @@ bool RawDump::ConditionalRun()
 		#endif
 
 		if ((fInterval == 0) || (fKt1->Check())) {
-			std::cout << "Nmsg: " << std::dec << inParts.Size();
-			std::cout << "  Freq: " << freq << "Hz  el: " << elapse
-				<< " C: " << counts  << std::endl;
+			double pspeed_mbs = pspeed / 1024.0 / 1024.0;
+			LOG(info) << "Nmsg: " << std::dec << inParts.Size()
+				<< " Freq: " << freq << " Hz  el: " << elapse
+				<< " C: " << counts 
+				<< " Thoughput: " << pspeed_mbs << " MB/s"
+				//<< " / " << pspeed << " B/s"
+				//<< " size: " << integraldatasize << " B"
+				;
 			// for(auto& vmsg : inParts) CheckMsgData(vmsg);
 		}
 
-		//for(auto& vmsg : inParts) {
-		for(int i = 0 ; i < inParts.Size() ; i++) {
-			std::cout << "Msg: " << std::dec << i << " Size: " << inParts.At(i)->GetSize();
-			DumpMsgData(inParts.At(i));
+		if (!fIsShrink) {
+			for(int i = 0 ; i < inParts.Size() ; i++) {
+				std::cout << "Msg: " << std::dec << i << " Size: " << inParts.At(i)->GetSize();
+				DumpMsgData(inParts.At(i));
+			}
 		}
 		
 

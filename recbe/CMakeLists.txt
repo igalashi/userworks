@@ -2,7 +2,7 @@
 #foreach(lvar IN ITEMS Sampler; Sink; NullDevice;
 foreach(lvar IN ITEMS
 	rawdump; RecbeSampler;
-#	TimeFrameBuilder;
+	TimeFrameBuilder;
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 

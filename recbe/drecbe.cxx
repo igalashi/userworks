@@ -89,10 +89,10 @@ int get_trig(zmq::socket_t &subsocket)
 	return retval;
 }
 #else
+static int g_trig_num = 0;
 int get_trig()
 {
-	static int trig_num = 0;
-	int retval = trig_num++;
+	int retval = g_trig_num++;
 	usleep(static_cast<int>(1000000.0 / g_freq));
 	return retval;
 }
@@ -104,21 +104,21 @@ int gen_dummy(int id, int trig_num, char *buf, int buf_size)
 	const int nsamples = 1;
 
 	int data_len = 48 * sizeof(unsigned short) * 2 * nsamples;
-	if (buf_size < static_cast<int>(sizeof(recbe_header)) + data_len) {
+	if (buf_size < static_cast<int>(sizeof(Recbe::Header)) + data_len) {
 		std::cerr << "Too small buffer!!" << std::endl;
 		return 0;
 	}
 
-	struct recbe_header *header;
-	header = reinterpret_cast<struct recbe_header *>(buf);
-	header->type = T_RAW_OLD;
+	struct Recbe::Header *header;
+	header = reinterpret_cast<struct Recbe::Header *>(buf);
+	header->type = Recbe::T_RAW_OLD;
 	header->id = static_cast<unsigned char>(id & 0xff);
 	header->sent_num = htons(g_nsent++);
 	header->time = htons(static_cast<unsigned short>(time(NULL) & 0xffff));
 	header->trig_count = htonl(trig_num);
 
 	unsigned short *body;
-	body = reinterpret_cast<unsigned short*>(buf + sizeof(recbe_header));
+	body = reinterpret_cast<unsigned short*>(buf + sizeof(Recbe::Header));
 
 	for (int j = 0 ; j < nsamples ; j++) {
 		for (int i = 0 ; i < 48 ; i++) {
@@ -131,7 +131,7 @@ int gen_dummy(int id, int trig_num, char *buf, int buf_size)
 
 	header->len = ntohs(static_cast<unsigned short int>(data_len & 0xffff));
 
-	return data_len + sizeof(recbe_header);
+	return data_len + sizeof(Recbe::Header);
 }
 
 int send_data(int id, int port)
@@ -182,18 +182,18 @@ int send_data(int id, int port)
 							}
 
 							#if 0
-							struct recbe_header *header;
+							struct Recbe::Header *header;
 							header = reinterpret_cast
-								<struct recbe_header *>(buf);
+								<struct Recbe::Header *>(buf);
 							std::cout << "#M Trig: "
 								<< ntohl(header->trig_count)
 								<< std::endl;
 							#endif
 
 						} else {
-							//struct recbe_header *header;
+							//struct Recbe::Header *header;
 							//header = reinterpret_cast
-							//	<struct recbe_header *>(buf);
+							//	<struct Recbe::Header *>(buf);
 							//header->sent_num
 							//header->time
 							//header->trig_count
@@ -212,6 +212,7 @@ int send_data(int id, int port)
 					std::cout << "sock.write : " << e.what() << std::endl;
 					sock.close();
 					g_nsent = 0;
+					g_trig_num = 0;
 					break;
 				}
 			}
