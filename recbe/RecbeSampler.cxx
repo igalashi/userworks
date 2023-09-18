@@ -23,6 +23,7 @@
 #include "SubTimeFrameHeader.h"
 #include "recbe.h"
 #include "CliSock.cxx"
+#include "RBCP.cxx"
 
 
 namespace bpo = boost::program_options;
@@ -36,6 +37,7 @@ public:
 		static constexpr std::string_view Timeout_ms        {"timeout"};
 		static constexpr std::string_view ControlPort       {"control-port"};
 		static constexpr std::string_view OutputChannelName {"out-chan-name"};
+		static constexpr std::string_view Mode              {"mode"};
 	};
 
 	RecbeSampler() : fair::mq::Device() {};
@@ -62,6 +64,7 @@ private:
 	unsigned int fControlPort = 4660;
 	unsigned int fDeviceType  = 0x100;
 	unsigned int fTimeout_ms = 0;
+	unsigned int fMode = 0;
 };
 
 
@@ -87,6 +90,9 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::Timeout_ms.data(),
 			bpo::value<std::string>()->default_value("0"),
 			"Timeout of the front-end deive")
+		(opt::Mode.data(),
+			bpo::value<std::string>()->default_value("1"),
+			"Recbe run mode")
 		;
 }
 
@@ -127,10 +133,26 @@ void RecbeSampler::InitTask()
 	fDeviceIp          = fConfig->GetProperty<std::string>(opt::DeviceIp.data());
 	fDataPort          = std::stoi(fConfig->GetProperty<std::string>(opt::DataPort.data()));
 	fControlPort       = std::stoi(fConfig->GetProperty<std::string>(opt::ControlPort.data()));
-	LOG(info) << "IP Address: " << fDeviceIp << ", Port: " << fDataPort << ", " << fControlPort;
+	fTimeout_ms        = std::stoi(fConfig->GetProperty<std::string>(opt::Timeout_ms.data()));
+	fMode              = std::stoi(fConfig->GetProperty<std::string>(opt::Mode.data()));
+
+	LOG(info) << "FEM IP Address: " << fDeviceIp
+		<< ", Port: " << fDataPort << ", Control Port: " << fControlPort;
 	//fDeviceType        = std::stoi(fConfig->GetProperty<std::string>("DeviceType"));
 	//LOG(info) << "Device Type: " << fDeviceType;
-	fTimeout_ms        = std::stoi(fConfig->GetProperty<std::string>(opt::Timeout_ms.data()));
+
+	RBCP rbcp;
+	rbcp.Open(fDeviceIp.c_str(), fControlPort);
+	char val[8]; val[1] = 0x00;
+	if (fMode != 0) {
+		val[0] = fMode;
+		if (rbcp.Write(val, Recbe::R_MODE, 1) > 0) {
+			LOG(info) << "Run Mode: " << fMode;
+		} else {
+			LOG(error) << "RBCP err. IP: " << fDeviceIp << " Port: " << fControlPort;
+		}
+	}
+	rbcp.Close();
 
 }
 
@@ -186,11 +208,12 @@ bool RecbeSampler::ConditionalRun()
 	std::cout << std::hex
 		<< "#D Type: " << (static_cast<int>(pheader->type) & 0xff)
 		<< " ID: " << (static_cast<int>(pheader->id) & 0xff)
-		<< std::endl;
-	std::cout << "#D len: " << std::dec << bodysize
+		<< "  len: " << std::dec << bodysize
 		<< " Sent: " << std::dec << ntohs(pheader->sent_num)
 		<< " Trig: " << trig << " Time: " << ntohs(pheader->time)
 		<< std::endl;;
+	#else
+	std::cout << "." << std::flush;
 	#endif
 
 	parts.AddPart(NewMessage(bodysize));

@@ -17,7 +17,7 @@ class TimeFrameBuilder : public fair::mq::Device
 {
 public:
     struct OptionKey {
-        static constexpr std::string_view NumSource            {"num-source"};
+        // static constexpr std::string_view NumSource            {"num-source"};
         static constexpr std::string_view BufferTimeoutInMs    {"buffer-timeout"};
         static constexpr std::string_view InputChannelName     {"in-chan-name"};
         static constexpr std::string_view OutputChannelName    {"out-chan-name"};

@@ -45,16 +45,16 @@ endpoint     RecbeSampler     out           type push method connect
 
 #
 #endpoint     tfbuilder       in            type pull  method bind autoSubChannel true
-endpoint     tfbuilder       in            type pull  method bind
-endpoint     tfbuilder       out           type push  method bind 
+#endpoint     tfbuilder       in            type pull  method bind
+#endpoint     tfbuilder       out           type push  method bind 
 endpoint     TimeFrameBuilder  in          type pull  method bind
 endpoint     TimeFrameBuilder  out         type push  method bind 
 
-endpoint     TFBFilePlayer   out           type push  method bind 
+#endpoint     TFBFilePlayer   out           type push  method bind 
 
 #
-endpoint     fltcoin        in             type pull  method connect
-endpoint     fltcoin        out            type push  method bind
+#endpoint     fltcoin        in             type pull  method connect
+#endpoint     fltcoin        out            type push  method bind
 
 
 # Sink
@@ -62,7 +62,10 @@ endpoint     fltcoin        out            type push  method bind
 #endpoint     Sink          in              type pull  method connect
 #endpoint     MQSink        in              type pull  method connect
 #endpoint     tfdump        in              type pull  method connect
+
 endpoint     rawdump       in              type pull  method connect
+#endpoint     rawdump       in              type pull  method bind
+endpoint     RecbeDisplay   in              type pull  method connect
 
 
 echo "---------------------------------------------------------------------"
@@ -96,5 +99,7 @@ echo "---------------------------------------------------------------------"
 #link    tfbuilder         out            fltcoin          in
 #link    fltcoin           out            tfdump           in
 
+#link    RecbeSampler       out             rawdump          in
 link    RecbeSampler       out            TimeFrameBuilder in
-link    TimeFrameBuilder   out            rawdump          in
+#link    TimeFrameBuilder   out            rawdump          in
+link    TimeFrameBuilder   out            RecbeDisplay     in

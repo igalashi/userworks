@@ -247,16 +247,18 @@ bool TimeFrameBuilder::ConditionalRun()
                     }
                     //std::cout << "#D lost FEMid :" << stfId << ":";
                     //for (auto & i : expected) std::cout << " " << (i & 0xff);
-                    std::cout << "#D FEM TFN: " << stfId << ", N: " << femid.size() << ", id:";
+                    std::cout << "#D FEM TFN: " << stfId << ", N: " << femid.size()
+			<< ", tfBuf.size(): " << tfBuf.size()
+			<< ", id:";
                     for (auto & i : femid) std::cout << " " << (i & 0xff);
                     std::cout << std::endl;
+
                     #if 0
                     std::cout << "#D HB :" << stfId << ":";
                     for (auto & i : hb) std::cout << " " << std::hex <<i;
                     std::cout << std::dec << std::endl;
                     #endif
                     #endif
-
 
                     /*
                     {// for debug-begin

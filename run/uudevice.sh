@@ -13,7 +13,8 @@ CONFIG_URI=' --parameter-config-uri tcp://127.0.0.1:6379/2'
 #  BINDIR=/home/nestdaq/nestdaq/bin
 #fi
 #BINDIR=/home/nestdaq/nestdaq/bin
-BINDIR=/home/nestdaq/nestdaq/src/userworks/build/recbe
+#BINDIR=/home/nestdaq/nestdaq/src/userworks/build/recbe
+BINDIR=/home/cdc/nestdaq/src/userworks/build/recbe
 
 #export LD_LIBRARY_PATH=$ROOTSYS/lib
 
@@ -44,7 +45,8 @@ function run_device () {
   var+=$DAQSERVICE_URI
   var+=$METRICS_URI
   var+=$CONFIG_URI
-  var+=" --severity debug"
+#  var+=" --severity debug"
+  var+=" --severity info"
 
   if [ -n "$MY_TERM" ]; then
     #echo \

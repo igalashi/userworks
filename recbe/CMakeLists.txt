@@ -3,6 +3,7 @@
 foreach(lvar IN ITEMS
 	rawdump; RecbeSampler;
 	TimeFrameBuilder;
+	RecbeDisplay;
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 
