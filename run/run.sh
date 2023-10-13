@@ -9,7 +9,7 @@
 
 
 tmux new-session -d -s sampler
-for runID in {0..14}
+for runID in {0..95}
 do
     echo "start device Sampler ${runID}"
     #tmux new-window -d -n S${runID} -t sampler -- "./uudevice.sh RecbeSampler --ip 127.0.0.1 --port `expr 9000 + ${runID}`" &

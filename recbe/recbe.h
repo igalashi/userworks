@@ -22,6 +22,8 @@ constexpr int T_RAW_OLD	     = 0x22;
 constexpr int T_SUPPRESS_OLD = 0x20;
 #endif
 
+constexpr int N_CH = 48;
+
 // network byte order
 struct Header {
 	unsigned char  type;

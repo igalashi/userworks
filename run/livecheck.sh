@@ -22,8 +22,8 @@ fi
 COUNTS=1
 IPHEAD="192.168.10."
 
-#NUM=`seq 100 130`
-NUM='17 29 30 31 45 46 47 63 64 68 81 82 99 100 116 117 118'
+NUM=`seq 17 118`
+#NUM='17 29 30 31 45 46 47 63 64 68 81 82 99 100 116 117 118'
 
 for i in $NUM
 do
@@ -34,12 +34,12 @@ do
 	then
 		if test $LFLAG -eq 0
 		then
-			echo $ip "	: LIVE"
+			echo $ip "	: ALIVE"
 		fi
 	else
 		if test $DFLAG -eq 0
 		then
-			echo $ip "	: DEAD"
+			echo $ip "	: DEAD "
 		fi
 	fi
 done

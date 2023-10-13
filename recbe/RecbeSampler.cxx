@@ -88,7 +88,7 @@ void addCustomOptions(bpo::options_description& options)
 			bpo::value<std::string>()->default_value("4660"),
 			"Control port of the front-end deive")
 		(opt::Timeout_ms.data(),
-			bpo::value<std::string>()->default_value("0"),
+			bpo::value<std::string>()->default_value("1000"),
 			"Timeout of the front-end deive")
 		(opt::Mode.data(),
 			bpo::value<std::string>()->default_value("1"),
@@ -196,8 +196,8 @@ bool RecbeSampler::ConditionalRun()
 	int nread = fSock.Receive(
 		reinterpret_cast<char *>(msgRHeader.GetData()), hsize, flag);
 	if (nread != hsize) {
-		LOG(error) << "irregal data size" << nread << "/" << hsize;
-		if (flag == EAGAIN) LOG(error) << "Timeout";
+		LOG(warn) << "irregal data size" << nread << "/" << hsize;
+		if (flag == EAGAIN) LOG(warn) << "Timeout";
 	}
 	struct Recbe::Header *pheader;
 	pheader = reinterpret_cast<struct Recbe::Header *>(msgRHeader.GetData());
@@ -221,8 +221,8 @@ bool RecbeSampler::ConditionalRun()
 	nread = fSock.Receive(
 		reinterpret_cast<char *>(msgRBody.GetData()), bodysize, flag);
 	if (nread != bodysize) {
-		LOG(error) << "irregal data size" << nread << "/" << bodysize;
-		if (flag == EAGAIN) LOG(error) << "Timeout";
+		LOG(warn) << "irregal data size" << nread << "/" << bodysize;
+		if (flag == EAGAIN) LOG(warn) << "Timeout";
 	}
 
 	struct SubTimeFrame::Header *pstfheader

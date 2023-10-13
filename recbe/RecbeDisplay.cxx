@@ -27,6 +27,7 @@
 #include "KTimer.cxx"
 #include "uhbook.cxx"
 #include "recbe.h"
+#include "ghistogram.cxx"
 
 #define USE_THREAD
 
@@ -71,7 +72,7 @@ struct RecbeDisplay : fair::mq::Device
 		#endif
 		#endif
 
-		//gHistReset();
+		gHistReset();
 
 		//OnData(fInputChannelName, &RecbeDisplay::HandleData);
 	}
@@ -175,6 +176,7 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< std::endl;
 
 		fFeType = pstf->FEMType;
+		fFEMId  = pstf->FEMId;
 
 	} else if ((msg_magic & 0x0000'0000'0000'00ff) == 0x0000'0000'0000'0022) {
 		struct Recbe::Header *recbe;
@@ -192,10 +194,43 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< " Len: " << len
 			<< " Trig: " << trig_count
 			<< std::endl;
+
+		fFeType = static_cast<unsigned int>(recbe->type);
+		fFEMId  = static_cast<unsigned int>(recbe->id);
+
 	} else {
 		std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
+		std::cout << "#FE " << fFeType << " id: " << fFEMId << std::endl;
+
+		unsigned int i = 0;
+		int tic = 0;
+		while (i < msize) {
+			std::cout << "ADC[" << tic << "]";
+			for (int j = 0 ; j < 48 ; j++) {
+				int val = ntohs(
+					*(reinterpret_cast<uint16_t *>(
+						(pdata + ((tic * 48 * 2) + j) * sizeof(uint16_t))
+					)));
+				std::cout << " " << val;
+				i += sizeof(uint16_t);
+			}
+			std::cout << std::endl;
+			std::cout << "TDC[" << tic << "]";
+			for (int j = 0 ; j < 48 ; j++) {
+				int val = ntohs(
+					*(reinterpret_cast<uint16_t *>(
+						(pdata + ((tic * 48 * 2 + 48) + j) * sizeof(uint16_t))
+					)));
+				std::cout << " " << val;
+				i += sizeof(uint16_t);
+			}
+			std::cout << std::endl;
+			tic++;
+		}
+
+		#if 0
 		for (unsigned int i = 0 ; i < msize ; i += 48 * 2 * sizeof(uint16_t)) {
-			std::cout << "ADC : ";
+			std::cout << "ADC[" << i << "] ";
 			for (unsigned int j = 0 ; j < 48 ; j++) {
 				int val = ntohs(
 					*(reinterpret_cast<unsigned short int *>(
@@ -204,7 +239,7 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 				std::cout << " " << val;
 			}
 			std::cout << std::endl;
-			std::cout << "TDC : ";
+			std::cout << "TDC[" << i << "] ";
 			for (unsigned int j = 0 ; j < 48 ; j++) {
 				int val = ntohs(
 					*(reinterpret_cast<unsigned short int *>(
@@ -214,69 +249,9 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 			}
 			std::cout << std::endl;
 		}
+		#endif
 
 		#if 0
-		for (unsigned int j = 0 ; j < msize ; j += 8) {
-			std::cout << "# " << std::setw(8) << j << " : "
-				<< std::hex << std::setw(2) << std::setfill('0')
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 7]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 6]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 5]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 4]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 3]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 2]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 1]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 0]) << " : ";
-
-			if        ((pdata[j + 7] & 0xfc) == (TDC64H::T_TDC << 2)) {
-				std::cout << "TDC ";
-				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[j]));
-				if (fFeType == SubTimeFrame::TDC64H) {
-					struct TDC64H::tdc64 tdc;
-					TDC64H::Unpack(*dword, &tdc);
-					std::cout << "H :"
-						<< " CH: " << std::dec << std::setw(3) << tdc.ch
-						<< " TDC: " << std::setw(7) << tdc.tdc << std::endl;
-				} else
-				if (fFeType == SubTimeFrame::TDC64L) {
-					struct TDC64L::tdc64 tdc;
-					TDC64L::Unpack(*dword, &tdc);
-					std::cout << "L :"
-						<< " CH: " << std::dec << std::setw(3) << tdc.ch
-						<< " TDC: " << std::setw(7) << tdc.tdc << std::endl;
-				} else {
-					std::cout << "UNKNOWN"<< std::endl;
-				}
-
-			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_HB << 2)) {
-				std::cout << "Hart beat" << std::endl;
-
-				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[j]));
-				struct TDC64H::tdc64 tdc;
-				TDC64H::Unpack(*dword, &tdc);
-				int hbflag = tdc.flag;
-			        if (hbflag > 0) {
-					if ((hbflag & 0x200) == 0x200)
-						std::cout << "#E HB Data lost" << std::endl;
-					if ((hbflag & 0x100) == 0x100)
-						std::cout << "#E HB Data confiliction" << std::endl;
-					if ((hbflag & 0x080) == 0x080)
-						std::cout << "#E HB LFN mismatch" << std::endl;
-					if ((hbflag & 0x040) == 0x040)
-						std::cout << "#E HB GFN mismatch" << std::endl;
-				}
-
-			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_SPL_START << 2)) {
-				std::cout << "SPILL Start" << std::endl;
-			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_SPL_END << 2)) {
-				std::cout << "SPILL End" << std::endl;
-			} else {
-				std::cout << std::endl;
-			}
-		}
-		std::cout <<  "#----" << std::endl;
-
-		#else
 		//for (unsigned int j = 0 ; j < msize ; j += 8) {
 		for (unsigned int j = 0 ; j < 16 ; j += 8) {
 			std::cout << "# " << std::setw(8) << j << " : "
@@ -291,7 +266,6 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 7]) << " : ";
 		}
 		std::cout << std::endl;
-
 		#endif
 
 	}
@@ -315,7 +289,7 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 
 void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 {
-	//unsigned int msize = msg->GetSize();
+	unsigned int msize = msg->GetSize();
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
 	uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(pdata));
 
@@ -363,80 +337,68 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< std::endl;
 		#endif
 
-		fFEMId = pstf->FEMId;
+		fFEMId  = pstf->FEMId;
 		fFeType = pstf->FEMType;
+
+	} else if ((msg_magic & 0x0000'0000'0000'00ff) == 0x0000'0000'0000'0022) {
+		struct Recbe::Header *recbe;
+		recbe = reinterpret_cast<Recbe::Header *>(pdata);
+		int sent_num = ntohs(recbe->sent_num);
+		int ttime = ntohs(recbe->time);
+		int len = ntohs(recbe->len);
+		int trig_count = ntohs(recbe->trig_count);
+
+		#if 0
+		std::cout << "#Recbe Header " << std::hex
+			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->type)
+			<< " id: "
+			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->id)
+			<< " Sent: " << sent_num
+			<< " Time: " << ttime
+			<< " Len: " << len
+			<< " Trig: " << trig_count
+			<< std::endl;
+		#endif
+
+		fFeType = static_cast<unsigned int>(recbe->type);
+		fFEMId  = static_cast<unsigned int>(recbe->id);
 
 	} else {
 
-		#if 0
-		std::cout << "# " << std::setw(8) << j << " : "
-			<< std::hex << std::setw(2) << std::setfill('0')
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 7]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 6]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 5]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 4]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 3]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 2]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 1]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 0]) << " : ";
+		#if 1
+		gHistBook(msg, fFEMId, fFeType);
+		#else
+		std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
+		std::cout << "#FE " << fFeType << " id: " << fFEMId << std::endl;
+
+		unsigned int i = 0;
+		int tic = 0;
+		while (i < msize) {
+			std::cout << "ADC[" << tic << "]";
+			for (int j = 0 ; j < 48 ; j++) {
+				int val = ntohs(
+					*(reinterpret_cast<uint16_t *>(
+						(pdata + ((tic * 48 * 2) + j) * sizeof(uint16_t))
+					)));
+				std::cout << " " << val;
+				i += sizeof(uint16_t);
+			}
+			std::cout << std::endl;
+			std::cout << "TDC[" << tic << "]";
+			for (int j = 0 ; j < 48 ; j++) {
+				int val = ntohs(
+					*(reinterpret_cast<uint16_t *>(
+						(pdata + ((tic * 48 * 2 + 48) + j) * sizeof(uint16_t))
+					)));
+				std::cout << " " << val;
+				i += sizeof(uint16_t);
+			}
+			std::cout << std::endl;
+			tic++;
+		}
 		#endif
 
-		if        ((pdata[0 + 7] & 0xfc) == (TDC64H::T_TDC << 2)) {
 
-			//gHistBook(msg, fFEMId, fFeType);
-
-			#if 0
-			std::cout << "TDC ";
-			uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[0]));
-			if (fFeType == SubTimeFrame::TDC64H) {
-				struct TDC64H::tdc64 tdc;
-				TDC64H::Unpack(*dword, &tdc);
-				std::cout << "H :"
-					<< " CH: " << std::dec << std::setw(3) << tdc.ch
-					<< " TDC: " << std::setw(7) << tdc.tdc << std::endl;
-			} else
-			if (fFeType == SubTimeFrame::TDC64L) {
-				struct TDC64L::tdc64 tdc;
-				TDC64L::Unpack(*dword, &tdc);
-				std::cout << "L :"
-					<< " CH: " << std::dec << std::setw(3) << tdc.ch
-					<< " TDC: " << std::setw(7) << tdc.tdc << std::endl;
-			} else {
-				std::cout << "UNKNOWN"<< std::endl;
-			}
-			#endif
-
-		} else if ((pdata[0 + 7] & 0xfc) == (TDC64H::T_HB << 2)) {
-			#if 0
-			std::cout << "Hart beat" << std::endl;
-			uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[0]));
-			struct TDC64H::tdc64 tdc;
-			TDC64H::Unpack(*dword, &tdc);
-			int hbflag = tdc.flag;
-			if (hbflag > 0) {
-				if ((hbflag & 0x200) == 0x200)
-					std::cout << "#E HB Data lost" << std::endl;
-				if ((hbflag & 0x100) == 0x100)
-					std::cout << "#E HB Data confiliction" << std::endl;
-				if ((hbflag & 0x080) == 0x080)
-					std::cout << "#E HB LFN mismatch" << std::endl;
-				if ((hbflag & 0x040) == 0x040)
-					std::cout << "#E HB GFN mismatch" << std::endl;
-			}
-			#endif
-		} else if ((pdata[0 + 7] & 0xfc) == (TDC64H::T_SPL_START << 2)) {
-			#if 0
-			std::cout << "SPILL Start" << std::endl;
-			#endif
-		} else if ((pdata[0 + 7] & 0xfc) == (TDC64H::T_SPL_END << 2)) {
-			#if 0
-			std::cout << "SPILL End" << std::endl;
-			#endif
-		} else {
-			#if 0
-			std::cout << std::endl;
-			#endif
-		}
 	}
 
 	return;
@@ -481,9 +443,17 @@ bool RecbeDisplay::ConditionalRun()
 		std::cout << std::endl;
 		#endif
 
+		//std::cout << "#D Nmsg: " << inParts.Size() << std::endl;
+		if (inParts.Size() > 2) {
+			#if 0
+			for(auto& vmsg : inParts) CheckData(vmsg);
+			#else
+			for(auto& vmsg : inParts) BookData(vmsg);
+			#endif
+		}
+
 		#if 1
-		std::cout << "#Nmsg: " << std::dec << inParts.Size() << std::endl;
-		for(auto& vmsg : inParts) CheckData(vmsg);
+		//std::cout << "#Nmsg: " << std::dec << inParts.Size() << std::endl;
 		#else
 		if ((counts % 100) == 0) std::cout << "." << std::flush;
 		if ((counts % fPrescale) == 0) for(auto& vmsg : inParts) BookData(vmsg);
@@ -491,7 +461,6 @@ bool RecbeDisplay::ConditionalRun()
 
 		#if 0
 		auto tfHeader = reinterpret_cast<TimeFrame::Header*>(inParts.At(0)->GetData());
-
 		auto stfHeader = reinterpret_cast<SubTimeFrame::Header*>(inParts.At(0)->GetData());
 		auto stfId     = stfHeader->timeFrameId;
 
@@ -512,7 +481,7 @@ bool RecbeDisplay::ConditionalRun()
 		counts++;
 	}
 
-	//if (fKt2.Check()) gHistDraw();
+	if (fKt2.Check()) gHistDraw();
 
 	return true;
 }
@@ -570,7 +539,7 @@ void addCustomOptions(bpo::options_description& options)
 
 std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& /*config*/)
 {
-	//gHistInit();
+	gHistInit();
 
 	return std::make_unique<RecbeDisplay>();
 }
