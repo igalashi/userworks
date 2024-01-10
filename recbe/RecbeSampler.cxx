@@ -1,9 +1,9 @@
 /********************************************************************************
  *    Copyright (C) 2014 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH    *
- *                                                                              *
- *              This software is distributed under the terms of the             *
- *              GNU Lesser General Public Licence (LGPL) version 3,             *
- *                  copied verbatim in the file "LICENSE"                       *
+ *									      *
+ *	      This software is distributed under the terms of the	     *
+ *	      GNU Lesser General Public Licence (LGPL) version 3,	     *
+ *		  copied verbatim in the file "LICENSE"		       *
  ********************************************************************************/
 
 #include <fairmq/Device.h>
@@ -24,6 +24,8 @@
 #include "recbe.h"
 #include "CliSock.cxx"
 #include "RBCP.cxx"
+#include "KTimer.cxx"
+#include "hexdump.cxx"
 
 
 namespace bpo = boost::program_options;
@@ -32,16 +34,18 @@ class RecbeSampler : public fair::mq::Device
 {
 public:
 	struct OptionKey {
-		static constexpr std::string_view DeviceIp          {"ip"};
-		static constexpr std::string_view DataPort          {"port"};
+		static constexpr std::string_view DeviceIp	    {"ip"};
+		static constexpr std::string_view DataPort	    {"port"};
 		static constexpr std::string_view Timeout_ms        {"timeout"};
 		static constexpr std::string_view ControlPort       {"control-port"};
 		static constexpr std::string_view OutputChannelName {"out-chan-name"};
+		static constexpr std::string_view DQMChannelName    {"dqm-chan-name"};
 		static constexpr std::string_view Mode              {"mode"};
+		static constexpr std::string_view PollTimeout       {"poll-timeout"};
 	};
 
 	RecbeSampler() : fair::mq::Device() {};
-	RecbeSampler(const RecbeSampler&)            = delete;
+	RecbeSampler(const RecbeSampler&)	    = delete;
 	RecbeSampler& operator=(const RecbeSampler&) = delete;
 	~RecbeSampler() = default;
 
@@ -57,14 +61,19 @@ protected:
 
 private:
 	uint64_t fNumIterations = 0;
+	unsigned int fNumDestination = 0;
+	unsigned int fPollTimeoutMS = 0;
 	CliSock fSock;
 	std::string fOutputChannelName;
+	std::string fDQMChannelName;
 	std::string fDeviceIp     {"000.000.000.000"};
 	unsigned int fDataPort   = 24;
 	unsigned int fControlPort = 4660;
 	unsigned int fDeviceType  = 0x100;
 	unsigned int fTimeout_ms = 0;
 	unsigned int fMode = 0;
+
+	KTimer fKt1;
 };
 
 
@@ -78,6 +87,9 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::OutputChannelName.data(),
 			bpo::value<std::string>()->default_value("out"),
 			"Name of the output channel")
+		(opt::DQMChannelName.data(),
+			bpo::value<std::string>()->default_value("dqm"),
+			"Name of the data quality monitoring channel")
 		(opt::DeviceIp.data(),
 			bpo::value<std::string>()->default_value("192.168.10.16"),
 			"IP-address of the front-end device")
@@ -93,6 +105,9 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::Mode.data(),
 			bpo::value<std::string>()->default_value("1"),
 			"Recbe run mode")
+		(opt::PollTimeout.data(),
+			bpo::value<std::string>()->default_value("1"),
+			"Timeout of polling (in msec)")
 		;
 }
 
@@ -130,15 +145,22 @@ void RecbeSampler::InitTask()
 
 	using opt = OptionKey;
 	fOutputChannelName = fConfig->GetProperty<std::string>(opt::OutputChannelName.data());
+	fDQMChannelName    = fConfig->GetValue<std::string>(opt::DQMChannelName.data());
+
 	fDeviceIp          = fConfig->GetProperty<std::string>(opt::DeviceIp.data());
 	fDataPort          = std::stoi(fConfig->GetProperty<std::string>(opt::DataPort.data()));
 	fControlPort       = std::stoi(fConfig->GetProperty<std::string>(opt::ControlPort.data()));
 	fTimeout_ms        = std::stoi(fConfig->GetProperty<std::string>(opt::Timeout_ms.data()));
 	fMode              = std::stoi(fConfig->GetProperty<std::string>(opt::Mode.data()));
 
+	fPollTimeoutMS     = std::stoi(fConfig->GetProperty<std::string>(opt::PollTimeout.data()));
+	fNumDestination    = GetNumSubChannels(fOutputChannelName);
+
 	LOG(info) << "FEM IP Address: " << fDeviceIp
-		<< ", Port: " << fDataPort << ", Control Port: " << fControlPort;
-	//fDeviceType        = std::stoi(fConfig->GetProperty<std::string>("DeviceType"));
+		<< ", Port: " << fDataPort << ", Control Port: " << fControlPort
+		<< "  Number of destinations: " << fNumDestination;
+
+	//fDeviceType	= std::stoi(fConfig->GetProperty<std::string>("DeviceType"));
 	//LOG(info) << "Device Type: " << fDeviceType;
 
 	RBCP rbcp;
@@ -154,6 +176,7 @@ void RecbeSampler::InitTask()
 	}
 	rbcp.Close();
 
+	fKt1.SetDuration(5000);
 }
 
 
@@ -184,46 +207,149 @@ bool RecbeSampler::ConditionalRun()
 	header.stopFlag = 0;
 	#endif
 
-	fair::mq::Parts parts;
+	#ifdef CHECK_FREQ 
+	static int nevents = 0;
+	static std::chrono::system_clock::time_point t_prev;
+	std::chrono::system_clock::time_point t_now
+		= std::chrono::system_clock::now();
+	auto elapse
+		= std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t_prev);
+	if (elapse.count() >= 5000) {
+		double freq = static_cast<double>(nevents) / elapse.count() * 1000.0;
+		std::cout << "#D freq.: " << freq << std::endl;
+		t_prev = t_now;
+		nevents = 0;
+	}
+	#endif
 
-	parts.AddPart(NewMessage(sizeof(SubTimeFrame::Header)));
-	auto &msgSTFHeader = parts[0];
+	fair::mq::Parts outParts;
+	outParts.AddPart(NewMessage(sizeof(SubTimeFrame::Header)));
+	auto &msgSTFHeader = outParts[0];
 
+	struct Recbe::Header recbe_header;
 	int hsize = sizeof(struct Recbe::Header);
-	parts.AddPart(NewMessage(hsize));
-	auto &msgRHeader = parts[1];
+
+	//parts.AddPart(NewMessage(hsize));
+	//auto &msgRHeader = parts[1];
+
 	int flag;
+	//int nread = fSock.Receive(
+	//	reinterpret_cast<char *>(msgRHeader.GetData()), hsize, flag);
 	int nread = fSock.Receive(
-		reinterpret_cast<char *>(msgRHeader.GetData()), hsize, flag);
-	if (nread != hsize) {
-		LOG(warn) << "irregal data size" << nread << "/" << hsize;
-		if (flag == EAGAIN) LOG(warn) << "Timeout";
+		reinterpret_cast<char *>(&recbe_header), hsize, flag);
+	if (nread < hsize) {
+		LOG(warn) << "Irregal data size : " << nread << "/" << hsize;
+		if (flag == EAGAIN) {
+			 LOG(warn) << "Timeout and Retry";
+			int nnread = fSock.Receive(
+				reinterpret_cast<char *>(&recbe_header) + nread,
+				hsize - nread, flag);
+			nread += nnread;
+			if (nread < hsize) {
+				if (flag == EAGAIN) {
+					LOG(warn) << "Timeout anagin...";
+				} else {
+					LOG(warn) << "Unknown error...";
+				}
+			}
+		} else {
+			return true;
+		}
 	}
 	struct Recbe::Header *pheader;
-	pheader = reinterpret_cast<struct Recbe::Header *>(msgRHeader.GetData());
+	//pheader = reinterpret_cast<struct Recbe::Header *>(msgRHeader.GetData());
+	pheader = &recbe_header;
 	int bodysize = static_cast<int>(ntohs(pheader->len));
 	int trig = static_cast<int>(ntohl(pheader->trig_count));
 
-	#if 1
-	std::cout << std::hex
-		<< "#D Type: " << (static_cast<int>(pheader->type) & 0xff)
-		<< " ID: " << (static_cast<int>(pheader->id) & 0xff)
-		<< "  len: " << std::dec << bodysize
-		<< " Sent: " << std::dec << ntohs(pheader->sent_num)
-		<< " Trig: " << trig << " Time: " << ntohs(pheader->time)
-		<< std::endl;;
+	#if 0
+	if (fKt1.Check()) {
+		std::cout << std::hex
+			<< "#D Type: " << (static_cast<int>(pheader->type) & 0xff)
+			<< " ID: " << (static_cast<int>(pheader->id) & 0xff)
+			<< "  len: " << std::dec << bodysize
+			<< " Sent: " << std::dec << ntohs(pheader->sent_num)
+			<< " Trig: " << trig << " Time: " << ntohs(pheader->time)
+			<< std::endl;;
+	}
 	#else
-	std::cout << "." << std::flush;
+	//std::cout << "." << std::flush;
 	#endif
 
-	parts.AddPart(NewMessage(bodysize));
-	auto &msgRBody = parts[2];
-	nread = fSock.Receive(
-		reinterpret_cast<char *>(msgRBody.GetData()), bodysize, flag);
-	if (nread != bodysize) {
-		LOG(warn) << "irregal data size" << nread << "/" << bodysize;
-		if (flag == EAGAIN) LOG(warn) << "Timeout";
+	#if 1
+	{
+		static int l_id = 0;
+		static int l_trig = 0;
+		bool fdump = false;
+		int id_now = static_cast<int>(pheader->id) & 0xff;
+		if (l_id != id_now) {
+			std::cout << "#W ID: " << std::hex
+				<< id_now << " prev: " <<  l_id << std::endl;
+			fdump = true;
+		}
+		if ((trig - l_trig) > 1) {
+			std::cout << "#W Trig: " << std::hex
+				<< trig << " prev: " << l_trig << std::endl;
+			fdump = true;
+		}
+		l_id = id_now;
+		l_trig = trig;
+		if (fdump) {
+			char *cpheader = reinterpret_cast<char *>(pheader);
+			#if 1
+			hexdump(cpheader, nread);
+			#else
+			std::cout << std::hex;
+			for (int i = 0 ; i < hsize ; i++) {
+				if ((i % 16) == 0) {
+					if (i != 0) std::cout << std::endl;
+					std::cout << "# " << std::setw(4) << i << ":";
+				}
+				std::cout << " " << std::setw(2) << std::setfill('0')
+					<< (static_cast<unsigned int>(pdata[i]) & 0xff);
+			}
+			std::cout << std::endl;
+			std::cout << std::dec;
+			#endif
+		}
 	}
+	#endif
+
+	//parts.AddPart(NewMessage(bodysize));
+	outParts.AddPart(NewMessage(hsize + bodysize));
+	//auto &msgRBody = parts[2];
+	auto &msg = outParts[1];
+	char *cmsgbuf = reinterpret_cast<char *>(msg.GetData());
+	memcpy(cmsgbuf, reinterpret_cast<char *>(pheader), sizeof(struct Recbe::Header));
+	char *recbe_body = reinterpret_cast<char *>(msg.GetData()) + hsize;
+	//nread = fSock.Receive(
+	//	reinterpret_cast<char *>(msgRBody.GetData()), bodysize, flag);
+	nread = fSock.Receive(recbe_body , bodysize, flag);
+	if (nread < bodysize) {
+		LOG(warn) << "Reading body: irregal data size " << nread << "/" << bodysize;
+		if (flag == EAGAIN) {
+			LOG(warn) << "Timeout and Retry";
+			int nnread = fSock.Receive(
+				recbe_body + nread,
+				bodysize - nread, flag);
+			nread += nnread;
+			if (nread < bodysize) {
+				if (flag == EAGAIN) {
+					LOG(warn) << "Timeout anagin...";
+					hexdump(recbe_body, nread);
+				} else {
+					LOG(warn) << "Unknown error...";
+					hexdump(recbe_body, nread);
+				}
+			}
+		} else {
+			LOG(error) << "Unknown err. " << flag;
+			hexdump(recbe_body, nread);
+		}
+	}
+	#ifdef CHECK_FREQ 
+	nevents++;
+	#endif
 
 	struct SubTimeFrame::Header *pstfheader
 		 = reinterpret_cast<struct SubTimeFrame::Header *>(msgSTFHeader.GetData());
@@ -232,15 +358,12 @@ bool RecbeSampler::ConditionalRun()
 	pstfheader->FEMType = static_cast<uint32_t>(pheader->type) & 0xff;
 	pstfheader->FEMId = static_cast<uint32_t>(pheader->id) & 0xff;
 	pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct Recbe::Header) + bodysize;
-	pstfheader->numMessages = 3;
+	//pstfheader->numMessages = 3;
+	pstfheader->numMessages = 2;
 	struct timeval now;
 	gettimeofday(&now, nullptr);
 	pstfheader->time_sec = now.tv_sec;
 	pstfheader->time_usec = now.tv_usec;
-
-	#if 1
-	#endif
-
 
 	#if 0
 	// NewSimpleMessage creates a copy of the data and takes care of its destruction (after the transfer takes place).
@@ -256,7 +379,7 @@ bool RecbeSampler::ConditionalRun()
 	assert(parts.Size() == 5);
 
 	parts.AddPart(NewMessage());
-                 from /home/nestdaq/nestdaq/src/userworks/recbe/RecbeSampler.cxx:9:
+		 from /home/nestdaq/nestdaq/src/userworks/recbe/RecbeSampler.cxx:9:
 	assert(parts.Size() == 6);
 
 	parts.AddPart(NewMessage(100));
@@ -265,18 +388,60 @@ bool RecbeSampler::ConditionalRun()
 	LOG(info) << "Sending body of size: " << parts.At(1)->GetSize();
 	#endif
 
-	Send(parts, fOutputChannelName);
 
-	#if 0
-	// Go out of the sending loop if the stopFlag was sent.
-	if (fMaxIterations > 0 && ++fNumIterations >= fMaxIterations) {
-		LOG(info) << "Configured maximum number of iterations reached. Leaving RUNNING state.";
-		return false;
+
+	#if 1
+	FairMQParts dqmParts;
+	bool dqmSocketExists = fChannels.count(fDQMChannelName);
+	if (dqmSocketExists) {
+		for (auto & m : outParts) {
+			FairMQMessagePtr msgCopy(fTransportFactory->CreateMessage());
+			msgCopy->Copy(*m);
+			dqmParts.AddPart(std::move(msgCopy));
+		}
+
+		if (Send(dqmParts, fDQMChannelName) < 0) {
+			if (NewStatePending()) {
+				LOG(info) << "Device is not RUNNING";
+			} else {
+				LOG(error) << "Failed to enqueue dqm-channel";
+			}
+		} else {
+			std::cout << "+" << std::flush;
+		}
+	} else {
+		// std::cout << "NoDQM socket" << std::endl;
 	}
-	#else
-	++fNumIterations;
 	#endif
 
+
+
+	#if 0
+	Send(outParts, fOutputChannelName);
+	#else
+
+	int direction = trig % fNumDestination;
+	auto poller = NewPoller(fOutputChannelName);
+	while (!NewStatePending()) {
+		poller->Poll(fPollTimeoutMS);
+		if (poller->CheckOutput(fOutputChannelName, direction)) {
+			if (Send(outParts, fOutputChannelName, direction) > 0) {
+				// successfully sent
+				break;
+			} else {
+				LOG(error) << "Failed to queue output-channel :"
+					<< fOutputChannelName;
+			}
+		}
+		if (fNumDestination == 1) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+	}
+
+	#endif
+
+
+	++fNumIterations;
 	#if 0
 	// Wait a second to keep the output readable.
 	std::this_thread::sleep_for(std::chrono::seconds(1));

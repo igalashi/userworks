@@ -15,8 +15,11 @@ foreach(lvar IN ITEMS
     ${FairMQ_INCDIR};
     ${FairMQ_INCDIR}/fairmq;
     #${FairMQ_INCDIR}/fairlogger/bundled;
+    ${FairLogger_INCDIR};
     ${CMAKE_SOURCE_DIR};
     #${ROOT_INCLUDE_DIRS}
+    ${HIREDIS_HEADER};
+    ${REDIS_PLUS_PLUS_HEADER};
   )
 
   target_link_directories(${EXEC} PUBLIC
@@ -27,11 +30,13 @@ foreach(lvar IN ITEMS
 
   target_link_libraries(${EXEC} PUBLIC 
     ${Boost_LIBRARIES};  
-    ${fmt_LIB};
+    #${fmt_LIB};
     FairMQ;
     FairMQStateMachine;
     FairLogger;
     #${ROOT_LIBRARIES};
+    ${HIREDIS_LIB};
+    ${REDIS_PLUS_PLUS_LIB};
   )
 
   install(TARGETS
@@ -64,7 +69,7 @@ target_link_directories(onlinedisplay PUBLIC
 
 target_link_libraries(onlinedisplay PUBLIC 
     ${Boost_LIBRARIES};  
-    ${fmt_LIB};
+    #${fmt_LIB};
     FairMQ;
     FairMQStateMachine;
     FairLogger;

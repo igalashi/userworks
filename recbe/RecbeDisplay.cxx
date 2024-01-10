@@ -39,6 +39,7 @@ struct RecbeDisplay : fair::mq::Device
 {
 	struct OptionKey {
 		static constexpr std::string_view InputChannelName  {"in-chan-name"};
+		static constexpr std::string_view RedisUrl  {"redis-uri"};
 	};
 
 	RecbeDisplay()
@@ -56,21 +57,46 @@ struct RecbeDisplay : fair::mq::Device
 		fMaxIterations = fConfig->GetProperty<uint64_t>("max-iterations");
 		fInputChannelName  = fConfig->GetValue<std::string>(opt::InputChannelName.data());
 		LOG(info) << "InitTask Input Channel : " << fInputChannelName;
+		fRunNumber   = fConfig->GetProperty<std::string>("run_number");
 
-		fKt1.SetDuration(100);
-		fKt2.SetDuration(2000);
-		fKt3.SetDuration(3000);
-
-		#if 0
-		#ifdef USE_THREAD
 		static bool atFirst = true;
 		if (atFirst) {
-			TThread thEventCycle("EventCycle", &gEventCycle, NULL);
-			thEventCycle.Run();
 			atFirst = false;
+
+			#if 0
+			fId          = fConfig->GetProperty<std::string>("id");
+			#endif
+			fServiceName = fConfig->GetProperty<std::string>("service-name");
+			fTopPrefix   = fConfig->GetProperty<std::string>("top-prefix");
+			fSeparator   = fConfig->GetProperty<std::string>("separator");
+
+			fRedisUrl    = fConfig->GetProperty<std::string>(opt::RedisUrl.data());
+			fDb = std::make_unique<RedisDataStore>(fRedisUrl);
+
+			std::cout << "#D ServiceName: " << fServiceName << std::endl;
+			std::cout << "#D Id: " << fId << std::endl;
+			std::cout << "#D Separator: " << fSeparator << std::endl;
+			std::cout << "#D TopPrefix: " << fTopPrefix << std::endl;
+			std::cout << "#D nunNumber: " << fRunNumber << std::endl;
+			std::cout << "#D RedisUrl: " << fRedisUrl << std::endl;
+
+
+			//LOG(debug) << "serverUri: " << serverUri;
+			//data_store = new RedisDataStore(serverUri);
+			//fdevId = fConfig->GetProperty<std::string>("id");
+			//LOG(debug) << "fdevId: " << fdevId;
+			//fTopPrefix   = "scaler";
+			//fSeparator   = fConfig->GetProperty<std::string>("separator");
+
+			gHistInit(fRedisUrl, fId);
+			fKeyPrefix = "dqm" + fSeparator
+				+ fServiceName + fSeparator
+				+ fId + fSeparator;
 		}
-		#endif
-		#endif
+
+		fKt1.SetDuration(100);
+		fKt2.SetDuration(5000);
+		fKt3.SetDuration(3000);
 
 		gHistReset();
 
@@ -108,6 +134,16 @@ private:
 	uint64_t fNumIterations = 0;
 
 	std::string fInputChannelName;
+
+	std::string fServiceName;
+	//std::string fId;
+	std::string fSeparator;
+	std::string fTopPrefix;
+	std::string fRunNumber;
+	std::string fKeyPrefix;
+
+	std::string fRedisUrl;
+	std::unique_ptr<RedisDataStore> fDb;
 
 	struct STFBuffer {
 		FairMQParts parts;
@@ -158,6 +194,9 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< " len: " << std::dec <<  ptf->length
 			<< std::endl;
 
+		fFeType = 0;
+		fFEMId  = 0;
+
 	} else if (msg_magic == SubTimeFrame::Magic) {
 		SubTimeFrame::Header *pstf
 			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
@@ -184,11 +223,12 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 		int sent_num = ntohs(recbe->sent_num);
 		int ttime = ntohs(recbe->time);
 		int len = ntohs(recbe->len);
-		int trig_count = ntohs(recbe->trig_count);
+		int trig_count = ntohl(recbe->trig_count);
 		std::cout << "#Recbe Header " << std::hex
 			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->type)
 			<< " id: "
 			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->id)
+			<< std::dec
 			<< " Sent: " << sent_num
 			<< " Time: " << ttime
 			<< " Len: " << len
@@ -202,6 +242,21 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 		std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
 		std::cout << "#FE " << fFeType << " id: " << fFEMId << std::endl;
 
+		#if 1
+		//for (unsigned int j = 0 ; j < msize ; j++) {
+		unsigned int ndump = (msize > 128) ? 128 : msize;
+		for (unsigned int j = 0 ; j < ndump ; j++) {
+			std::cout << std::hex << std::setfill('0');
+			if ((j % 16) == 0) {
+				if (j != 0)  std::cout << std::endl;
+				std::cout << "# " << std::setw(8) << j << " :";
+			}
+			std::cout << " " << std::setw(2) << static_cast<unsigned int>(pdata[j]);
+		}
+		std::cout << std::endl;
+		#endif
+
+		#if 0
 		unsigned int i = 0;
 		int tic = 0;
 		while (i < msize) {
@@ -227,6 +282,7 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 			std::cout << std::endl;
 			tic++;
 		}
+		#endif
 
 		#if 0
 		for (unsigned int i = 0 ; i < msize ; i += 48 * 2 * sizeof(uint16_t)) {
@@ -251,23 +307,6 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 		}
 		#endif
 
-		#if 0
-		//for (unsigned int j = 0 ; j < msize ; j += 8) {
-		for (unsigned int j = 0 ; j < 16 ; j += 8) {
-			std::cout << "# " << std::setw(8) << j << " : "
-				<< std::hex << std::setw(2) << std::setfill('0')
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 0]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 1]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 2]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 3]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 4]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 5]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 6]) << " "
-				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 7]) << " : ";
-		}
-		std::cout << std::endl;
-		#endif
-
 	}
 
 	#if 0
@@ -290,8 +329,33 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 {
 	unsigned int msize = msg->GetSize();
+
+	if (msize <= 0) {
+		std::cout << "#E Zero-size message" << std::endl;
+		return;
+	}
+
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
 	uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(pdata));
+
+	#if 0
+	std::cout << "#D Msize: " << msize << " : " << std::endl;
+	if (msg_magic == TimeFrame::Magic) {
+		std::cout << "TF  :";
+	} else if (msg_magic == SubTimeFrame::Magic) {
+		std::cout << "STF :";
+	} else {
+		std::cout << "UNK :";
+	}
+	std::cout << std::hex;
+
+	int nval = msize;
+	if (msize > 32) nval = 32;
+	for (int i = 0 ; i < nval ; i++) {
+		std::cout << " " << std::setw(2) << (static_cast<unsigned int>(pdata[i]) & 0xff);
+	}
+	std::cout << std::dec << std::endl;
+	#endif
 
 	if (msg_magic == Filter::Magic) {
 		#if 0
@@ -318,6 +382,27 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< std::endl;
 		#endif
 
+
+		static int trig_prev = 0;
+		static int trig_diff = 0;
+		TimeFrame::Header *ptf
+			= reinterpret_cast<TimeFrame::Header *>(pdata);
+		int trig_now = ptf->timeFrameId;
+		#if 1
+		if (trig_diff != (trig_now - trig_prev)) {
+			std::cout << "#W Strange Trigger Number : " << trig_now
+				<< " / " << trig_prev << " : " << trig_diff << std::endl;
+			trig_diff = trig_now - trig_prev;
+		}
+		trig_prev = trig_now;
+		#else
+		std::cout << "#D Trigger Number : " << trig_now << std::endl;
+		#endif
+		
+
+		fFEMId  = 0;
+		fFeType = 0;
+
 	} else if (msg_magic == SubTimeFrame::Magic) {
 		SubTimeFrame::Header *pstf
 			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
@@ -343,16 +428,18 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 	} else if ((msg_magic & 0x0000'0000'0000'00ff) == 0x0000'0000'0000'0022) {
 		struct Recbe::Header *recbe;
 		recbe = reinterpret_cast<Recbe::Header *>(pdata);
+
+		#if 0
 		int sent_num = ntohs(recbe->sent_num);
 		int ttime = ntohs(recbe->time);
 		int len = ntohs(recbe->len);
-		int trig_count = ntohs(recbe->trig_count);
+		int trig_count = ntohl(recbe->trig_count);
 
-		#if 0
 		std::cout << "#Recbe Header " << std::hex
 			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->type)
 			<< " id: "
 			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->id)
+			<< std::dec
 			<< " Sent: " << sent_num
 			<< " Time: " << ttime
 			<< " Len: " << len
@@ -363,42 +450,36 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 		fFeType = static_cast<unsigned int>(recbe->type);
 		fFEMId  = static_cast<unsigned int>(recbe->id);
 
+		if (fFeType == 0x22) {
+			gHistBook(msg, fFEMId, fFeType);
+		} else {
+			std::cout << "#E " << "unknown FE type : " << fFeType << std::endl;
+		}
+
 	} else {
-
-		#if 1
-		gHistBook(msg, fFEMId, fFeType);
-		#else
-		std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
-		std::cout << "#FE " << fFeType << " id: " << fFEMId << std::endl;
-
-		unsigned int i = 0;
-		int tic = 0;
-		while (i < msize) {
-			std::cout << "ADC[" << tic << "]";
-			for (int j = 0 ; j < 48 ; j++) {
-				int val = ntohs(
-					*(reinterpret_cast<uint16_t *>(
-						(pdata + ((tic * 48 * 2) + j) * sizeof(uint16_t))
-					)));
-				std::cout << " " << val;
-				i += sizeof(uint16_t);
-			}
-			std::cout << std::endl;
-			std::cout << "TDC[" << tic << "]";
-			for (int j = 0 ; j < 48 ; j++) {
-				int val = ntohs(
-					*(reinterpret_cast<uint16_t *>(
-						(pdata + ((tic * 48 * 2 + 48) + j) * sizeof(uint16_t))
-					)));
-				std::cout << " " << val;
-				i += sizeof(uint16_t);
-			}
-			std::cout << std::endl;
-			tic++;
+		#if 0
+		if (fFeType == 0x22) {
+			gHistBook(msg, fFEMId, fFeType);
+		} else {
+			std::cout << "#E " << "unknown FE type : " << fFeType << std::endl;
 		}
 		#endif
 
+		std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
+		std::cout << "#FE " << fFeType << " id: " << fFEMId << std::endl;
+		std::cout << "#size : " << msize << std::endl;
 
+		//for (unsigned int j = 0 ; j < msize ; j++) {
+		unsigned int ndump = (msize > 128) ? 128 : msize;
+		for (unsigned int j = 0 ; j < ndump ; j++) {
+			std::cout << std::hex << std::setfill('0');
+			if ((j % 16) == 0) {
+				if (j != 0)  std::cout << std::endl;
+				std::cout << "# " << std::setw(8) << j << " :";
+			}
+			std::cout << " " << std::setw(2) << static_cast<unsigned int>(pdata[j]);
+		}
+		std::cout << std::endl;
 	}
 
 	return;
@@ -443,7 +524,6 @@ bool RecbeDisplay::ConditionalRun()
 		std::cout << std::endl;
 		#endif
 
-		//std::cout << "#D Nmsg: " << inParts.Size() << std::endl;
 		if (inParts.Size() > 2) {
 			#if 0
 			for(auto& vmsg : inParts) CheckData(vmsg);
@@ -533,13 +613,15 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::InputChannelName.data(),
 			bpo::value<std::string>()->default_value("in"),
 			"Name of the input channel")
+		(opt::RedisUrl.data(),
+			bpo::value<std::string>()->default_value("tcp://127.0.0.1:6379/3"),
+			"URL of redis server and db number")
 		;
 }
 
 
 std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& /*config*/)
 {
-	gHistInit();
-
+	//gHistInit();
 	return std::make_unique<RecbeDisplay>();
 }

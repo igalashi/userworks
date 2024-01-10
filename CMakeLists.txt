@@ -30,7 +30,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wshadow -Wfloat-equal")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wshadow -Wfloat-equal -g -O")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wshadow -Wfloat-equal -O")
 set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -march=native")
 message("")
 message("CMAKE_CXX_FLAGS:                ${CMAKE_CXX_FLAGS}")
@@ -116,20 +117,20 @@ message(STATUS "Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 message(STATUS "Boost_LIBRARIES:    ${Boost_LIBRARIES}")
 
 
-#find_package(FairLogger)
-#if(NOT FairLogger_INCDIR)
-#  set(FairLogger_INCDIR "${FairMQ_INCDIR}/fairlogger/bundled")
-#endif()
+find_package(FairLogger)
+if(NOT FairLogger_INCDIR)
+  set(FairLogger_INCDIR "${FairMQ_INCDIR}/fairlogger/bundled")
+endif()
 message(STATUS "FairLogger_INCDIR: ${FairLogger_INCDIR}")
 message(STATUS "FairLogger_LIBDIR: ${FairLogger_LIBDIR}")
 
 
-find_package(fmt)
-if(fmt_DIR)
-  message(STATUS "fmt_DIR: ${fmt_DIR}")
-  set(fmt_LIB fmt::fmt)
-  message(STATUS "fmt_LIB: ${fmt_LIB}")
-endif()
+#find_package(fmt)
+#if(fmt_DIR)
+#  message(STATUS "fmt_DIR: ${fmt_DIR}")
+#  set(fmt_LIB fmt::fmt)
+#  message(STATUS "fmt_LIB: ${fmt_LIB}")
+#endif()
 
 find_package(ROOT)
 if(ROOT_FOUND)
@@ -137,6 +138,19 @@ if(ROOT_FOUND)
   message(STATUS "ROOT_INCLUDE_DIRS ${ROOT_INCLUDE_DIRS}")
   message(STATUS "ROOT_LIBRARIES ${ROOT_LIBRARIES}")
 endif()
+
+# ---------- add hiredis dependency ----------
+find_path(HIREDIS_HEADER hiredis)
+find_library(HIREDIS_LIB hiredis)
+message(STATUS "HIREDIS_HEADER: ${HIREDIS_HEADER}")
+message(STATUS "HIREDIS_LIB:    ${HIREDIS_LIB}")
+
+# ---------- add redis++ dependency ---------
+find_path(REDIS_PLUS_PLUS_HEADER sw)
+find_library(REDIS_PLUS_PLUS_LIB redis++)
+#find_package(redis++)
+message(STATUS "REDIS_PLUS_PLUS_HEADER: ${REDIS_PLUS_PLUS_HEADER}")
+message(STATUS "REDIS_PLUS_PLUS_LIB:    ${REDIS_PLUS_PLUS_LIB}")
 
 
 #------------------------------------------------------------------------------
