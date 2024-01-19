@@ -35,7 +35,7 @@ echo "---------------------------------------------------------------------"
 #endpoint     BenchmarkSampler       out           type push  method bind 
 #endpoint     HulStrTdcEmulator      out           type push  method bind 
 #endpoint     tdcemulator      out            type pair  method bind 
-endpoint     RecbeSampler     out           type push method connect
+endpoint     RecbeSampler     out           type push method connect autoSubChannel true
 
 #
 #endpoint     stfbuilder       in            type pair  method connect 
@@ -47,8 +47,8 @@ endpoint     RecbeSampler     out           type push method connect
 #endpoint     tfbuilder       in            type pull  method bind autoSubChannel true
 #endpoint     tfbuilder       in            type pull  method bind
 #endpoint     tfbuilder       out           type push  method bind 
-endpoint     TimeFrameBuilder  in          type pull  method bind
-endpoint     TimeFrameBuilder  out         type push  method bind 
+endpoint     RecbeTimeFrameBuilder  in          type pull  method bind 
+endpoint     RecbeTimeFrameBuilder  out         type push  method connect autoSubChannel true
 
 #endpoint     TFBFilePlayer   out           type push  method bind 
 
@@ -63,9 +63,9 @@ endpoint     TimeFrameBuilder  out         type push  method bind
 #endpoint     MQSink        in              type pull  method connect
 #endpoint     tfdump        in              type pull  method connect
 
-endpoint     rawdump       in              type pull  method connect
+#endpoint     rawdump       in              type pull  method connect
 #endpoint     rawdump       in              type pull  method bind
-endpoint     RecbeDisplay   in              type pull  method connect
+endpoint     RecbeDisplay   in              type pull  method bind
 
 
 echo "---------------------------------------------------------------------"
@@ -100,6 +100,6 @@ echo "---------------------------------------------------------------------"
 #link    fltcoin           out            tfdump           in
 
 #link    RecbeSampler       out             rawdump          in
-link    RecbeSampler       out            TimeFrameBuilder in
+link    RecbeSampler       out            RecbeTimeFrameBuilder in
 #link    TimeFrameBuilder   out            rawdump          in
-link    TimeFrameBuilder   out            RecbeDisplay     in
+link    RecbeTimeFrameBuilder   out            RecbeDisplay     in

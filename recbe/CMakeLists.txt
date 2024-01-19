@@ -1,9 +1,14 @@
 #==============================================================================
+
+set(INSTALL_BINDIR ${CMAKE_SOURCE_DIR}/bin)
+
 #foreach(lvar IN ITEMS Sampler; Sink; NullDevice;
 foreach(lvar IN ITEMS
-	rawdump; RecbeSampler;
-	TimeFrameBuilder;
+	rawdump;
+	RecbeSampler;
+	RecbeTimeFrameBuilder;
 	RecbeDisplay;
+	RecbeSink;
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 
@@ -20,6 +25,7 @@ foreach(lvar IN ITEMS
     #${ROOT_INCLUDE_DIRS}
     ${HIREDIS_HEADER};
     ${REDIS_PLUS_PLUS_HEADER};
+    ./;
   )
 
   target_link_directories(${EXEC} PUBLIC
@@ -42,7 +48,8 @@ foreach(lvar IN ITEMS
   install(TARGETS
     ${EXEC};
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    #RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RUNTIME DESTINATION ${INSTALL_BINDIR}
   )
 endforeach()
 
@@ -92,6 +99,7 @@ target_compile_options(CliSock
 #target_link_libraries(Clisock
 #	stdc++fs)
 
+
 add_executable(drecbe
 	drecbe.cxx
 	recbe.h
@@ -110,3 +118,5 @@ target_link_libraries(drecbe PUBLIC
     zmq;
     kol;
 )
+
+add_subdirectory(kol)

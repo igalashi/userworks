@@ -93,7 +93,7 @@ void gHistDraw()
 
 	std::string hhitname = gNamePrefix + ":" + "HitMap";
 	gDB->write(hhitname.c_str(), Slowdashify(*gID));
-	std::cout << "#D HitMap: " << Slowdashify(*gID) << std::endl;
+	//std::cout << "#D HitMap: " << Slowdashify(*gID) << std::endl;
 	
 	return;
 }

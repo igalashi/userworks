@@ -22,13 +22,13 @@ fi
 COUNTS=1
 IPHEAD="192.168.10."
 
-NUM=`seq 17 118`
+NUM=`seq 17 121`
 #NUM='17 29 30 31 45 46 47 63 64 68 81 82 99 100 116 117 118'
 
 for i in $NUM
 do
 	ip=$IPHEAD$i
-	out=`ping -c $COUNTS $ip`
+	out=`ping -w 1000 -c $COUNTS $ip`
 	stat=$?
 	if test $stat -eq 0
 	then

@@ -388,7 +388,7 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 		TimeFrame::Header *ptf
 			= reinterpret_cast<TimeFrame::Header *>(pdata);
 		int trig_now = ptf->timeFrameId;
-		#if 1
+		#if 0
 		if (trig_diff != (trig_now - trig_prev)) {
 			std::cout << "#W Strange Trigger Number : " << trig_now
 				<< " / " << trig_prev << " : " << trig_diff << std::endl;
@@ -396,7 +396,7 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 		}
 		trig_prev = trig_now;
 		#else
-		std::cout << "#D Trigger Number : " << trig_now << std::endl;
+		// std::cout << "#D Trigger Number : " << trig_now << std::endl;
 		#endif
 		
 

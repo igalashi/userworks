@@ -42,6 +42,8 @@ public:
 		static constexpr std::string_view DQMChannelName    {"dqm-chan-name"};
 		static constexpr std::string_view Mode              {"mode"};
 		static constexpr std::string_view PollTimeout       {"poll-timeout"};
+
+		static constexpr std::string_view Tparam            {"tparam"};
 	};
 
 	RecbeSampler() : fair::mq::Device() {};
@@ -108,6 +110,10 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::PollTimeout.data(),
 			bpo::value<std::string>()->default_value("1"),
 			"Timeout of polling (in msec)")
+
+		(opt::Tparam.data(),
+			bpo::value<std::vector<std::string> >(),
+			"Test")
 		;
 }
 
@@ -177,6 +183,15 @@ void RecbeSampler::InitTask()
 	rbcp.Close();
 
 	fKt1.SetDuration(5000);
+
+
+	std::vector<std::string> tparam = fConfig->GetProperty
+		<std::vector<std::string> >(opt::Tparam.data());
+	std::cout << "#DDDDDDD ";
+	for (auto &i : tparam) {std::cout << " " << i;}
+	std::cout << std::endl;
+
+
 }
 
 

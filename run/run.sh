@@ -9,7 +9,7 @@
 
 
 tmux new-session -d -s sampler
-for runID in {0..95}
+for runID in {0..90}
 do
     echo "start device Sampler ${runID}"
     #tmux new-window -d -n S${runID} -t sampler -- "./uudevice.sh RecbeSampler --ip 127.0.0.1 --port `expr 9000 + ${runID}`" &
@@ -27,15 +27,21 @@ xterm -geometry 120x20+0+0 -T Sampler -e tmux a -t sampler &
 #    sleep 0.2
 #done
 
+tmux new-session -d -s TFB
 for runID in {0..0}
 do
-    echo "start device TimeFrameBuilder"
-    xterm -geometry 100x20+700+0 -e ./uudevice.sh TimeFrameBuilder &
-    sleep 0.2
+    echo "start device RecbeTimeFrameBuilder"
+    tmux new-window -d -n S${runID} -t TFB -- "./uudevice.sh RecbeTimeFrameBuilder" &
+    #xterm -geometry 100x20+0+330 -e ./uudevice.sh RecbeTimeFrameBuilder &
+    sleep 0.1
 done
+tmux kill-window -t TFB:0
+xterm -geometry 100x20+0+330 -T TFB -e tmux a -t TFB &
 
 
-#xterm -geometry 80x40+0+380 -e ./uudevice.sh rawdump &
+xterm -geometry 100x20+620+330 -e ./uudevice.sh RecbeDisplay &
+#xterm -geometry 100x20+620+440 -e ./uudevice.sh RecbeDisplay &
+#xterm -geometry 100x20+600+480 -e ./uudevice.sh RecbeDisplay &
 
 #for runID in {0..19}
 #do

@@ -1,3 +1,5 @@
+#include <iostream>
+#include <iomanip>
 #include <chrono>
 #include <functional>
 #include <thread>
@@ -17,6 +19,12 @@
 
 //#include "AmQStrTdcData.h"
 
+#if 0
+#include "uhbook.cxx"
+#include "RedisDataStore.h"
+#include "Slowdashify.h"
+#endif
+
 namespace bpo = boost::program_options;
 
 //______________________________________________________________________________
@@ -28,10 +36,12 @@ void addCustomOptions(bpo::options_description& options)
     (opt::InputChannelName.data(),     bpo::value<std::string>()->default_value("in"),        "Name of the input channel")
     (opt::OutputChannelName.data(),    bpo::value<std::string>()->default_value("out"),       "Name of the output channel") 
     (opt::DQMChannelName.data(),       bpo::value<std::string>()->default_value("dqm"),       "Name of the data quality monitoring channel")      
-    (opt::DecimatorChannelName.data(), bpo::value<std::string>()->default_value("decimator"), "Name of the decimated output channel")
     (opt::PollTimeout.data(),          bpo::value<std::string>()->default_value("0"),         "Timeout (in msec) of polling")
+    (opt::DecimatorChannelName.data(), bpo::value<std::string>()->default_value("decimator"), "Name of the decimated output channel")
     (opt::DecimationFactor.data(),     bpo::value<std::string>()->default_value("0"),         "Decimation factor for decimated output channel")
     (opt::DecimationOffset.data(),     bpo::value<std::string>()->default_value("0"),         "Decimation offset for decimated output channel")
+    (opt::RedisUrl.data(),             bpo::value<std::string>()->default_value("tcp://127.0.0.1:6379/1"), "URL of redis server and db number")
+    (opt::RedisObjUrl.data(),          bpo::value<std::string>()->default_value("tcp://127.0.0.1:6379/3"), "URL of redis server and db number for histogram")
     ;
 }
 
@@ -53,6 +63,61 @@ bool TimeFrameBuilder::ConditionalRun()
     namespace STF = SubTimeFrame;
     namespace TF  = TimeFrame;
 
+    static int build_success = 0;
+    static int build_fail = 0;
+    static std::chrono::system_clock::time_point t_prev;
+    std::chrono::system_clock::time_point t_now
+        = std::chrono::system_clock::now();
+    auto elapse
+        = std::chrono::duration_cast<std::chrono::seconds>(t_now - t_prev);
+
+    if (elapse.count() >= 5) {
+        auto elapse_m
+            = std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t_prev);
+        t_prev = t_now;
+        double freq = static_cast<double>(build_success) / elapse_m.count() * 1000.0;
+
+        std::string key_freq = fKeyPrefix + "Frequency";
+        try {
+            fDb->ts_add(key_freq.c_str(), "*", std::to_string(freq));
+        } catch (const std::exception &e) {
+            LOG(error) << __FUNCTION__ << " exception : " << e.what();
+        } catch (...) {
+            LOG(error) << __FUNCTION__ << " exception : unknown";
+        }
+        #if 0
+        std::cout << "#D " << key_freq << " " << std::to_string(freq)
+            << " elapse: " << elapse_m.count() << std::endl;
+        #endif
+
+        double build_ratio;
+            if (build_fail + build_success > 0) {
+            build_ratio
+                = static_cast<double>(build_success)
+                / static_cast<double>(build_fail + build_success)
+                * 100;
+        } else {
+            build_ratio = 0;
+        }
+        std::string key = fKeyPrefix + "BuildRatio";
+        //std::cout << "#D " << key.c_str() << " " << std::to_string(build_ratio) << std::endl;
+        try {
+            fDb->ts_add(key.c_str(), "*", std::to_string(build_ratio));
+        } catch (const std::exception &e) {
+            LOG(error) << __FUNCTION__ << " exception : " << e.what();
+        } catch (...) {
+            LOG(error) << __FUNCTION__ << " exception : unknown";
+        }
+
+        build_success = 0;
+        build_fail = 0;
+
+        std::string hidname = fKeyObjPrefix + "HitMap";
+        fObjDb->write(hidname.c_str(), Slowdashify(*fHId));
+
+    }
+
+
     // receive
     FairMQParts inParts;
     if (Receive(inParts, fInputChannelName, 0, 1) > 0) {
@@ -65,6 +130,11 @@ bool TimeFrameBuilder::ConditionalRun()
 
         LOG(debug4) << "stfId: "<< stfId;
         LOG(debug4) << "msg size: " << inParts.Size();
+
+        auto femId     = stfHeader->FEMId;
+	//fHId->Fill(static_cast<double>(femId & 0xff));
+	fHId->Fill(static_cast<double>(femId & 0xff) + 0.5);
+        // std::cout << "#D stfId: "<< femId << " ";
 
         #if 0
         auto fem     = stfHeader->FEMId;
@@ -100,7 +170,7 @@ bool TimeFrameBuilder::ConditionalRun()
 
             #if 0
             std::cout << "#D id: " << stfId << " Nbuf: "<< tfBuf.size()
-		<< " / " << fNumSource << std::endl;
+                << " / " << fNumSource << std::endl;
             #endif
 
             if (tfBuf.size() == static_cast<long unsigned int>(fNumSource)) {
@@ -200,21 +270,29 @@ bool TimeFrameBuilder::ConditionalRun()
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     }
                 }
+
+                build_success++;
+
             } else {
                 // discard incomplete time frame
                 auto dt = std::chrono::steady_clock::now() - tfBuf.front().start;
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(dt).count() > fBufferTimeoutInMs) {
 
 
-		    #if 0
+                    #if 0
                     LOG(warn) << "Timeframe #" << std::hex << stfId << " incomplete after "
                             << std::dec << fBufferTimeoutInMs << " milliseconds, discarding";
                     //fDiscarded.insert(stfId);
                     #else
-			std::cout << "x" << std::flush;
-		    #endif
+                    double build_rate
+                        = static_cast<double>(build_success)
+                        / static_cast<double>(build_fail + build_success)
+                        * 100;
+                    std::cout << "x "
+                        << std::fixed << std::setprecision(2) << build_rate << "% " << std::flush;
+                    #endif
 
-                    #if 1
+                    #if 0 ////////// TFB Fail info. ///////////
                     ////// under debugging //////
                     std::vector<uint32_t> femid;
                     std::vector<uint32_t> expected = {
@@ -245,11 +323,14 @@ bool TimeFrameBuilder::ConditionalRun()
                                 hb.push_back(hb00);
                         }
                     }
+
+
+                    std::sort(femid.begin(), femid.end());
                     //std::cout << "#D lost FEMid :" << stfId << ":";
                     //for (auto & i : expected) std::cout << " " << (i & 0xff);
                     std::cout << "#D FEM TFN: " << stfId << ", N: " << femid.size()
-			<< ", tfBuf.size(): " << tfBuf.size()
-			<< ", id:";
+                        << ", tfBuf.size(): " << tfBuf.size()
+                        << ", id:";
                     for (auto & i : femid) std::cout << " " << (i & 0xff);
                     std::cout << std::endl;
 
@@ -265,11 +346,9 @@ bool TimeFrameBuilder::ConditionalRun()
 
                       for (auto& stfBuf: tfBuf) {
                         for (auto& m: stfBuf.parts) {
-                          
                           std::for_each(reinterpret_cast<uint64_t*>(m->GetData()),
                                         reinterpret_cast<uint64_t*>(m->GetData() + m->GetSize()),
                                         ::HexDump{4});
-
                         }
                       }
                     }// for debug-end
@@ -277,6 +356,9 @@ bool TimeFrameBuilder::ConditionalRun()
                     
                     tfBuf.clear();
                     //LOG(warn) << "Number of discarded timeframes: " << fDiscarded.size();
+ 
+                    build_fail++;
+
                 }
             }        
 
@@ -290,6 +372,7 @@ bool TimeFrameBuilder::ConditionalRun()
         }
         
     }
+
     return true;
 }
 
@@ -345,6 +428,29 @@ void TimeFrameBuilder::InitTask()
     }
     LOG(debug) << "fDecimatorNumberOfConnectedPeers : " << fDecimatorNumberOfConnectedPeers << std::endl;
 
+
+    static bool atFirst = true;
+    if (atFirst) {
+        atFirst = false;
+        std::string service_name = fConfig->GetProperty<std::string>("service-name");
+        std::string separator   = fConfig->GetProperty<std::string>("separator");
+        fKeyPrefix = "ts" + separator + fId + separator;
+        fKeyObjPrefix = "dqm" + separator + fId + separator;
+
+        fRedisUrl = fConfig->GetProperty<std::string>(opt::RedisUrl.data());
+        fDb = std::make_unique<RedisDataStore>(fRedisUrl);
+        fRedisObjUrl = fConfig->GetProperty<std::string>(opt::RedisObjUrl.data());
+        fObjDb = std::make_unique<RedisDataStore>(fRedisObjUrl);
+
+        LOG(info) << "DQM DB: " << fRedisUrl << " " << fRedisObjUrl;
+        LOG(info) << "DQM Prefix: " << fKeyPrefix << " " << fKeyObjPrefix;
+
+        //fHId = new UH1Book("FE ID", 256, 0, 256);
+        fHId = new UH1Book("FE ID", 105, 0, 105);
+
+    } else {
+        fHId->Reset();
+    }
 }
 
 //______________________________________________________________________________
@@ -358,7 +464,7 @@ void TimeFrameBuilder::PostRun()
         auto n = fChannels.count(fInputChannelName);
 
         for (auto i = 0u; i < n; ++i) {
-            std::cout << " #D SubChannel : "<< i << std::endl;
+            // std::cout << " #D SubChannel : "<< i << std::endl;
             while(true) {
 
                 FairMQParts part;

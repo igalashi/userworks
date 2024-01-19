@@ -12,6 +12,12 @@
 
 #include <fairmq/Device.h>
 
+#include "RedisDataStore.h"
+
+#include "uhbook.cxx"
+#include "RedisDataStore.h"
+#include "Slowdashify.h"
+
 
 class TimeFrameBuilder : public fair::mq::Device
 {
@@ -22,10 +28,12 @@ public:
         static constexpr std::string_view InputChannelName     {"in-chan-name"};
         static constexpr std::string_view OutputChannelName    {"out-chan-name"};
         static constexpr std::string_view DQMChannelName       {"dqm-chan-name"};      
-        static constexpr std::string_view DecimatorChannelName {"decimator-chan-name"};
         static constexpr std::string_view PollTimeout          {"poll-timeout"};
+        static constexpr std::string_view DecimatorChannelName {"decimator-chan-name"};
         static constexpr std::string_view DecimationFactor     {"decimation-factor"};
         static constexpr std::string_view DecimationOffset     {"decimation-offset"};
+        static constexpr std::string_view RedisUrl             {"redis-url"};
+        static constexpr std::string_view RedisObjUrl          {"redis-obj-url"};
     };
 
     struct STFBuffer {
@@ -63,6 +71,14 @@ private:
     std::unordered_map<uint32_t, std::vector<STFBuffer>> fTFBuffer;
     //std::unordered_set<uint64_t> fDiscarded;
 
+    std::string fRedisUrl;
+    std::unique_ptr<RedisDataStore> fDb;
+    std::string fKeyPrefix;
+    std::string fRedisObjUrl;
+    std::unique_ptr<RedisDataStore> fObjDb;
+    std::string fKeyObjPrefix;
+
+    UH1Book *fHId;
 };
 
 #endif
