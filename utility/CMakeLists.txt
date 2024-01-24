@@ -1,4 +1,7 @@
 #_______________________________________________________________________________
+set(INSTALL_BINDIR ${CMAKE_SOURCE_DIR}/bin)
+set(INSTALL_LIBDIR ${CMAKE_SOURCE_DIR}/lib)
+
 set(SimpleLibList
   Stoi;
 )
@@ -102,10 +105,10 @@ target_link_libraries(Utility
 #_______________________________________________________________________________
 install(TARGETS
   ${SimpleLibList};
-  program_options;
+#  program_options;
 #  RegisterMap;
 #  Options;
-  Utility;
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#  Utility;
+  ARCHIVE DESTINATION ${INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${INSTALL_LIBDIR}
 )
