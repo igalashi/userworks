@@ -43,7 +43,7 @@ public:
 		static constexpr std::string_view Mode              {"mode"};
 		static constexpr std::string_view PollTimeout       {"poll-timeout"};
 
-		static constexpr std::string_view Tparam            {"tparam"};
+		static constexpr std::string_view RBCP              {"rbcp"};
 	};
 
 	RecbeSampler() : fair::mq::Device() {};
@@ -111,9 +111,15 @@ void addCustomOptions(bpo::options_description& options)
 			bpo::value<std::string>()->default_value("1"),
 			"Timeout of polling (in msec)")
 
-		(opt::Tparam.data(),
-			bpo::value<std::vector<std::string> >(),
-			"Test")
+		(opt::RBCP.data(),
+			bpo::value<std::vector<std::string> >()->default_value(
+				{}, "address, value, ..."),
+				"Configuation registers")
+			#if 0
+			bpo::value<std::vector<std::string> >()->default_value(
+				{"0x05", "0x01", "0x06", "0x20"}, "address, value, ..."),
+				"Configuation registers")
+			#endif
 		;
 }
 
@@ -180,17 +186,43 @@ void RecbeSampler::InitTask()
 			LOG(error) << "RBCP err. IP: " << fDeviceIp << " Port: " << fControlPort;
 		}
 	}
+
+
+#if 1 
+	std::vector<std::string> config_data = fConfig->GetProperty
+		<std::vector<std::string> >(opt::RBCP.data());
+	struct rbcp_reg {unsigned int address; unsigned int value;};
+	std::vector<struct rbcp_reg> regval;
+	if (config_data.size() > 0) {
+		int cflag = 0;
+		for (auto &i : config_data) {
+			if (cflag == 0) {
+				struct rbcp_reg reg = {
+					static_cast<unsigned int>(std::stoi(i, nullptr, 0)), 0};
+				regval.emplace_back(reg);
+			} else {
+				regval.back().value = static_cast<unsigned int>(std::stoi(i, nullptr, 0));
+
+				val[0] = regval.back().value;
+				if (rbcp.Write(val, regval.back().address, 1) > 0) {
+					LOG(info) << "Reg : 0x" << std::hex << regval.back().address
+						<< ", 0x" << regval.back().value << std::dec;
+				} else {
+					LOG(error) << "RBCP err. IP: " << fDeviceIp
+						<< " Port: " << fControlPort
+						<< " Reg: 0x" << std::hex << regval.back().address
+						<< ", 0x" << regval.back().value << std::dec;
+				}
+
+			}
+			cflag = ((cflag + 1) & 0x1);
+		}
+
+	}
+#endif
+
 	rbcp.Close();
-
 	fKt1.SetDuration(5000);
-
-
-	std::vector<std::string> tparam = fConfig->GetProperty
-		<std::vector<std::string> >(opt::Tparam.data());
-	std::cout << "#DDDDDDD ";
-	for (auto &i : tparam) {std::cout << " " << i;}
-	std::cout << std::endl;
-
 
 }
 

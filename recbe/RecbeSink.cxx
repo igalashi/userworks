@@ -184,7 +184,7 @@ void Sink::PreRun()
     //  fstr.open(filename.data(), std::ios::binary);
 
     char filename[256];
-    sprintf(filename, "./file/run%06d.dat", stoi(rnumber));
+    sprintf(filename, "./data/run%06d.dat", stoi(rnumber));
     fstr.open(filename, std::ios::binary);
     fopened = true;
 

@@ -1,6 +1,7 @@
 #==============================================================================
 
 set(INSTALL_BINDIR ${CMAKE_SOURCE_DIR}/bin)
+set(INSTALL_LIBDIR ${CMAKE_SOURCE_DIR}/lib)
 
 #foreach(lvar IN ITEMS Sampler; Sink; NullDevice;
 foreach(lvar IN ITEMS
@@ -47,8 +48,9 @@ foreach(lvar IN ITEMS
 
   install(TARGETS
     ${EXEC};
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    #LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     #RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${INSTALL_LIBDIR}
     RUNTIME DESTINATION ${INSTALL_BINDIR}
   )
 endforeach()
