@@ -24,6 +24,7 @@
 #include "TimeFrameHeader.h"
 #include "FilterHeader.h"
 
+#include "SignalParser.cxx"
 #include "KTimer.cxx"
 #include "Trigger.cxx"
 
@@ -42,6 +43,9 @@ struct FltTrig : fair::mq::Device
 		static constexpr std::string_view RemoveHB           {"remove-hb"};
 		static constexpr std::string_view PollTimeout        {"poll-timeout"};
 		static constexpr std::string_view SplitMethod        {"split"};
+
+		static constexpr std::string_view TriggerSignals     {"trigger-signals"};
+		static constexpr std::string_view TriggerFormula     {"trigger-formula"};
 	};
 
 	FltTrig()
@@ -164,7 +168,6 @@ void FltTrig::InitTask()
 	}
 	LOG(info) << "InitTask: RemoveHB : " << fIsRemoveHB;
 
-	//fTrig->SetTimeRegion(1024 * 512);
 	fTrig->SetTimeRegion(1024 * 128);
 	fTrig->ClearEntry();
 	fTrig->SetMarkLen(10);
@@ -186,7 +189,7 @@ void FltTrig::InitTask()
 		"0 1 & 2 3 & | 4 5 & | 6 7 & | 8 9 & | 10 11 & |");
 #endif
 
-#if 1
+#if 0
 	fTrig->Entry(0xc0a802a9,  0, 0); //DL
 	fTrig->Entry(0xc0a802a9,  1, 0); //DR
 	fTrig->Entry(0xc0a802a9,  2, 0); //DL
@@ -208,6 +211,21 @@ void FltTrig::InitTask()
 	fTrig->Entry(0xc0a802a8, 1, 0);
 	fTrig->MakeTable(2, "0 1 &");
 #endif
+
+	std::string str_signals = fConfig->GetProperty<std::string>(opt::TriggerSignals.data());
+	std::string formula = fConfig->GetProperty<std::string>(opt::TriggerFormula.data());
+	LOG(info) << "Signals: " << str_signals << std::endl;
+
+	std::vector< std::vector<uint32_t> > signals = SignalParser::Parsing(str_signals);
+	for (auto &v : signals) {
+		if (v.size() >= 3) {
+			fTrig->Entry(v[0], v[1], v[2]);
+			LOG(info) << "Module: " << v[0] << ", Channel: " << v[1] << ", Offset: " << v[2];
+		}
+	}
+	
+	LOG(info) << "Formula: " << formula << std::endl;
+	fTrig->MakeTable(formula);
 
 }
 
@@ -1079,8 +1097,16 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::SplitMethod.data(),
 			bpo::value<std::string>()->default_value("1"),
 			"STF split method")
-    		;
 
+		(opt::TriggerSignals.data(),
+			bpo::value<std::string>()->default_value(
+			"((0xc0a802a9 0 0) (0xc0a802a9 1 0)"),
+			"Triger signals (module_IP Channel_number Offset)")
+		(opt::TriggerFormula.data(),
+			bpo::value<std::string>()->default_value("0 1 &"),
+			"Trigger formula")
+
+    		;
 }
 
 

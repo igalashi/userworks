@@ -10,6 +10,7 @@ foreach(lvar IN ITEMS
 	RecbeTimeFrameBuilder;
 	RecbeDisplay;
 	RecbeSink;
+	DummySampler;
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 

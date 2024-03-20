@@ -6,7 +6,7 @@ set(INSTALL_BINDIR ${CMAKE_SOURCE_DIR}/bin)
 #foreach(lvar IN ITEMS Sampler; Sink; NullDevice;
 foreach(lvar IN ITEMS
 	tfdump; fltcoin; flttrig; TimeFrameBuilder;
-	TFBFilePlayer; STFBFilePlayer
+	TFBFilePlayer; STFBFilePlayer;
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 
@@ -109,3 +109,13 @@ add_executable(TriggerMap
 target_compile_options(TriggerMap
 	PRIVATE -Wall -O -g -D TRIGGERMAP_TEST_MAIN
 )
+
+add_executable(SignalParser
+	SignalParser.cxx
+)
+
+target_compile_options(SignalParser
+	PRIVATE -Wall -O -g -D SIGNALPARSER_TEST_MAIN
+)
+
+
