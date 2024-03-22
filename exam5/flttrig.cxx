@@ -214,17 +214,30 @@ void FltTrig::InitTask()
 
 	std::string str_signals = fConfig->GetProperty<std::string>(opt::TriggerSignals.data());
 	std::string formula = fConfig->GetProperty<std::string>(opt::TriggerFormula.data());
-	LOG(info) << "Signals: " << str_signals << std::endl;
+	//LOG(info) << "Signals: " << str_signals;
 
 	std::vector< std::vector<uint32_t> > signals = SignalParser::Parsing(str_signals);
+	int i = 0;
 	for (auto &v : signals) {
 		if (v.size() >= 3) {
 			fTrig->Entry(v[0], v[1], v[2]);
-			LOG(info) << "Module: " << v[0] << ", Channel: " << v[1] << ", Offset: " << v[2];
+			union ipval {
+				uint32_t u32;
+				char c[4];
+			};
+			ipval mid; mid.u32 = v[0];
+			//LOG(info) << "Module: " << std::hex << v[0] << ", Channel: " << v[1] << ", Offset: " << v[2];
+			LOG(info) << std::setw(4) << i << ": "
+				<< "M_id: " << static_cast<unsigned int>(mid.c[3] & 0xff)
+				<< "."      << static_cast<unsigned int>(mid.c[2] & 0xff)
+				<< "."      << static_cast<unsigned int>(mid.c[1] & 0xff)
+				<< "."      << static_cast<unsigned int>(mid.c[0] & 0xff)
+				<< ", Ch.: " << std::setw(3) << v[1] << ", Offset: " << std::setw(6) << v[2];
+			i++;
 		}
 	}
 	
-	LOG(info) << "Formula: " << formula << std::endl;
+	LOG(info) << "Formula: " << formula;
 	fTrig->MakeTable(formula);
 
 }

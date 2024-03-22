@@ -117,5 +117,3 @@ add_executable(SignalParser
 target_compile_options(SignalParser
 	PRIVATE -Wall -O -g -D SIGNALPARSER_TEST_MAIN
 )
-
-

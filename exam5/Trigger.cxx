@@ -161,7 +161,9 @@ void Trigger::Entry(uint32_t fem, int ch, int offset)
 	fEntryMask |= 0x00000001 << fEntryCounts;
 	fEntryCounts++;
 
+	#if 0
 	std::cout << "#D Trig Entry : Module: " << fem << " Ch: " << ch << std::endl;
+	#endif
 	if (static_cast<unsigned int>(fEntryCounts) > (sizeof(uint32_t) * 8)) {
 		std::cerr << "Entry Ch. exceed " << sizeof(uint32_t) * 8<< std::endl;
 	}

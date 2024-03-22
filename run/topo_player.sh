@@ -39,6 +39,9 @@ endpoint  TFBFilePlayer     out           type push  method bind
 endpoint  fltcoin           in            type pull  method connect
 endpoint  fltcoin           out           type push  method bind 
 
+endpoint  flttrig           in            type pull  method connect
+endpoint  flttrig           out           type push  method bind 
+
 endpoint  tfdump            in            type pull  method connect
 endpoint  Sink              in            type pull  method connect
 endpoint  FileSink          in            type pull  method connect
@@ -51,8 +54,8 @@ echo "---------------------------------------------------------------------"
 #         service1          channel1       service2          channel2      
 #---------------------------------------------------------------------------
 
-link      TFBFilePlayer     out            fltcoin           in
-link      fltcoin           out            tfdump            in
-
 link      STFBFilePlayer    out            TimeFrameBuilder  in
-link      TimeFrameBuilder  out            fltcoin           in
+link      TimeFrameBuilder  out            flttrig           in
+
+link      TFBFilePlayer     out            flttrig           in
+link      flttrig           out            tfdump            in

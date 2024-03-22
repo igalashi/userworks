@@ -100,13 +100,15 @@ std::vector<std::vector<uint32_t> > Parsing(const std::string &sigstr)
 			if (low.size() > 0) signals.emplace_back(low);
 		} else {
 			try {
-				uint32_t val = std::stoi(v, nullptr, 0);
+				unsigned long ulval = std::stoul(v, nullptr, 0);
+				uint32_t val = 0xffffffff & ulval;
 				low.emplace_back(val);
 			} catch (const std::invalid_argument &e) {
 				std::cout << "#E Bad number word: " << v << " " << e.what() << std::endl;
 				//throw e;
 			} catch (const std::out_of_range &e) {
-				std::cout << "#E Bat number word: " << v << " " << e.what() << std::endl;
+				std::cout << "#E Bad number word (out of range) : "
+					<< v << " " << e.what() << std::endl;
 				//throw e;
 			}
 			
@@ -122,7 +124,7 @@ std::vector<std::vector<uint32_t> > Parsing(const std::string &sigstr)
 #ifdef SIGNALPARSER_TEST_MAIN
 int main(int argc, char* argv[])
 {
-	std::string param("(0x1234 0 0) ( 0x1234 1 0 ) (0xa235 xxx1 1)");
+	std::string param("(0x1234 0 0) ( 0xc0a802a9 1 0 ) (0xa235 xxx1 1)");
 	std::vector<std::vector<uint32_t> > signals
 		= SignalParser::Parsing(param);
 

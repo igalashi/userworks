@@ -14,7 +14,8 @@ CONFIG_URI=' --parameter-config-uri tcp://127.0.0.1:6379/2'
 #fi
 #BINDIR=/home/nestdaq/nestdaq/bin
 #BINDIR=/home/nestdaq/nestdaq/src/userworks/build/recbe
-BINDIR=$HOME/nestdaq/src/userworks/build/recbe
+#BINDIR=$HOME/nestdaq/src/userworks/build/recbe
+BINDIR=$HOME/nestdaq/src/userworks/bin
 
 #export LD_LIBRARY_PATH=$ROOTSYS/lib
 
