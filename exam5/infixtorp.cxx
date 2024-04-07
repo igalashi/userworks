@@ -31,7 +31,7 @@ std::shared_ptr<AstNode> infixtorp(const std::string& input);
 #include <deque>
 #include <stdexcept>
 #include <cctype>
-//#include "pasrse.h"
+//#include "infixtorp.h"
 
 static std::deque<std::string> tokenize(const std::string& line)
 {

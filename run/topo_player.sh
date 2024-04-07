@@ -42,6 +42,9 @@ endpoint  fltcoin           out           type push  method bind
 endpoint  flttrig           in            type pull  method connect
 endpoint  flttrig           out           type push  method bind 
 
+endpoint  LogicFilter       in            type pull  method connect
+endpoint  LogicFilter       out           type push  method bind 
+
 endpoint  tfdump            in            type pull  method connect
 endpoint  Sink              in            type pull  method connect
 endpoint  FileSink          in            type pull  method connect
@@ -55,7 +58,7 @@ echo "---------------------------------------------------------------------"
 #---------------------------------------------------------------------------
 
 link      STFBFilePlayer    out            TimeFrameBuilder  in
-link      TimeFrameBuilder  out            flttrig           in
+link      TimeFrameBuilder  out            LogicFilter       in
 
-link      TFBFilePlayer     out            flttrig           in
-link      flttrig           out            tfdump            in
+link      TFBFilePlayer     out            LogicFilter       in
+link      LogicFilter       out            tfdump            in

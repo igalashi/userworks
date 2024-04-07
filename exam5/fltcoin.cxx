@@ -839,7 +839,7 @@ bool FltCoin::ConditionalRun()
 		uint64_t flt_len = tf_len + sizeof(struct Filter::Header);	
 		
 		auto fltHeader = std::make_unique<struct Filter::Header>();
-		fltHeader->magic = Filter::Magic;
+		fltHeader->magic = Filter::MAGIC;
 		fltHeader->length = flt_len;
 		fltHeader->numTrigs = totalhits;
 		fltHeader->workerId = fId;

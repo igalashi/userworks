@@ -64,7 +64,7 @@ bool TFBFilePlayer::ConditionalRun()
     char tempbuf[sizeof(struct Filter::Header)];
     fInputFile.read(reinterpret_cast<char*>(&magic), sizeof(uint64_t));
 
-    if (magic == Filter::Magic) {
+    if (magic == Filter::MAGIC) {
         fInputFile.read(tempbuf, sizeof(struct Filter::Header) - sizeof(uint64_t));
     } else 
     if (magic == FST::Magic) {

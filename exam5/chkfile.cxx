@@ -115,7 +115,7 @@ bool CheckBlock(char *buf, int size)
 	//TimeFrame::Header *ptf = reinterpret_cast<TimeFrame::Header *>(buf);
 	//SubTimeFrame::Header *pstf = reinterpret_cast<SubTimeFrame::Header *>(buf);
 
-	if (*pdata == Filter::Magic) {
+	if (*pdata == Filter::MAGIC) {
 		Filter::Header *pflt = reinterpret_cast<Filter::Header *>(pdata);
 		//std::string smagic = std::string(
 		//	reinterpret_cast<char *>(&(pflt->magic))).substr(0,8);
@@ -402,7 +402,7 @@ int reader(char *file)
 		unsigned int hlength = 0;
 		ifs.read(top, sizeof(uint64_t));
 		if (!ifs) break;
-		if (*(reinterpret_cast<uint64_t *>(top)) == Filter::Magic) {
+		if (*(reinterpret_cast<uint64_t *>(top)) == Filter::MAGIC) {
 			hlength = sizeof(struct Filter::Header);
 			ifs.read(top + sizeof(uint64_t),
 				 hlength - sizeof(uint64_t));

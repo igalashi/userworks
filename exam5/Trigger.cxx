@@ -16,6 +16,16 @@
 #include "TriggerMap.cxx"
 
 
+struct HBFIndex {
+	int msg_index;
+	uint32_t timeFrameId;
+	uint32_t FEMType;
+	uint32_t FEMId;
+	unsigned char* data;
+	int size;
+};
+
+
 class Trigger
 {
 public:
@@ -31,6 +41,7 @@ public:
 	bool CheckEntryFEM(uint32_t);
 	void Mark(unsigned char *, int, int, uint32_t);
 	std::vector<uint32_t> *Scan();
+	std::vector<uint32_t> *Exec(std::vector<struct HBFIndex> &);
 	void SetMarkLen(int val) {fMarkLen = val;};
 	int GetMarkLen() {return fMarkLen;};
 	//void SetLogic(int);
@@ -38,9 +49,9 @@ public:
 protected:
 private:
 	//std::vector<struct CoinCh> fEntry;
-	std::map<uint32_t, std::vector<int>> fEntryCh;
-	std::map<uint32_t, std::vector<int>> fEntryChDelay;
-	std::map<uint32_t, std::vector<uint32_t>> fEntryChBit;
+	std::map< uint32_t, std::vector<int> > fEntryCh;
+	std::map< uint32_t, std::vector<int> > fEntryChDelay;
+	std::map< uint32_t, std::vector<uint32_t> > fEntryChBit;
 	int fEntryCounts = 0;
 	uint32_t fEntryMask = 0;
 
@@ -313,6 +324,49 @@ std::vector<uint32_t> *Trigger::Scan()
 
 	return &fHits;
 }
+
+std::vector<uint32_t> *Trigger::Exec(std::vector<struct HBFIndex> &hbf)
+{
+	Trigger::CleanUpTimeRegion();
+
+	for (auto &seg : hbf) {
+		//fTrig->Mark(
+		//	reinterpret_cast<unsigned char *>(inParts[mindex].GetData()),
+		//	inParts[mindex].GetSize(),
+		//	vfemid, dbl->Type);
+		Trigger::Mark(seg.data, seg.size, seg.FEMId, seg.FEMType);
+	}
+
+	#if 0
+	uint32_t *tr = fTrig->GetTimeRegion();
+	std::cout << "####DDDD Hit TimeRegion: ";
+	for (uint32_t ii = 0 ; ii < fTrig->GetTimeRegionSize() ; ii++) {
+		if (tr[ii] != 0) {
+		std::cout << " " << std::dec << i << ":"
+			<< std::hex << std::setw(4) << std::setfill('0')
+			<< tr[ii];
+		}
+	}
+	std::cout << std::endl;
+	#endif
+
+	#if 0
+	std::cout << "# HB: " << std::dec << i;
+	for (size_t iifem = 0 ; iifem < block_map.size() ; iifem++) {
+		struct DataBlock *dbl = &block_map[iifem][i];
+		uint64_t vfemid = dbl->FEMId;
+		uint64_t vhbframe = dbl->HBFrame;
+		//std::cout << "# HB: " << std::dec << i
+		//<< " FEM: " << std::hex << vfemid
+		std::cout << " " << std::dec << (vfemid  & 0xff) << ":" << vhbframe;
+	}
+	std::cout << std::endl;
+	#endif
+
+	return Trigger::Scan();
+}
+
+
 
 
 #ifdef TEST_MAIN_TRIG
