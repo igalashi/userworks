@@ -62,3 +62,5 @@ link      TimeFrameBuilder  out            LogicFilter       in
 
 link      TFBFilePlayer     out            LogicFilter       in
 link      LogicFilter       out            tfdump            in
+
+#link      TFBFilePlayer     out            tfdump            in

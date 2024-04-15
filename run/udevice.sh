@@ -44,7 +44,7 @@ function run_device () {
   var+=$DAQSERVICE_URI
   var+=$METRICS_URI
   var+=$CONFIG_URI
-  var+=" --severity debug"
+  var+=" --severity debug4"
 
   if [ -n "$MY_TERM" ]; then
     #echo \
