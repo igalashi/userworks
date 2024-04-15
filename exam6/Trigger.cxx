@@ -239,7 +239,7 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
 									if ((hit + k) < fTimeRegionSize) {
 										fTimeRegion[hit + k] |= markbit;
-									} else {
+									} else if ((static_cast<int>(hit) + k) >= 0) {
 										std::cout << "#E Over range hit!"
 											<< " FEM: " << std::hex << fem
 											<< " Ch: " << std::dec << ch
@@ -264,7 +264,7 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
 									if ((hit + k) < fTimeRegionSize) {
 										fTimeRegion[hit + k] |= markbit;
-									} else {
+									} else if ((static_cast<int>(hit) + k) >= 0) {
 										std::cout << "#E Over range hit!"
 											<< " FEM: " << std::hex << fem
 											<< " Ch: " << std::dec << ch
@@ -295,11 +295,12 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
 									if ((hit + k) < fTimeRegionSize) {
 										fTimeRegion[hit + k] |= markbit;
-									} else {
+									} else if ((static_cast<int>(hit) + k) >= 0) {
 										std::cout << "#E Over range hit!"
 											<< " FEM: " << std::hex << fem
 											<< " Ch: " << std::dec << ch
 											<< " Hit: " << hit
+											<< " Mark: " << static_cast<int>(hit) + k
 											<< std::endl;
 									}
 								}
@@ -320,7 +321,7 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
 									if ((hit + k) < fTimeRegionSize) {
 										fTimeRegion[hit + k] |= markbit;
-									} else {
+									} else if ((static_cast<int>(hit) + k) >= 0) {
 										std::cout << "#E Over range hit!"
 											<< " FEM: " << std::hex << fem
 											<< " Ch: " << std::dec << ch

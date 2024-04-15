@@ -204,7 +204,8 @@ void LogicFilter::InitTask()
 
 	fTrig->SetTimeRegion(1024 * 128);
 	fTrig->ClearEntry();
-	fTrig->SetMarkLen(10);
+	//fTrig->SetMarkLen(10);
+	fTrig->SetMarkLen(20);
 
 #if 0
 	fTrig->Entry(0xc0a802a9,  0, 0); //DL
@@ -1134,12 +1135,15 @@ bool LogicFilter::ConditionalRun()
 		}
 		#endif
 
+		#if 1
 		if (totalhits > 0) {
-			std::cout << "#D TotalHits: " << totalhits;
-			std::cout << " Flag: ";
-			for (const auto& v : flag_sending) std::cout << " " << v; 
+			std::cout << "#D TotalHits: " << std::setw(4) << totalhits << " :";
+			for (int i = 0 ; i < totalhits / 50 ; i++) std::cout << ".";
+			// std::cout << " Flag: ";
+			// for (const auto& v : flag_sending) std::cout << " " << v; 
 			std::cout << std::endl;
 		}
+		#endif
 
 		#if 0
 		auto tfHeader = reinterpret_cast<TimeFrame::Header*>(inParts.At(0)->GetData());
