@@ -1,9 +1,9 @@
 /********************************************************************************
  *    Copyright (C) 2014 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH    *
- *                                                                              *
- *              This software is distributed under the terms of the             *
- *              GNU Lesser General Public Licence (LGPL) version 3,             *
- *                  copied verbatim in the file "LICENSE"                       *
+ *									      *
+ *	      This software is distributed under the terms of the	     *
+ *	      GNU Lesser General Public Licence (LGPL) version 3,	     *
+ *		  copied verbatim in the file "LICENSE"		       *
  ********************************************************************************/
 
 #include <fairmq/Device.h>
@@ -29,8 +29,8 @@ struct TFdump : fair::mq::Device
 {
 	struct OptionKey {
 		static constexpr std::string_view InputChannelName  {"in-chan-name"};
-		static constexpr std::string_view ShrinkMode        {"shrink"};
-		static constexpr std::string_view Interval          {"interval"};
+		static constexpr std::string_view ShrinkMode	{"shrink"};
+		static constexpr std::string_view Interval	  {"interval"};
 	};
 
 	TFdump()
@@ -132,6 +132,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 
 	static int tf_nstf = 0;
 	static int ac_nstf = 0;
+	static int ac_nhbf = 0;
 
 	constexpr int DM_OTHER = 0;
 	constexpr int DM_TDC   = 1;
@@ -236,17 +237,30 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 			std::cout << "#DM TDC(L)" << std::endl;
 		}
 		ac_nstf++;
+		ac_nhbf = 0;
+
 
 	//} else if (data_mode == DM_TDC) {
 	} else if (msg_magic == HartbeatFrame::MAGIC) {
 		//std::cout << "#D DMODE: TDC" << std::endl;
 		if (fIsShrink) {
 			//std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
-			std::cout << ".";
+			std::cout << "H";
 		} else {
 			std::cout << "#D HBF" << std::endl;
+
+			HartbeatFrame::Header *phbf
+				= reinterpret_cast<HartbeatFrame::Header *>(pdata);
+
+			std::cout << "#HBF Header (" << std::dec << ac_nhbf << ") "
+				<< std::hex << std::setw(8) << std::setfill('0') <<  phbf->magic
+				<< " len: " << std::setw(8) << std::setfill('0') <<  phbf->length
+				<< std::endl;
+			ac_nhbf++;
+
+
 			//std::cout << "#DMODE: TDC" << std::endl;
-			for (unsigned int j = 0 ; j < msize ; j += 8) {
+			for (unsigned int j = 16 ; j < msize ; j += 8) {
 				std::cout << "# " << std::setw(8) << j << " : "
 				<< std::hex << std::setw(2) << std::setfill('0')
 				<< std::setw(2) << static_cast<unsigned int>(pdata[j + 7]) << " "
@@ -303,7 +317,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 					struct TDC64H::tdc64 tdc;
 					TDC64H::Unpack(*dword, &tdc);
 					int hbflag = tdc.flag;
-				        if (hbflag > 0) {
+					if (hbflag > 0) {
 						if ((hbflag & 0x200) == 0x200)
 							std::cout << "#E HB Data lost" << std::endl;
 						if ((hbflag & 0x100) == 0x100)
@@ -320,7 +334,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 							std::cout << "#W O Throttling" << std::endl;
 						if ((hbflag & 0x004) == 0x004)
 							std::cout << "#W HBF Throttling" << std::endl;
-        				}
+					}
 
 				} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_SPL_START << 2)) {
 					std::cout << "SPILL Start" << std::endl;
