@@ -1361,7 +1361,7 @@ bool LogicFilter::ConditionalRun()
 					LOG(error) << "Failed to enqueue dqm-channel";
 				}
 			} else {
-				std::cout << "+" << std::flush;
+				//std::cout << "+" << std::flush;
 			}
 		} else {
 			#if 0

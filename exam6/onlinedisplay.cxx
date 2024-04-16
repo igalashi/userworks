@@ -20,6 +20,7 @@
 
 #include "SubTimeFrameHeader.h"
 #include "TimeFrameHeader.h"
+#include "HartbeatFrameHeader.h"
 #include "FilterHeader.h"
 #include "UnpackTdc.h"
 #include "KTimer.cxx"
@@ -134,7 +135,7 @@ bool OnlineDisplay::CheckData(fair::mq::MessagePtr& msg)
 		<< " Size: " << std::dec << msize << std::endl;
 	#endif
 
-	if (msg_magic == Filter::Magic) {
+	if (msg_magic == Filter::MAGIC) {
 		Filter::Header *pflt
 			= reinterpret_cast<Filter::Header *>(pdata);
 		std::cout << "#FLT Header "
@@ -145,7 +146,14 @@ bool OnlineDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< " elapse: " << std::dec <<  pflt->elapseTime
 			<< std::endl;
 
-	} else if (msg_magic == TimeFrame::Magic) {
+	} else if (msg_magic == Filter::TDC_MAGIC) {
+		gTrig.clear();
+		gTrig.resize(0);
+		uint32_t *trg = reinterpret_cast<uint32_t *>(pdata + sizeof(Filter::TrgTimeHeader));
+		int len = (msize - sizeof(Filter::TrgTimeHeader)) / sizeof(uint32_t);
+		for (int i = 0 ; i < len ; i++) gTrig.emplace_back(trg[i]);
+
+	} else if (msg_magic == TimeFrame::MAGIC) {
 		TimeFrame::Header *ptf
 			= reinterpret_cast<TimeFrame::Header *>(pdata);
 		std::cout << "#TF Header "
@@ -155,24 +163,24 @@ bool OnlineDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< " len: " << std::dec <<  ptf->length
 			<< std::endl;
 
-	} else if (msg_magic == SubTimeFrame::Magic) {
+	} else if (msg_magic == SubTimeFrame::MAGIC) {
 		SubTimeFrame::Header *pstf
 			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
 		std::cout << "#STF Header "
 			<< std::hex << std::setw(8) << std::setfill('0') <<  pstf->magic
 			<< " id: " << std::setw(8) << std::setfill('0') <<  pstf->timeFrameId
 			//<< " res: " << std::setw(8) << std::setfill('0') <<  pstf->reserved
-			<< " Type: " << std::setw(8) << std::setfill('0') <<  pstf->FEMType
-			<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->FEMId
+			<< " Type: " << std::setw(8) << std::setfill('0') <<  pstf->femType
+			<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->femId
 			<< std::endl << "# "
 			<< " len: " << std::dec <<  pstf->length
 			<< " nMsg: " << std::dec <<  pstf->numMessages
 			<< std::endl << "# "
-			<< " Ts: " << std::dec << pstf->time_sec
-			<< " Tus: " << std::dec << pstf->time_usec
+			<< " Ts: " << std::dec << pstf->timeSec
+			<< " Tus: " << std::dec << pstf->timeUSec
 			<< std::endl;
 
-		fFeType = pstf->FEMType;
+		fFeType = pstf->femType;
 
 	} else {
 
@@ -267,7 +275,7 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
 	uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(pdata));
 
-	if (msg_magic == Filter::Magic) {
+	if (msg_magic == Filter::MAGIC) {
 		#if 0
 		Filter::Header *pflt
 			= reinterpret_cast<Filter::Header *>(pdata);
@@ -280,7 +288,7 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< std::endl;
 		#endif
 
-	} else if (msg_magic == TimeFrame::Magic) {
+	} else if (msg_magic == TimeFrame::MAGIC) {
 		#if 0
 		TimeFrame::Header *ptf
 			= reinterpret_cast<TimeFrame::Header *>(pdata);
@@ -292,7 +300,7 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< std::endl;
 		#endif
 
-	} else if (msg_magic == SubTimeFrame::Magic) {
+	} else if (msg_magic == SubTimeFrame::MAGIC) {
 		SubTimeFrame::Header *pstf
 			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
 		#if 0
@@ -300,36 +308,45 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< std::hex << std::setw(8) << std::setfill('0') <<  pstf->magic
 			<< " id: " << std::setw(8) << std::setfill('0') <<  pstf->timeFrameId
 			//<< " res: " << std::setw(8) << std::setfill('0') <<  pstf->reserved
-			<< " Type: " << std::setw(8) << std::setfill('0') <<  pstf->FEMType
-			<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->FEMId
+			<< " Type: " << std::setw(8) << std::setfill('0') <<  pstf->femType
+			<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->femId
 			<< std::endl << "# "
 			<< " len: " << std::dec <<  pstf->length
 			<< " nMsg: " << std::dec <<  pstf->numMessages
 			<< std::endl << "# "
-			<< " Ts: " << std::dec << pstf->time_sec
-			<< " Tus: " << std::dec << pstf->time_usec
+			<< " Ts: " << std::dec << pstf->timeSec
+			<< " Tus: " << std::dec << pstf->timeUSec
 			<< std::endl;
 		#endif
 
-		fFEMId = pstf->FEMId;
-		fFeType = pstf->FEMType;
+		fFEMId = pstf->femId;
+		fFeType = pstf->femType;
+
+	} else if (msg_magic == HartbeatFrame::MAGIC) {
+
+		gHistBook(msg, fFEMId, fFeType);
 
 	} else {
 
 		#if 0
+		for (int j = 0 ; j < 16 ; j += 8) {
 		std::cout << "# " << std::setw(8) << j << " : "
 			<< std::hex << std::setw(2) << std::setfill('0')
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 7]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 6]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 5]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 4]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 3]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 2]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 1]) << " "
-			<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 0]) << " : ";
+			<< std::setw(2) << static_cast<unsigned int>(pdata[j + 7]) << " "
+			<< std::setw(2) << static_cast<unsigned int>(pdata[j + 6]) << " "
+			<< std::setw(2) << static_cast<unsigned int>(pdata[j + 5]) << " "
+			<< std::setw(2) << static_cast<unsigned int>(pdata[j + 4]) << " "
+			<< std::setw(2) << static_cast<unsigned int>(pdata[j + 3]) << " "
+			<< std::setw(2) << static_cast<unsigned int>(pdata[j + 2]) << " "
+			<< std::setw(2) << static_cast<unsigned int>(pdata[j + 1]) << " "
+			<< std::setw(2) << static_cast<unsigned int>(pdata[j + 0]) << " : "
+			<< std::endl;
+		}
 		#endif
 
-		if        ((pdata[0 + 7] & 0xfc) == (TDC64H::T_TDC << 2)) {
+		if (false) {
+
+		} else if ((pdata[0 + 7] & 0xfc) == (TDC64H::T_TDC << 2)) {
 
 			gHistBook(msg, fFEMId, fFeType);
 

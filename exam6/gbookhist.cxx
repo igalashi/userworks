@@ -18,12 +18,16 @@ static TH1F *gHBDC[2];
 static TH1F *gHSFT[3];
 static TH1F *gHKLDC[2];
 
+static TH2F *gH2corr[2];
+
 static std::vector< std::vector<int> > gIpBDC = {
 	{161, 162, 163, 164},
 	{166, 166, 166, 168}};
 static std::vector<int> gIpSFT = {173, 174, 175};
 static std::vector< std::vector<int> > gIpKLDC = {
 	{173, 174}, {175, 176}};
+
+static std::vector<int> gTrig;
 
 //TMutex *gMtxDisp;
 
@@ -49,13 +53,17 @@ void gHistInit()
 	gH2HRTDC = new TH2F("HRTDC02D", "HR-TDC 2D", 64, 0, 64, 64, 0, 64);
 	gHDiff = new TH1F("DIFF", "Diff", 1000, 0, 1000000);
 
+	gH2corr[0] = new TH2F("CORR0", "CORR0", 500, 0, 8000, 500, 0, 8000);
+	gH2corr[1] = new TH2F("CORR1", "CORR1", 500, 0, 8000, 500, 0, 8000);
+
 	gCan1->Divide(2, 2);
 	gCan1->cd(1)->SetLogy();
 	gCan1->cd(1); gHHRTDC[0]->Draw();
 	gCan1->cd(2)->SetLogy();
 	gCan1->cd(2); gHHRTDC[1]->Draw();
 	gCan1->cd(3)->SetLogz();
-	gCan1->cd(3); gH2HRTDC->Draw("col2");
+	//gCan1->cd(3); gH2HRTDC->Draw("col2");
+	gCan1->cd(3); gH2corr[0]->Draw("col2");
 	gCan1->cd(4); gHDiff->Draw();
 
 	gHBDC[0] = new TH1F("BDC1", "BDC1", 512, 0, 512);
@@ -141,12 +149,12 @@ void gHistBook(fair::mq::MessagePtr& msg, int id, int type)
 
 	for (size_t i = 0 ; i < msize ; i += sizeof(uint64_t)) {
 		if ((id & 0x000000ff) == 169) {
-			if ((pdata[i + 7] & 0xfc) == (TDC64H::T_TDC << 2)) {
+			if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2)) {
 
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
-				if (type == SubTimeFrame::TDC64H) {
-					struct TDC64H::tdc64 tdc;
-					TDC64H::Unpack(*dword, &tdc);
+				if (type == SubTimeFrame::TDC64H_V3) {
+					struct TDC64H_V3::tdc64 tdc;
+					TDC64H_V3::Unpack(*dword, &tdc);
 					//gMtxDisp->Lock();
 					gHHRTDC[0]->Fill(tdc.ch);
 					//gMtxDisp->UnLock();
@@ -158,10 +166,18 @@ void gHistBook(fair::mq::MessagePtr& msg, int id, int type)
 					#else
 					std::cout << "*" << std::flush;
 					#endif
+
+					if (tdc.ch == 8) {
+						for (auto &trg : gTrig) {
+							gH2corr[0]->Fill(trg * 4, (tdc.tdc >> 10));
+						}
+					}
+
+
 				} else
-				if (type == SubTimeFrame::TDC64L) {
-					struct TDC64L::tdc64 tdc;
-					TDC64L::Unpack(*dword, &tdc);
+				if (type == SubTimeFrame::TDC64L_V3) {
+					struct TDC64L_V3::tdc64 tdc;
+					TDC64L_V3::Unpack(*dword, &tdc);
 					#if 0
 					std::cout << "FEM: " << (id & 0xff) << " TDC ";
 					std::cout << "L :"
@@ -175,12 +191,12 @@ void gHistBook(fair::mq::MessagePtr& msg, int id, int type)
 		}
 
 		if ((id & 0x000000ff) == 170) {
-			if ((pdata[i + 7] & 0xfc) == (TDC64H::T_TDC << 2)) {
+			if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2)) {
 	
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
-				if (type == SubTimeFrame::TDC64H) {
-					struct TDC64H::tdc64 tdc;
-					TDC64H::Unpack(*dword, &tdc);
+				if (type == SubTimeFrame::TDC64H_V3) {
+					struct TDC64H_V3::tdc64 tdc;
+					TDC64H_V3::Unpack(*dword, &tdc);
 					//gMtxDisp->Lock();
 					gHHRTDC[1]->Fill(tdc.ch);
 					//gMtxDisp->UnLock();
@@ -198,14 +214,14 @@ void gHistBook(fair::mq::MessagePtr& msg, int id, int type)
 	uint64_t *pdata64 = reinterpret_cast<uint64_t *>(msg->GetData());
 	if ((id & 0x000000ff) == 169) {
 		for (size_t i = 0 ; i < (msize / sizeof(uint64_t)) ; i++) {
-			if (((pdata64[i] & 0xfc00'0000'0000'0000) >> 58) == TDC64H::T_TDC) {
-				struct TDC64H::tdc64 tdc;
-				TDC64H::Unpack(pdata64[i], &tdc);
+			if (((pdata64[i] & 0xfc00'0000'0000'0000) >> 58) == TDC64H_V3::T_TDC) {
+				struct TDC64H_V3::tdc64 tdc;
+				TDC64H_V3::Unpack(pdata64[i], &tdc);
 				auto chx = tdc.ch;
 				auto tdcx = tdc.tdc;
 				for (size_t j = 0 ; j < (msize / sizeof(uint64_t)) ; j++) {
-					if (((pdata64[j] & 0xfc00'0000'0000'0000) >> 58) == TDC64H::T_TDC) {
-						TDC64H::Unpack(pdata64[j], &tdc);
+					if (((pdata64[j] & 0xfc00'0000'0000'0000) >> 58) == TDC64H_V3::T_TDC) {
+						TDC64H_V3::Unpack(pdata64[j], &tdc);
 						auto chy = tdc.ch;
 						auto tdcy = tdc.tdc;
 
@@ -264,10 +280,10 @@ void gHistBook(fair::mq::MessagePtr& msg, int id, int type)
 
 	if (isBook) {
 		for (size_t i = 0 ; i < (msize / sizeof(uint64_t)) ; i++) {
-			if (((pdata64[i] & 0xfc00'0000'0000'0000) >> 58) == TDC64L::T_TDC) {
-				if (type == SubTimeFrame::TDC64L) {
-					struct TDC64L::tdc64 tdc;
-					TDC64L::Unpack(pdata64[i], &tdc);
+			if (((pdata64[i] & 0xfc00'0000'0000'0000) >> 58) == TDC64L_V3::T_TDC) {
+				if (type == SubTimeFrame::TDC64L_V3) {
+					struct TDC64L_V3::tdc64 tdc;
+					TDC64L_V3::Unpack(pdata64[i], &tdc);
 					//gMtxDisp->Lock();
 					hist->Fill(tdc.ch + offset);
 					//gMtxDisp->UnLock();

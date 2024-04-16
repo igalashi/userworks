@@ -45,7 +45,7 @@ foreach(lvar IN ITEMS
   )
 endforeach()
 
-#[[
+
 add_executable(onlinedisplay
 	onlinedisplay.cxx
 )
@@ -75,9 +75,10 @@ target_link_libraries(onlinedisplay PUBLIC
 
 install(TARGETS onlinedisplay;
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    #RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RUNTIME DESTINATION ${INSTALL_BINDIR}
 )
-]]
+
 
 add_executable(chkfile
 	chkfile.cxx
