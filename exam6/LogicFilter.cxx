@@ -49,6 +49,7 @@ struct LogicFilter : fair::mq::Device
 
 		static constexpr std::string_view TriggerSignals     {"trigger-signals"};
 		static constexpr std::string_view TriggerFormula     {"trigger-formula"};
+		static constexpr std::string_view TriggerWidth       {"trigger-width"};
 	};
 
 	struct DataBlock {
@@ -202,29 +203,13 @@ void LogicFilter::InitTask()
 	}
 	LOG(info) << "InitTask: RemoveHB : " << fIsRemoveHB;
 
+
 	fTrig->SetTimeRegion(1024 * 128);
 	fTrig->ClearEntry();
-	//fTrig->SetMarkLen(10);
-	fTrig->SetMarkLen(20);
 
-#if 0
-	fTrig->Entry(0xc0a802a9,  0, 0); //DL
-	fTrig->Entry(0xc0a802a9,  1, 0); //DR
-	fTrig->Entry(0xc0a802a9,  2, 0); //DL
-	fTrig->Entry(0xc0a802a9,  3, 0); //DR
-	fTrig->Entry(0xc0a802a9,  4, 0); //DL
-	fTrig->Entry(0xc0a802a9,  5, 0); //DR
-
-	fTrig->Entry(0xc0a802aa, 32, 0); //UL
-	fTrig->Entry(0xc0a802aa, 33, 0); //UR
-	fTrig->Entry(0xc0a802aa, 34, 0); //UR
-	fTrig->Entry(0xc0a802aa, 35, 0); //UR
-
-	std::string form("0 1 & 2 3 & | 4 5 & | 6 7 & 8 9 & | &");
-	fTrig->MakeTable(form);
-#else
 	std::string str_signals = fConfig->GetProperty<std::string>(opt::TriggerSignals.data());
 	std::string formula = fConfig->GetProperty<std::string>(opt::TriggerFormula.data());
+	int window_width = std::stoi(fConfig->GetProperty<std::string>(opt::TriggerWidth.data()));
 
 	std::vector< std::vector<uint32_t> > signals = SignalParser::Parsing(str_signals);
 	int i = 0;
@@ -249,7 +234,9 @@ void LogicFilter::InitTask()
 	
 	LOG(info) << "Formula: " << formula;
 	fTrig->MakeTable(formula);
-#endif
+
+	LOG(info) << "Trigger windows width: " << window_width;
+	fTrig->SetMarkLen(window_width);
 
 }
 
@@ -1480,6 +1467,9 @@ void addCustomOptions(bpo::options_description& options)
 		(opt::TriggerFormula.data(),
 			bpo::value<std::string>()->default_value("RPN 0 1 &"),
 			"Trigger formula")
+		(opt::TriggerWidth.data(),
+			bpo::value<std::string>()->default_value("10"),
+			"Trigger window width (4 ns unit)")
 
     		;
 }
