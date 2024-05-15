@@ -22,6 +22,7 @@
 #include "TimeFrameHeader.h"
 #include "HartbeatFrameHeader.h"
 #include "FilterHeader.h"
+#include "FltTdc.h"
 #include "UnpackTdc.h"
 #include "KTimer.cxx"
 
@@ -275,10 +276,12 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
 	uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(pdata));
 
-	if (msg_magic == Filter::MAGIC) {
-		#if 0
+	if (false) {
+
+	} else if (msg_magic == Filter::MAGIC) {
 		Filter::Header *pflt
 			= reinterpret_cast<Filter::Header *>(pdata);
+		#if 0
 		std::cout << "#FLT Header "
 			<< std::hex << std::setw(16) << std::setfill('0') <<  pflt->magic
 			<< " len: " << std::dec << std::setw(8) <<  pflt->length
@@ -286,6 +289,33 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< " Id: " << std::setw(8) << pflt->workerId
 			<< " elapse: " << std::dec <<  pflt->elapseTime
 			<< std::endl;
+		#endif
+
+		gHistFlt(pflt);
+		gHistTrig_clear();
+
+	} else if (msg_magic == FltTdc::MAGIC) {
+		FltTdc::Header *pflttdc
+			= reinterpret_cast<FltTdc::Header *>(pdata);
+		uint32_t *data = reinterpret_cast<uint32_t *>(pdata + sizeof(FltTdc::Header));
+		int len = (pflttdc->length - sizeof(FltTdc::Header)) / sizeof(uint32_t);
+		gHistTrig(data, len);
+
+		#if 0
+		std::cout << "#FLTTDC Header "
+			<< std::hex << std::setw(16) << std::setfill('0') <<  pflttdc->magic
+			<< " len: " << std::dec << std::setw(8) <<  pflttdc->length
+			<< " hLen: " << std::setw(8) << pflttdc->hLength
+			<< " type: " << std::setw(8) << pflttdc->type
+			<< std::endl;
+		if (len > 0) {
+			std::cout << "Trig: ";
+			for (int i = 0 ; i < len ; i++) {
+				FltTdc::TrgTime *trg = reinterpret_cast<FltTdc::TrgTime *>(data + i);
+				std::cout << " " << trg->trg.time;
+			}
+			std::cout << std::endl;
+		}
 		#endif
 
 	} else if (msg_magic == TimeFrame::MAGIC) {

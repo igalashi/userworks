@@ -17,12 +17,16 @@ struct Header {
     uint16_t type        {0};
 };
 
-struct TrgTime {
-    uint32_t type;
-    uint32_t time;
-}
+union TrgTime {
+	struct {
+		int time : 24;
+		int type : 8;
+	} trg;
+	uint32_t data;
+};
 
 } // namespace v0
-} // namespace Chunk
+
+} // namespace FltTdc
 
 #endif

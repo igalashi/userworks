@@ -1304,7 +1304,7 @@ bool LogicFilter::ConditionalRun()
 					// }
 					stfh->length
 						= len_stf + sizeof(struct SubTimeFrame::Header);
-					stfh->numMessages = nmsg_stf;
+					stfh->numMessages = nmsg_stf + 1; // Nmsg = Nstf + NFLTHeader(1)
 					ii = kk - 1;
 				}
 			}

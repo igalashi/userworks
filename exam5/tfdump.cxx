@@ -131,6 +131,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 
 	static int tf_nstf = 0;
 	static int ac_nstf = 0;
+	static int ac_nhbf = 0;
 
 	constexpr int DM_OTHER = 0;
 	constexpr int DM_TDC   = 1;
@@ -241,6 +242,21 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 			std::cout << "#DM TDC(L)" << std::endl;
 		}
 		ac_nstf++;
+		ac_nhbf = 0;
+
+	} else if (msg_magic == HartbeatFrame::MAGIC) {
+		HartbeatFrame::Header *phbf
+			= reinterpret_cast<HartbeatFrame::Header *>(pdata);
+
+		if (fIsShrink) {
+			std::cout << "H";
+		} else {
+			std::cout << "#HBF Header (" << std::dec << ac_nhbf << ") "
+			<< std::hex << std::setw(8) << std::setfill('0') <<  pstf->magic
+			<< " len: " << std::setw(8) << std::setfill('0') <<  pstf->length
+			<< std::endl;
+		}
+		ac_nhbf++;
 
 	} else if (data_mode == DM_TDC) {
 		//std::cout << "#D DMODE: TDC" << std::endl;

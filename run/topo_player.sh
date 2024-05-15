@@ -44,10 +44,13 @@ endpoint  flttrig           out           type push  method bind
 
 endpoint  LogicFilter       in            type pull  method connect
 endpoint  LogicFilter       out           type push  method bind 
+endpoint  LogicFilter       dqm           type pub   method bind 
 
 endpoint  tfdump            in            type pull  method connect
 endpoint  Sink              in            type pull  method connect
 endpoint  FileSink          in            type pull  method connect
+
+endpoint  onlinedisplay     in            type sub   method connect
 
 
 echo "---------------------------------------------------------------------"
@@ -64,3 +67,5 @@ link      TFBFilePlayer     out            LogicFilter       in
 link      LogicFilter       out            tfdump            in
 
 #link      TFBFilePlayer     out            tfdump            in
+
+link      LogicFilter       dqm            onlinedisplay     in
