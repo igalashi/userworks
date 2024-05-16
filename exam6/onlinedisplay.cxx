@@ -118,7 +118,7 @@ private:
 	int fNumSource = 0;
 	int fFeType = 0;
 	uint32_t fFEMId = 0;
-	int fPrescale = 10;
+	int fPrescale = 2;
 
 	KTimer fKt1;
 	KTimer fKt2;
@@ -479,7 +479,7 @@ bool OnlineDisplay::ConditionalRun()
 		#if 0
 		for(auto& vmsg : inParts) CheckData(vmsg);
 		#else
-		if ((counts % 100) == 0) std::cout << "." << std::flush;
+		//if ((counts % 100) == 0) std::cout << "." << std::flush;
 		if ((counts % fPrescale) == 0) for(auto& vmsg : inParts) BookData(vmsg);
 		#endif
 

@@ -79,7 +79,7 @@ void gHistInit()
 	gHTrig = new TH1F("TRIG", "Trigger", 1000, 0, 150000);
 	gH2TrigWindow = new TH2F("TWINDOW", "Trigger Window", 1000, -500., 500., 32, 0., 32.);
 	gHElapse = new TH1F("ELAPSE", "Elapse Time (ms)", 500, 0, 20000);
-	gHNTrig = new TH1F("NTRIG", "Number of Trigger (/HBF)", 500, 0, 1000);
+	gHNTrig = new TH1F("NTRIG", "Number of Trigger (/STF)", 500, 0, 1000);
 
 	gH2corr[0] = new TH2F("CORR0", "CORR0", 500, 0, 8000, 500, 0, 8000);
 	gH2corr[1] = new TH2F("CORR1", "CORR1", 500, 0, 8000, 500, 0, 8000);
@@ -133,7 +133,7 @@ void gHistDraw()
 
 	for (int i = 0 ; i < 4 ; i++) gCan1->cd(i + 1)->Modified();
 	for (int i = 0 ; i < 7 ; i++) gCan2->cd(i + 1)->Modified();
-	for (int i = 9 ; i < 10 ; i++) gCan2->cd(i + 1)->Modified();
+	for (int i = 8 ; i < 10 ; i++) gCan2->cd(i + 1)->Modified();
 
 	//gMtxDisp->Lock();
 	gCan1->Update();
@@ -245,7 +245,7 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 						<< " CH: " << std::dec << std::setw(3) << tdc.ch
 						<< " TDC: " << std::setw(7) << tdc.tdc << std::endl;
 					#else
-					std::cout << "*" << std::flush;
+					//std::cout << "*" << std::flush;
 					#endif
 
 					if (tdc.ch == 8) {

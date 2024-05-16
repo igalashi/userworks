@@ -915,6 +915,7 @@ int LogicFilter::AddFilterMessage(
 	fltHeader->timeFrameId = tf_id;
 	fltHeader->numTrigs = totalhits;
 	fltHeader->workerId = fId;
+	fltHeader->numMessages = 1 + fltdata.size();
 	fltHeader->elapseTime = elapse;
 	fltHeader->processTime.tv_sec = sec;
 	fltHeader->processTime.tv_usec = usec;
@@ -1304,7 +1305,7 @@ bool LogicFilter::ConditionalRun()
 					// }
 					stfh->length
 						= len_stf + sizeof(struct SubTimeFrame::Header);
-					stfh->numMessages = nmsg_stf + 1; // Nmsg = Nstf + NFLTHeader(1)
+					stfh->numMessages = nmsg_stf;
 					ii = kk - 1;
 				}
 			}
