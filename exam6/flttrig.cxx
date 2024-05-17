@@ -945,8 +945,8 @@ bool FltTrig::ConditionalRun()
 		fltHeader->numTrigs = totalhits;
 		fltHeader->workerId = fId;
 		fltHeader->elapseTime = elapse;
-		fltHeader->processTime.tv_sec = sec;
-		fltHeader->processTime.tv_usec = usec;
+		fltHeader->timeSec = sec;
+		fltHeader->timeUSec = usec;
 
 		outParts.AddPart(MessageUtil::NewMessage(*this, std::move(fltHeader)));
 

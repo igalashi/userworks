@@ -917,8 +917,8 @@ int LogicFilter::AddFilterMessage(
 	fltHeader->workerId = fId;
 	fltHeader->numMessages = 1 + fltdata.size();
 	fltHeader->elapseTime = elapse;
-	fltHeader->processTime.tv_sec = sec;
-	fltHeader->processTime.tv_usec = usec;
+	fltHeader->timeSec = sec;
+	fltHeader->timeUSec = usec;
 	outParts.AddPart(MessageUtil::NewMessage(*this, std::move(fltHeader)));
 
 	flt_data_len += sizeof(struct Filter::Header);
@@ -931,23 +931,22 @@ int LogicFilter::AddFilterMessage(
 		//std::cout << "#D v.size : " << v.size() << std::endl;
 		//	<< " msg.size" << (*outParts.end()).get()->GetSize() << std::endl;
 
-		int trg_time_data_len = sizeof(Filter::TrgTimeHeader)
-			+ v.size() * sizeof(uint32_t);
-		//std::cout << "#D TrgTimeHeader.size: " << sizeof(struct Filter::TrgTimeHeader)
-		//	<< " Time.size: " << v.size() * sizeof(uint32_t) << std::endl;
 		struct Filter::TrgTimeHeader trg_time_header;
-		trg_time_header.length = trg_time_data_len;
+		trg_time_header.length = sizeof(Filter::TrgTimeHeader)
+			+ v.size() * sizeof(Filter::TrgTime);
+		//std::cout << "#D TrgTimeHeader.size: " << sizeof(struct Filter::TrgTimeHeader)
+		//	<< " Time.size: " << v.size() * sizeof(Filter::TrgTime) << std::endl;
 		//std::cout << "#D TrgTimeHeader.uint32_t.size: " << sizeof(trg_time_header.u32data) << std::endl;
 
 		std::vector<uint32_t> vv;
 		for (auto &h : trg_time_header.u32data) vv.emplace_back(h);
 		for (auto &tdc : v) {
-			unsigned char trg_type = 0;
-			vv.emplace_back(
-				(trg_type << 24) | (0x00ffffff & tdc));
+			uint32_t trg_type = 0xaa000000;
+			vv.emplace_back(tdc);
+			vv.emplace_back(trg_type);
 		}
 		//std::cout << "#D fltmsg.size: " << vv.size()
-		//	<< " TrgTime.len: " << trg_time_data_len << std::endl;
+		//	<< " TrgTime.len: " << trg_time_header.length << std::endl;
 	
 		outParts.AddPart(MessageUtil::NewMessage
 			(*this, std::make_unique<std::vector<uint32_t>>(std::move(vv))));

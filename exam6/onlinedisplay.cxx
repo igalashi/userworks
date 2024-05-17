@@ -22,7 +22,6 @@
 #include "TimeFrameHeader.h"
 #include "HartbeatFrameHeader.h"
 #include "FilterHeader.h"
-#include "FltTdc.h"
 #include "UnpackTdc.h"
 #include "KTimer.cxx"
 
@@ -150,9 +149,9 @@ bool OnlineDisplay::CheckData(fair::mq::MessagePtr& msg)
 	} else if (msg_magic == Filter::TDC_MAGIC) {
 		gTrig.clear();
 		gTrig.resize(0);
-		uint32_t *trg = reinterpret_cast<uint32_t *>(pdata + sizeof(Filter::TrgTimeHeader));
-		int len = (msize - sizeof(Filter::TrgTimeHeader)) / sizeof(uint32_t);
-		for (int i = 0 ; i < len ; i++) gTrig.emplace_back(trg[i]);
+		Filter::TrgTime *trg = reinterpret_cast<Filter::TrgTime *>(pdata + sizeof(Filter::TrgTimeHeader));
+		int len = (msize - sizeof(Filter::TrgTimeHeader)) / sizeof(Filter::TrgTime);
+		for (int i = 0 ; i < len ; i++) gTrig.emplace_back(trg[i].time);
 
 	} else if (msg_magic == TimeFrame::MAGIC) {
 		TimeFrame::Header *ptf
@@ -294,11 +293,11 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 		gHistFlt(pflt);
 		gHistTrig_clear();
 
-	} else if (msg_magic == FltTdc::MAGIC) {
-		FltTdc::Header *pflttdc
-			= reinterpret_cast<FltTdc::Header *>(pdata);
-		uint32_t *data = reinterpret_cast<uint32_t *>(pdata + sizeof(FltTdc::Header));
-		int len = (pflttdc->length - sizeof(FltTdc::Header)) / sizeof(uint32_t);
+	} else if (msg_magic == Filter::TDC_MAGIC) {
+		Filter::TrgTimeHeader *pflttdc
+			= reinterpret_cast<Filter::TrgTimeHeader *>(pdata);
+		Filter::TrgTime *data = reinterpret_cast<Filter::TrgTime *>(pdata + sizeof(Filter::TrgTimeHeader));
+		int len = (pflttdc->length - sizeof(Filter::TrgTimeHeader)) / sizeof(Filter::TrgTime);
 		gHistTrig(data, len);
 
 		#if 0
@@ -311,7 +310,7 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 		if (len > 0) {
 			std::cout << "Trig: ";
 			for (int i = 0 ; i < len ; i++) {
-				FltTdc::TrgTime *trg = reinterpret_cast<FltTdc::TrgTime *>(data + i);
+				Filter::TrgTime *trg = reinterpret_cast<Filter::TrgTime *>(data + i);
 				std::cout << " " << trg->trg.time;
 			}
 			std::cout << std::endl;

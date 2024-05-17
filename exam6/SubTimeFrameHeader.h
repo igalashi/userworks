@@ -66,7 +66,7 @@ struct Header {
     uint32_t numMessages  {0};
     uint64_t timeSec     {0};
     uint64_t timeUSec    {0};
-};  
+};
 
 } // namespace v1
 

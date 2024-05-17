@@ -9,7 +9,6 @@
 #include "TH2F.h"
 
 #include "FilterHeader.h"
-#include "FltTdc.h"
 
 static TCanvas *gCan1 = new TCanvas ("DISPLAY", "Display");
 static TCanvas *gCan2 = new TCanvas ("DISPLAY2", "Display2");
@@ -190,13 +189,16 @@ void gHistFlt(struct Filter::Header *pflt)
 	return;
 }
 
-void gHistTrig(uint32_t *pdata, int len)
+//void gHistTrig(uint32_t *pdata, int len)
+void gHistTrig(Filter::TrgTime *pdata, int len)
 {
 	//std::cout << "#D gHistTrig ";
+
+	//Filter::TrgTime *ptrg = reinterpret_cast<Filter::TrgTime *>(pdata);
 	for (int i = 0 ; i < len ; i++) {
-		FltTdc::TrgTime *t = reinterpret_cast<FltTdc::TrgTime *>(pdata + i);
-		if (t->trg.type == 0) gTrig.push_back(t->trg.time);
-		gHTrig->Fill(t->trg.time);
+		Filter::TrgTime *t = reinterpret_cast<Filter::TrgTime *>(pdata + i);
+		if (t->type == 0xaa000000) gTrig.push_back(t->time);
+		gHTrig->Fill(t->time);
 		//std::cout << "type: " << t->trg.type << " time: " << t->trg.time;
 	}
 	//std::cout << std::endl;
