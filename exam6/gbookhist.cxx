@@ -18,6 +18,7 @@ static TH1F *gHDiff;
 
 static TH1F *gHTrig;
 static TH2F *gH2TrigWindow;
+static TH2F *gH2TrigWindow_one;
 static TH1F *gHElapse;
 static TH1F *gHNTrig;
 
@@ -25,7 +26,6 @@ static TH1F *gHBDC[2];
 static TH1F *gHSFT[3];
 static TH1F *gHKLDC[2];
 
-static TH2F *gH2corr[2];
 
 static std::vector< std::vector<int> > gIpBDC = {
 	{161, 162, 163, 164},
@@ -77,11 +77,10 @@ void gHistInit()
 
 	gHTrig = new TH1F("TRIG", "Trigger", 1000, 0, 150000);
 	gH2TrigWindow = new TH2F("TWINDOW", "Trigger Window", 1000, -500., 500., 32, 0., 32.);
+	gH2TrigWindow_one = new TH2F("TWONE", "Trigger Window One Event", 200, -100., 100., 32, 0., 32.);
 	gHElapse = new TH1F("ELAPSE", "Elapse Time (ms)", 500, 0, 20000);
 	gHNTrig = new TH1F("NTRIG", "Number of Trigger (/STF)", 500, 0, 1000);
 
-	gH2corr[0] = new TH2F("CORR0", "CORR0", 500, 0, 8000, 500, 0, 8000);
-	gH2corr[1] = new TH2F("CORR1", "CORR1", 500, 0, 8000, 500, 0, 8000);
 
 	gHBDC[0] = new TH1F("BDC1", "BDC1", 512, 0, 512);
 	gHBDC[1] = new TH1F("BDC2", "BDC2", 512, 0, 512);
@@ -100,13 +99,17 @@ void gHistInit()
 
 	//gCan1->cd(3)->SetLogz();
 	//gCan1->cd(3); gH2HRTDC->Draw("col2");
-	//gCan1->cd(3); gH2corr[0]->Draw("col2");
 	//gCan1->cd(4); gHDiff->Draw();
 
 	gCan1->cd(1); gHElapse->Draw();
 	gHNTrig->GetXaxis()->SetRangeUser(2., 1000.);
 	gCan1->cd(2); gHNTrig->Draw();
-	gCan1->cd(3); gHTrig->Draw();
+	//gCan1->cd(3); gHTrig->Draw();
+	gH2TrigWindow_one->GetYaxis()->SetRangeUser(0., 16.);
+	gCan1->cd(3); gH2TrigWindow_one->Draw("box");
+	gH2TrigWindow->GetXaxis()->SetRangeUser(-100., 100.);
+	gH2TrigWindow->GetYaxis()->SetRangeUser(0., 16.);
+	gCan1->cd(4)->SetLogz();
 	gCan1->cd(4); gH2TrigWindow->Draw("col2");
 
 
@@ -153,6 +156,7 @@ void gHistReset()
 
 	gHTrig->Reset();
 	gH2TrigWindow->Reset();
+	gH2TrigWindow_one->Reset();
 	gHElapse->Reset();
 	gHNTrig->Reset();
 
@@ -193,19 +197,75 @@ void gHistFlt(struct Filter::Header *pflt)
 void gHistTrig(Filter::TrgTime *pdata, int len)
 {
 	//std::cout << "#D gHistTrig ";
+	gHistTrig_clear();
 
 	//Filter::TrgTime *ptrg = reinterpret_cast<Filter::TrgTime *>(pdata);
 	for (int i = 0 ; i < len ; i++) {
 		Filter::TrgTime *t = reinterpret_cast<Filter::TrgTime *>(pdata + i);
 		if (t->type == 0xaa000000) gTrig.push_back(t->time);
 		gHTrig->Fill(t->time);
-		//std::cout << "type: " << t->trg.type << " time: " << t->trg.time;
+		std::cout << "type: " << t->type << " time: " << t->time;
 	}
 	//std::cout << std::endl;
 	gTrig_isvalid = true;
 
 	return;
 }
+
+
+void gHistBookTrigWin(fair::mq::MessagePtr& msg, uint32_t id, int type)
+{
+	unsigned int msize = msg->GetSize();
+	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
+
+	static unsigned int tw_counter = 0;
+	const unsigned int tw_pre_factor = 10000;	
+
+	if (gTrig_isvalid) {
+	for (auto &trg : gTrig) {
+		bool tw_one = ((tw_counter % tw_pre_factor) == 0);
+		if (tw_one) gH2TrigWindow_one->Reset();
+		for (size_t i = 0 ; i < msize ; i += sizeof(uint64_t)) {
+			for (auto &sig : trg_sources) {
+				if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2) 
+						&& (type == SubTimeFrame::TDC64H_V3)) {
+
+						uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
+						struct TDC64H_V3::tdc64 tdc;
+						TDC64H_V3::Unpack(*dword, &tdc);
+
+						if ((id == sig.module) && (tdc.ch == sig.channel)) {
+
+							#if 0
+							if(gTrig.size() > 0) {
+								std::cout << "#D Module :" << id
+								<< " CH: " << std::dec << std::setw(3) << tdc.ch
+								<< " TDC: " << std::setw(7) << tdc.tdc
+								<< " Trig[0]: " << gTrig[0] << std::endl;
+							}
+							#endif
+
+						int diff = tdc.tdc4n - trg;
+						if (std::abs(diff) < 1000) {
+							gH2TrigWindow->Fill(diff + sig.offset, sig.index);
+						}
+
+						if (tw_one && (std::abs(diff) < 100)) {
+							gH2TrigWindow_one->Fill(diff + sig.offset, sig.index);
+							std::cout << "." << std::flush;
+							//tw_nhit++;
+						}
+					}
+				}
+			}
+		}
+		tw_counter++;
+	}
+	}
+
+	return;
+}
+
 
 void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 {
@@ -250,12 +310,6 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 					//std::cout << "*" << std::flush;
 					#endif
 
-					if (tdc.ch == 8) {
-						for (auto &trg : gTrig) {
-							gH2corr[0]->Fill(trg * 4, (tdc.tdc >> 10));
-						}
-					}
-
 				} else
 				if (type == SubTimeFrame::TDC64L_V3) {
 					struct TDC64L_V3::tdc64 tdc;
@@ -293,6 +347,29 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 		}
 
 
+		#if 0
+		static unsigned int tw_prescale = 0;
+		bool tw_one = false;
+		int tw_nhit = 0;
+		if ((tw_prescale++ % 1000) == 0)  {
+			if (gTrig.size() > 0) {
+				tw_one = true;
+				double stats[8];
+				//gH2TrigWindow_one->GetStats(stats);
+				//for (int ii = 0 ; ii < 8 ; ii++) std::cout << " " << stats[ii];
+				if (tw_nhit > 0) {
+					gH2TrigWindow_one->Reset();
+					tw_nhit = 0;
+				}
+				//std::cout << ":" << stats[0] << " " << gTrig.size() << std::flush;
+			} else {
+				tw_one = false;
+			}
+		} else {
+			tw_one = false;
+		}
+		#endif
+
 		for (auto &sig : trg_sources) {
 
 			if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2) 
@@ -318,6 +395,14 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 						if (std::abs(diff) < 1000) {
 							gH2TrigWindow->Fill(diff + sig.offset, sig.index);
 						}
+
+						#if 0
+						if (tw_one && (std::abs(diff) < 100)) {
+							gH2TrigWindow_one->Fill(diff + sig.offset, sig.index);
+							std::cout << "." << std::flush;
+							tw_nhit++;
+						}
+						#endif
 					}
 				}
 			}
@@ -411,5 +496,6 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 
 	prescale++;
 
-	return ;
+	return;
 }
+

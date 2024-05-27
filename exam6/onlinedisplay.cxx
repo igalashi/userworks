@@ -55,7 +55,7 @@ struct OnlineDisplay : fair::mq::Device
 		fInputChannelName  = fConfig->GetValue<std::string>(opt::InputChannelName.data());
 		LOG(info) << "InitTask Input Channel : " << fInputChannelName;
 
-		fKt1.SetDuration(100);
+		fKt1.SetDuration(50);
 		fKt2.SetDuration(2000);
 		fKt3.SetDuration(3000);
 
@@ -280,7 +280,7 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 	} else if (msg_magic == Filter::MAGIC) {
 		Filter::Header *pflt
 			= reinterpret_cast<Filter::Header *>(pdata);
-		#if 0
+		#if 1
 		std::cout << "#FLT Header "
 			<< std::hex << std::setw(16) << std::setfill('0') <<  pflt->magic
 			<< " len: " << std::dec << std::setw(8) <<  pflt->length
@@ -291,7 +291,7 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 		#endif
 
 		gHistFlt(pflt);
-		gHistTrig_clear();
+		//gHistTrig_clear();
 
 	} else if (msg_magic == Filter::TDC_MAGIC) {
 		Filter::TrgTimeHeader *pflttdc
@@ -353,7 +353,8 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 
 	} else if (msg_magic == HartbeatFrame::MAGIC) {
 
-		gHistBook(msg, fFEMId, fFeType);
+		//gHistBook(msg, fFEMId, fFeType);
+		gHistBookTrigWin(msg, fFEMId, fFeType);
 
 	} else {
 
