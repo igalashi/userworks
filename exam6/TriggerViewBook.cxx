@@ -11,7 +11,6 @@
 #include "FilterHeader.h"
 
 static TCanvas *gCan1 = new TCanvas ("DISPLAY", "Display");
-static TCanvas *gCan2 = new TCanvas ("DISPLAY2", "Display2");
 static TH1F *gHHRTDC[2];
 static TH2F *gH2HRTDC;
 static TH1F *gHDiff;
@@ -22,17 +21,7 @@ static TH2F *gH2TrigWindow_one;
 static TH1F *gHElapse;
 static TH1F *gHNTrig;
 
-static TH1F *gHBDC[2];
-static TH1F *gHSFT[3];
-static TH1F *gHKLDC[2];
 
-
-static std::vector< std::vector<int> > gIpBDC = {
-	{161, 162, 163, 164},
-	{166, 166, 166, 168}};
-static std::vector<int> gIpSFT = {173, 174, 175};
-static std::vector< std::vector<int> > gIpKLDC = {
-	{173, 174}, {175, 176}};
 
 static std::vector< std::vector<int> > gTrig;
 
@@ -93,15 +82,6 @@ void gHistInit()
 	gHNTrig = new TH1F("NTRIG", "Number of Trigger (/STF)", 500, 0, 1000);
 
 
-	gHBDC[0] = new TH1F("BDC1", "BDC1", 512, 0, 512);
-	gHBDC[1] = new TH1F("BDC2", "BDC2", 512, 0, 512);
-	gHSFT[0] = new TH1F("SFT1", "SFT", 128, 0, 128);
-	gHSFT[1] = new TH1F("SFT2", "SFT", 128, 0, 128);
-	gHSFT[2] = new TH1F("SFT3", "SFT", 128, 0, 128);
-	gHKLDC[0] = new TH1F("KLDC1", "KLDC1", 256, 0, 256);
-	gHKLDC[1] = new TH1F("KLDC2", "KLDC2", 256, 0, 256);
-
-
 	gCan1->Divide(2, 2);
 	//gCan1->cd(1)->SetLogy();
 	//gCan1->cd(1); gHHRTDC[0]->Draw();
@@ -127,20 +107,6 @@ void gHistInit()
 	gCan1->cd(4); gH2TrigWindow->Draw("col2");
 
 
-	gCan2->Divide(2, 5);
-	gCan2->cd(1)->SetLogy();
-	gCan2->cd(1); gHHRTDC[0]->Draw();
-	gCan2->cd(2)->SetLogy();
-	gCan2->cd(2); gHHRTDC[1]->Draw();
-
-	gCan2->cd(3); gHBDC[0]->Draw();
-	gCan2->cd(4); gHBDC[1]->Draw();
-	gCan2->cd(5); gHSFT[0]->Draw();
-	gCan2->cd(6); gHSFT[1]->Draw();
-	gCan2->cd(7); gHSFT[2]->Draw();
-	gCan2->cd(9); gHKLDC[0]->Draw();
-	gCan2->cd(10); gHKLDC[1]->Draw();
-
 	return;
 }
 
@@ -148,12 +114,9 @@ void gHistDraw()
 {
 
 	for (int i = 0 ; i < 4 ; i++) gCan1->cd(i + 1)->Modified();
-	for (int i = 0 ; i < 7 ; i++) gCan2->cd(i + 1)->Modified();
-	for (int i = 8 ; i < 10 ; i++) gCan2->cd(i + 1)->Modified();
 
 	//gMtxDisp->Lock();
 	gCan1->Update();
-	gCan2->Update();
 	//gMtxDisp->UnLock();
 	
 	return;
@@ -173,14 +136,6 @@ void gHistReset()
 	gH2TrigWindow_one->Reset();
 	gHElapse->Reset();
 	gHNTrig->Reset();
-
-	gHBDC[0]->Reset();
-	gHBDC[1]->Reset();
-	gHSFT[0]->Reset();
-	gHSFT[1]->Reset();
-	gHSFT[2]->Reset();
-	gHKLDC[0]->Reset();
-	gHKLDC[1]->Reset();
 
 	//gMtxDisp->UnLock();
 
@@ -219,8 +174,6 @@ void gHistTrig_clear()
 	gTrig.resize(0);
 	gTrig_isvalid = false;
 
-	// gEntryTDC.clear();
-	// gEntryTDC.resize(0);
 	for (auto &i : gEntryTDC) {
 		i.tdc4n.clear();
 		i.tdc4n.resize(0);
@@ -231,22 +184,18 @@ void gHistTrig_clear()
 
 void gHistTrig(Filter::TrgTime *pdata, int len)
 {
-	//std::cout << "#D gHistTrig ";
-
 	std::vector<int> trig_in_hbf;
 
 	for (int i = 0 ; i < len ; i++) {
 		Filter::TrgTime *t = reinterpret_cast<Filter::TrgTime *>(pdata + i);
 		if (t->type == 0xaa000000) trig_in_hbf.emplace_back(t->time);
 		gHTrig->Fill(t->time);
-		//std::cout << "type: " << t->type << " time: " << t->time;
+		//std::cout << "#D type: " << t->type << " time: " << t->time;
 	}
 	gTrig.emplace_back(trig_in_hbf);
 
 	//std::cout << std::endl;
 	gTrig_isvalid = true;
-
-	//std::cout << "gHistTrig: " << gTrig.size() << std::endl;
 
 	return;
 }
@@ -272,7 +221,6 @@ void gHistEntryTDC(fair::mq::MessagePtr& msg, uint32_t id, int type)
 				TDC64H_V3::Unpack(*dword, &tdc);
 
 				if (tdc.ch == mod.channel) {
-					//std::cout << "#D " << tdc.ch << " : " << tdc.tdc << std::endl;
 					tdc4n.emplace_back(tdc.tdc4n);
 				}
 
@@ -302,7 +250,6 @@ void gHistBookTrigWin()
 						if (std::abs(diff) < 500) {
 							gH2TrigWindow_one->Fill(diff + mod.offset, mod.index);
 							//tw_nhit++;
-							//std::cout << "*" << std::flush;
 						}
 					}
 				}
@@ -386,23 +333,7 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 	unsigned int msize = msg->GetSize();
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
 	//uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(pdata));
-
 	static unsigned int prescale = 0;
-
-
-	#if 0
-	std::cout << "# " << std::setw(8) << j << " : "
-		<< std::hex << std::setw(2) << std::setfill('0')
-		<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 7]) << " "
-		<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 6]) << " "
-		<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 5]) << " "
-		<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 4]) << " "
-		<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 3]) << " "
-		<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 2]) << " "
-		<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 1]) << " "
-		<< std::setw(2) << static_cast<unsigned int>(pdata[0 + 0]) << " : ";
-	#endif
-	//std::cout << " " << (id & 0xff);
 
 	for (size_t i = 0 ; i < msize ; i += sizeof(uint64_t)) {
 		if ((id & 0x000000ff) == 169) {
@@ -461,29 +392,6 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 		}
 
 
-		#if 0
-		static unsigned int tw_prescale = 0;
-		bool tw_one = false;
-		int tw_nhit = 0;
-		if ((tw_prescale++ % 1000) == 0)  {
-			if (gTrig.size() > 0) {
-				tw_one = true;
-				double stats[8];
-				//gH2TrigWindow_one->GetStats(stats);
-				//for (int ii = 0 ; ii < 8 ; ii++) std::cout << " " << stats[ii];
-				if (tw_nhit > 0) {
-					gH2TrigWindow_one->Reset();
-					tw_nhit = 0;
-				}
-				//std::cout << ":" << stats[0] << " " << gTrig.size() << std::flush;
-			} else {
-				tw_one = false;
-			}
-		} else {
-			tw_one = false;
-		}
-		#endif
-
 		for (auto &sig : trg_sources) {
 
 			if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2) 
@@ -494,31 +402,14 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 				TDC64H_V3::Unpack(*dword, &tdc);
 
 				if ((id == sig.module) && (tdc.ch == sig.channel)) {
-
-					#if 0
-					if(gTrig.size() > 0) {
-						std::cout << "#D Module :" << id
-						<< " CH: " << std::dec << std::setw(3) << tdc.ch
-						<< " TDC: " << std::setw(7) << tdc.tdc
-						<< " Trig[0]: " << gTrig[0] << std::endl;
-					}
-					#endif
-	
 					for (auto &trigs : gTrig) {
-					for (auto &trg : trigs) {
-						int diff = tdc.tdc4n - trg;
-						if (std::abs(diff) < 1000) {
-							gH2TrigWindow->Fill(diff + sig.offset, sig.index);
-						}
+						for (auto &trg : trigs) {
+							int diff = tdc.tdc4n - trg;
+							if (std::abs(diff) < 1000) {
+								gH2TrigWindow->Fill(diff + sig.offset, sig.index);
+							}
 
-						#if 0
-						if (tw_one && (std::abs(diff) < 100)) {
-							gH2TrigWindow_one->Fill(diff + sig.offset, sig.index);
-							std::cout << "." << std::flush;
-							tw_nhit++;
 						}
-						#endif
-					}
 					}
 				}
 			}
@@ -564,51 +455,6 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 		}
 	}
 
-
-	if ((prescale % 10) == 0) {
-
-	int offset = 0;
-	TH1F *hist;
-	bool isBook = false;
-	switch (id & 0x000000ff) {
-		case 161 : hist = gHBDC[0] ; offset =   0; isBook = true; break;
-		case 162 : hist = gHBDC[0] ; offset = 128; isBook = true; break;
-		case 163 : hist = gHBDC[0] ; offset = 256; isBook = true; break;
-		case 164 : hist = gHBDC[0] ; offset = 384; isBook = true; break;
-
-		case 165 : hist = gHBDC[1] ; offset =   0; isBook = true; break;
-		case 166 : hist = gHBDC[1] ; offset = 128; isBook = true; break;
-		case 167 : hist = gHBDC[1] ; offset = 256; isBook = true; break;
-		case 168 : hist = gHBDC[1] ; offset = 384; isBook = true; break;
-
-		case 173 : hist = gHSFT[0] ; offset =   0; isBook = true; break;
-		case 174 : hist = gHSFT[1] ; offset =   0; isBook = true; break;
-		case 175 : hist = gHSFT[2] ; offset =   0; isBook = true; break;
-
-		case 176 : hist = gHKLDC[0] ; offset =   0; isBook = true; break;
-		case 177 : hist = gHKLDC[0] ; offset = 128; isBook = true; break;
-		case 178 : hist = gHKLDC[1] ; offset =   0; isBook = true; break;
-		case 179 : hist = gHKLDC[1] ; offset = 128; isBook = true; break;
-
-		default : isBook = false; break;
-	}
-	//std::cout << "#D id:" << (id & 0x000000ff) <<  " " << isBook << std::endl;
-
-	if (isBook) {
-		for (size_t ii = 0 ; ii < (msize / sizeof(uint64_t)) ; ii++) {
-			if (((pdata64[ii] & 0xfc00'0000'0000'0000) >> 58) == TDC64L_V3::T_TDC) {
-				if (type == SubTimeFrame::TDC64L_V3) {
-					struct TDC64L_V3::tdc64 tdc;
-					TDC64L_V3::Unpack(pdata64[ii], &tdc);
-					//gMtxDisp->Lock();
-					hist->Fill(tdc.ch + offset);
-					//gMtxDisp->UnLock();
-				}
-			}
-		}
-	}
-
-	}
 
 	prescale++;
 

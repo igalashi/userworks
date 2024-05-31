@@ -379,7 +379,7 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 
 		} else if ((pdata[0 + 7] & 0xfc) == (TDC64H::T_TDC << 2)) {
 
-			gHistBook(msg, fFEMId, fFeType);
+			//gHistBook(msg, fFEMId, fFeType);
 
 			#if 0
 			std::cout << "TDC ";

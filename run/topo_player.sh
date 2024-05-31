@@ -51,6 +51,7 @@ endpoint  Sink              in            type pull  method connect
 endpoint  FileSink          in            type pull  method connect
 
 endpoint  onlinedisplay     in            type sub   method connect
+endpoint  TriggerView       in            type sub   method connect
 
 
 echo "---------------------------------------------------------------------"
@@ -69,3 +70,4 @@ link      LogicFilter       out            tfdump            in
 #link      TFBFilePlayer     out            tfdump            in
 
 link      LogicFilter       dqm            onlinedisplay     in
+link      LogicFilter       dqm            TriggerView       in
