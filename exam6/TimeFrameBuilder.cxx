@@ -15,7 +15,7 @@
 #include "TimeFrameHeader.h"
 #include "TimeFrameBuilder.h"
 
-#include "AmQStrTdcData.h"
+//#include "AmQStrTdcData.h"
 
 namespace bpo = boost::program_options;
 
@@ -24,11 +24,14 @@ void addCustomOptions(bpo::options_description& options)
 {
     using opt = TimeFrameBuilder::OptionKey;
     options.add_options()
-    (opt::BufferTimeoutInMs.data(), bpo::value<std::string>()->default_value("10000"), "Buffer timeout in milliseconds")
-    (opt::InputChannelName.data(),  bpo::value<std::string>()->default_value("in"),    "Name of the input channel")
-    (opt::OutputChannelName.data(), bpo::value<std::string>()->default_value("out"),   "Name of the output channel") 
-    (opt::DQMChannelName.data(),    bpo::value<std::string>()->default_value("dqm"),   "Name of the data quality monitoring channel")      
-    (opt::PollTimeout.data(),       bpo::value<std::string>()->default_value("0"),     "Timeout (in msec) of polling")
+    (opt::BufferTimeoutInMs.data(),    bpo::value<std::string>()->default_value("10000"),     "Buffer timeout in milliseconds")
+    (opt::InputChannelName.data(),     bpo::value<std::string>()->default_value("in"),        "Name of the input channel")
+    (opt::OutputChannelName.data(),    bpo::value<std::string>()->default_value("out"),       "Name of the output channel") 
+    (opt::DQMChannelName.data(),       bpo::value<std::string>()->default_value("dqm"),       "Name of the data quality monitoring channel")      
+    (opt::DecimatorChannelName.data(), bpo::value<std::string>()->default_value("decimator"), "Name of the decimated output channel")
+    (opt::PollTimeout.data(),          bpo::value<std::string>()->default_value("0"),         "Timeout (in msec) of polling")
+    (opt::DecimationFactor.data(),     bpo::value<std::string>()->default_value("0"),         "Decimation factor for decimated output channel")
+    (opt::DecimationOffset.data(),     bpo::value<std::string>()->default_value("0"),         "Decimation offset for decimated output channel")
     ;
 }
 
@@ -55,19 +58,35 @@ bool TimeFrameBuilder::ConditionalRun()
     if (Receive(inParts, fInputChannelName, 0, 1) > 0) {
         assert(inParts.Size() >= 2);
 
-        LOG(debug4) << " received message parts size = " << inParts.Size() << std::endl;
+	//        LOG(debug) << " received message parts size = " << inParts.Size() << std::endl;
 
         auto stfHeader = reinterpret_cast<STF::Header*>(inParts.At(0)->GetData());
         auto stfId     = stfHeader->timeFrameId;
 
         LOG(debug4) << "stfId: "<< stfId;
         LOG(debug4) << "msg size: " << inParts.Size();
+	
+	auto nmsg = inParts.Size();
+	const auto& msg =inParts.At(nmsg -1);
+
+	auto msgSize  = msg->GetSize();
+	auto nWord    = msgSize / sizeof(uint64_t);
+	auto msgBegin = reinterpret_cast<uint64_t *>(msg->GetData());
+
+	auto firstHBF  = reinterpret_cast<uint64_t *>(msgBegin + (nWord - 2));
+	//	auto secondHBF = reinterpret_cast<uint64_t *>(msgBegin + (nWord - 1));
+	
+	//LOG(debug) << "HBFmagic: " << std::hex << *msgBegin;
+	//LOG(debug) << "firstHBF: " << std::hex << *firstHBF;
+	//LOG(debug) << "secondHBF: " << std::hex << *secondHBF;
 
         #if 1
         auto fem     = stfHeader->femId;
         auto lastmsg = reinterpret_cast<uint64_t *>(inParts.At(inParts.Size() - 1)->GetData());
-        unsigned int type = (lastmsg[0] & 0xfc00'0000'0000'0000) >> 58;
-        if ((type == 0x1c) || (type == 0x18) || (type == 0x14)) {
+	//	LOG(debug) << "firstHBF[0]: " << std::hex << firstHBF[0];
+        unsigned int type = (firstHBF[0] & 0xfc00'0000'0000'0000) >> 58;
+        //if ((type == 0x1c) || (type == 0x18) || (type == 0x14) || (type == 0x1e)) {
+        if ((type == 0x1c) || (type == 0x1e)) {
         } else {
             LOG(warn) << "BAD delimitor " << std::hex << lastmsg[0]
                 << " FEM: " << std::dec << (fem & 0xff);
@@ -84,6 +103,12 @@ bool TimeFrameBuilder::ConditionalRun()
     if (!fTFBuffer.empty()) {
 
         bool dqmSocketExists = fChannels.count(fDQMChannelName);
+        //auto decimatorNumSubChannels = GetNumSubChannels(fDecimatorChannelName);
+        unsigned int decimatorNumSubChannels = 0;
+        if (fDecimatorNumberOfConnectedPeers > 0) {
+            decimatorNumSubChannels = GetNumSubChannels(fDecimatorChannelName);
+        }
+
 
         // find time frame in ready
         for (auto itr = fTFBuffer.begin(); itr!=fTFBuffer.end();) {
@@ -94,6 +119,7 @@ bool TimeFrameBuilder::ConditionalRun()
 
                 LOG(debug4) << "All comes : " << tfBuf.size() << " stfId: "<< stfId ;
 
+
                 // move ownership to complete time frame
                 FairMQParts outParts;
                 FairMQParts dqmParts;
@@ -103,9 +129,9 @@ bool TimeFrameBuilder::ConditionalRun()
                 h->timeFrameId = stfId;
                 h->numSource   = fNumSource;
                 h->length      = std::accumulate(tfBuf.begin(), tfBuf.end(), sizeof(TF::Header),
-                [](auto init, auto& stfBuf) {
+                    [](auto init, auto& stfBuf) {
                     return init + std::accumulate(stfBuf.parts.begin(), stfBuf.parts.end(), 0,
-                    [] (auto jinit, auto& m) {
+                        [] (auto jinit, auto& m) {
                         return (!m) ? jinit : jinit + m->GetSize();
                     });
                 });
@@ -130,6 +156,32 @@ bool TimeFrameBuilder::ConditionalRun()
                 }
                 tfBuf.clear();
 
+                // for decimator
+                if ((fDecimatorNumberOfConnectedPeers > 0)
+                    && (fDecimationFactor > 0)
+                    && (fNumSend % fDecimationFactor == fDecimationOffset)) {
+
+                    auto poller = NewPoller(fDecimatorChannelName);
+                    poller->Poll(fPollTimeoutMS);
+                    for (auto iSubChannel=0u; iSubChannel<decimatorNumSubChannels; ++iSubChannel) {
+                        while (!NewStatePending()) {
+                            if (poller->CheckOutput(fDecimatorChannelName, iSubChannel)) {
+                                auto decimatorParts = MessageUtil::Copy(*this, outParts);
+                                // decimator output ready
+                                if (Send(decimatorParts, fDecimatorChannelName, iSubChannel) > 0) {
+                                    // successfully sent
+                                    // LOG(debug) << " successfully send to decimator "
+                                    // << fNumSend << " " << fDecimationFactor;
+                                    break;
+                                } else {
+                                    LOG(warn) << "Failed to enqueue to decimator output iSubChannel = "
+                                        << iSubChannel << " : TF = " << h->timeFrameId;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if (dqmSocketExists) {
                   if (Send(dqmParts, fDQMChannelName) < 0) {
                     if (NewStatePending()) {
@@ -150,6 +202,8 @@ bool TimeFrameBuilder::ConditionalRun()
 
                         if (Send(outParts, fOutputChannelName, direction) > 0) {
                             // successfully sent
+                            //LOG(debug) << "successfully sent to out " << direction << " " << fDirection;
+                            ++fNumSend;
                             break;
                         } else {
                             LOG(warn) << "Failed to enqueue time frame : TF = " << h->timeFrameId;
@@ -165,13 +219,13 @@ bool TimeFrameBuilder::ConditionalRun()
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(dt).count() > fBufferTimeoutInMs) {
 
 
-		#if 0
+		    #if 0
                     LOG(warn) << "Timeframe #" <<  std::hex << stfId << " incomplete after "
                             << std::dec << fBufferTimeoutInMs << " milliseconds, discarding";
                     //fDiscarded.insert(stfId);
-                #else
+                    #else
 			std::cout << "x" << std::flush;
-		#endif
+		    #endif
 
                     #if 1
                     ////// under debugging //////
@@ -204,9 +258,9 @@ bool TimeFrameBuilder::ConditionalRun()
                                 hb.push_back(hb00);
                         }
                     }
-                    //std::cout << "#D lost FEMid :" << stfId << ":";
+                    //std::cout << "#D lost femId :" << stfId << ":";
                     //for (auto & i : expected) std::cout << " " << (i & 0xff);
-                    std::cout << "#D FEMid :" << stfId << ":";
+                    std::cout << "#D FEM TFN: " << stfId << ", N: " << femid.size() << ", id:";
                     for (auto & i : femid) std::cout << " " << (i & 0xff);
                     std::cout << std::endl;
                     #if 0
@@ -263,7 +317,11 @@ void TimeFrameBuilder::InitTask()
     fBufferTimeoutInMs = std::stoi(sBufferTimeoutInMs);
     fInputChannelName  = fConfig->GetProperty<std::string>(opt::InputChannelName.data());
     fOutputChannelName = fConfig->GetProperty<std::string>(opt::OutputChannelName.data());
+    fDecimatorChannelName = fConfig->GetProperty<std::string>(opt::DecimatorChannelName.data());
+
     auto numSubChannels = GetNumSubChannels(fInputChannelName);
+    LOG(debug) << " Nsubchnnael[" << fInputChannelName << "]: " << numSubChannels;
+
     fNumSource = 0;
     for (auto i=0u; i<numSubChannels; ++i) {
         fNumSource += GetNumberOfConnectedPeers(fInputChannelName, i);
@@ -279,7 +337,20 @@ void TimeFrameBuilder::InitTask()
 
     fNumDestination = GetNumSubChannels(fOutputChannelName);
     fPollTimeoutMS  = std::stoi(fConfig->GetProperty<std::string>(opt::PollTimeout.data()));
-
+    fDecimationFactor = std::stoi(fConfig->GetProperty<std::string>(opt::DecimationFactor.data()));
+    fDecimationOffset = std::stoi(fConfig->GetProperty<std::string>(opt::DecimationOffset.data()));
+    if ((fDecimationFactor > 0)  && (fDecimationOffset >= fDecimationFactor)) {
+        LOG(warn) << "invalid decimation-offset = " << fDecimationOffset << " (< decimation-factor).  Set to 0";
+        fDecimationOffset = 0;
+    }
+    LOG(debug) << " decimation-factor = " << fDecimationFactor << " decimation-offset = " << fDecimationOffset;
+    fDecimatorNumberOfConnectedPeers = 0; 
+    if (fChannels.count(fDecimatorChannelName) > 0) {
+        auto nsub = GetNumSubChannels(fDecimatorChannelName);
+        for (auto i = 0u; i<nsub; ++i) {
+            fDecimatorNumberOfConnectedPeers += GetNumberOfConnectedPeers(fDecimatorChannelName,i);
+        }
+    }
 }
 
 //______________________________________________________________________________
@@ -293,7 +364,7 @@ void TimeFrameBuilder::PostRun()
         auto n = fChannels.count(fInputChannelName);
 
         for (auto i = 0u; i < n; ++i) {
-            std::cout << " #i : "<< i << std::endl;
+            std::cout << " #D SubChannel : "<< i << std::endl;
             while(true) {
 
                 FairMQParts part;
@@ -305,7 +376,7 @@ void TimeFrameBuilder::PostRun()
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(200));
                 } else {
-                    LOG(debug) << __func__ << " data comes..";
+//                    LOG(debug) << __func__ << " data comes..";
                 }
             }
         }
@@ -317,4 +388,5 @@ void TimeFrameBuilder::PostRun()
 void TimeFrameBuilder::PreRun()
 {
     fDirection    = 0;
+    fNumSend = 0;
 }

@@ -46,11 +46,21 @@ foreach(lvar IN ITEMS
 endforeach()
 
 
-add_executable(onlinedisplay
-	onlinedisplay.cxx
+foreach(lvar IN ITEMS
+	onlinedisplay;
+	TriggerView;
 )
 
-target_include_directories(onlinedisplay PUBLIC 
+set(EXEC ${lvar})
+  add_executable(${EXEC} 
+  ${EXEC}.cxx;
+)
+
+#add_executable(onlinedisplay
+#	onlinedisplay.cxx
+#)
+
+target_include_directories(${EXEC} PUBLIC 
     ${Boost_INCLUDE_DIRS};  
     ${FairMQ_INCDIR};
     ${FairMQ_INCDIR}/fairmq;
@@ -59,13 +69,13 @@ target_include_directories(onlinedisplay PUBLIC
     ${ROOT_INCLUDE_DIRS}
 )
 
-target_link_directories(onlinedisplay PUBLIC
+target_link_directories(${EXEC} PUBLIC
     ${Boost_LIBRARY_DIRS}; 
     ${FairMQ_LIBDIR};
     ${ROOT_LIBRARIES};
 )
 
-target_link_libraries(onlinedisplay PUBLIC 
+target_link_libraries(${EXEC} PUBLIC 
     ${Boost_LIBRARIES};  
     FairMQ;
     FairMQStateMachine;
@@ -73,11 +83,13 @@ target_link_libraries(onlinedisplay PUBLIC
     ${ROOT_LIBRARIES};
 )
 
-install(TARGETS onlinedisplay;
+install(TARGETS ${EXEC};
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     #RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     RUNTIME DESTINATION ${INSTALL_BINDIR}
 )
+
+endforeach()
 
 
 add_executable(chkfile

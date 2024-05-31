@@ -29,7 +29,7 @@
 
 static TApplication *gApp = new TApplication("App", nullptr, nullptr);
 
-#include "gbookhist.cxx"
+#include "TriggerViewBook.cxx"
 
 namespace bpo = boost::program_options;
 

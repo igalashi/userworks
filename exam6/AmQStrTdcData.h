@@ -139,8 +139,8 @@ namespace AmQStrTdc::Data {
     ThrottlingT2Start = 0x1A,
     ThrottlingT2End   = 0x12,        
 
-    SpillOn           = 0x18,
-    SpillEnd          = 0x14
+    SpillOn           = 0x18, // for compatibility
+    SpillEnd          = 0x14  // for compatibility
   };
 
   } // namespace v1
