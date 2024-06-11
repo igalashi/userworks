@@ -9,6 +9,8 @@
 #include <fairmq/Device.h>
 #include <fairmq/runDevice.h>
 
+#include <sw/redis++/redis++.h>
+
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -73,6 +75,12 @@ struct OnlineDisplay : fair::mq::Device
 		gHistReset();
 		gHistTrig_init();
 
+    std::string redisuri("tcp://127.0.0.1:6379");
+    //fRedis = new sw::redis::Redis(redisuri);
+    auto ffRedis = new sw::redis::Redis(redisuri);
+    //std::string sval(key);
+    auto val = ffRedis->get("key");
+
 		//OnData(fInputChannelName, &OnlineDisplay::HandleData);
 	}
 
@@ -120,9 +128,12 @@ private:
 	uint32_t fFEMId = 0;
 	int fPrescale = 1;
 
+  sw::redis::Redis *fRedis;
+
 	KTimer fKt1;
 	KTimer fKt2;
 	KTimer fKt3;
+
 };
 
 bool OnlineDisplay::CheckData(fair::mq::MessagePtr& msg)

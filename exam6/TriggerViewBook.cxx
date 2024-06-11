@@ -43,10 +43,16 @@ struct signal_id {
 };
 
 static std::vector<struct signal_id> trg_sources = {
-	{ 0, 0xc0a802a9,  8, 0}, { 1, 0xc0a802a9, 10, 0},
-	{ 2, 0xc0a802aa, 16, -12}, { 3, 0xc0a802aa, 17, -12}, { 4, 0xc0a802aa, 18, -12}, { 5, 0xc0a802aa, 19, -12},
-	{ 6, 0xc0a802aa, 20, -12}, { 7, 0xc0a802aa, 21, -12}, { 8, 0xc0a802aa, 22, -12}, { 9, 0xc0a802aa, 23, -12},
-	{10, 0xc0a802aa, 24, -12}, {11, 0xc0a802aa, 25, -12}, {12, 0xc0a802aa, 27, -12}, {13, 0xc0a802aa, 28, -12}
+	{ 0, 0xc0a80a23, 31, 0}, { 1, 0xc0a80a23, 63, 0}, { 2, 0xc0a80a24,  0, 0},
+  { 3, 0xc0a80a23, 15, 0}, { 4, 0xc0a80a23, 47, 0}, { 5, 0xc0a80a24, 16, 0},
+	{ 6, 0xc0a80a23,  7, 0}, { 7, 0xc0a80a23, 24, 0},
+  { 8, 0xc0a80a24,  0, 0}, { 9, 0xc0a80a24, 16, 0},
+  {10, 0xc0a80a25,  0, 0}, {11, 0xc0a80a25,  1, 0},
+  {12, 0xc0a80a25,  2, 0}, {13, 0xc0a80a25,  3, 0}, {14, 0xc0a80a25,  4, 0}, {15, 0xc0a80a25,  5, 0},
+  {16, 0xc0a80a25,  6, 0}, {17, 0xc0a80a25,  7, 0}, {18, 0xc0a80a25, 18, 0}, {19, 0xc0a80a25, 19, 0},
+  {20, 0xc0a80a25, 20, 0}, {21, 0xc0a80a25, 21, 0}, {22, 0xc0a80a25, 22, 0}, {23, 0xc0a80a25, 23, 0},
+  {24, 0xc0a80a25, 24, 0}, {25, 0xc0a80a25, 25, 0}, {26, 0xc0a80a25, 26, 0}, {27, 0xc0a80a25, 27, 0},
+  {28, 0xc0a80a25, 28, 0}, {29, 0xc0a80a25, 29, 0}, {30, 0xc0a80a25, 30, 0}, {31, 0xc0a80a25, 31, 0}
 };
 
 
@@ -159,6 +165,7 @@ void gHistTrig_init()
 		src.module = i.module;
 		src.channel = i.channel;
 		src.offset = i.offset;
+    src.type = 0;
 		src.tdc4n.clear();
 		src.tdc4n.resize(0);
 		gEntryTDC.emplace_back(src);
