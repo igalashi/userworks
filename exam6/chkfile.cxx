@@ -22,6 +22,7 @@
 #include "SubTimeFrameHeader.h"
 #include "TimeFrameHeader.h"
 #include "FilterHeader.h"
+#include "HeartbeatFrameHeader.h"
 #include "UnpackTdc.h"
 
 //#include "FileSinkHeaderBlock.h"
@@ -69,7 +70,7 @@ int CheckData(uint64_t dword, uint32_t fe_type, uint32_t fe_id)
 
 	} else
 	if (dtype == TDC64H::T_HB) {
-		std::cout << "Hart beat ";
+		std::cout << "Heartbeat ";
 
 		struct TDC64H::tdc64 tdc;
 		TDC64H::Unpack(dword, &tdc);
@@ -100,6 +101,16 @@ int CheckData(uint64_t dword, uint32_t fe_type, uint32_t fe_id)
 	} else
 	if (dtype == TDC64H::T_SPL_END) {
 		std::cout << "SPILL End" << std::endl;
+	} else
+	if (dtype == TDC64H_V3::T_HB2) {
+		std::cout << "Heartbeat2 ";
+		struct TDC64H_V3::tdc64 tdc;
+		TDC64H_V3::Unpack(dword, &tdc);
+		int gsize = tdc.genesize;
+		int tsize = tdc.transize;
+		if (gsize > 0) std::cout << " GenSize: " << std::dec << gsize;
+		if (tsize > 0) std::cout << " TransSize: " << std::dec << tsize;
+		std::cout << std::endl;
 	} else {
 		std::cout << "Unknown data" << std::endl;
 	}
@@ -114,30 +125,6 @@ bool CheckBlock(char *buf, int size)
 	//Filter::Header *pflt = reinterpret_cast<Filter::Header *>(buf);
 	//TimeFrame::Header *ptf = reinterpret_cast<TimeFrame::Header *>(buf);
 	//SubTimeFrame::Header *pstf = reinterpret_cast<SubTimeFrame::Header *>(buf);
-
-	if (*pdata == Filter::MAGIC) {
-		Filter::Header *pflt = reinterpret_cast<Filter::Header *>(pdata);
-		//std::string smagic = std::string(
-		//	reinterpret_cast<char *>(&(pflt->magic))).substr(0,8);
-		char cmagic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-		for (int i = 0 ; i < 8 ; i++)
-			cmagic[i] = (reinterpret_cast<char *>(&(pflt->magic)))[i];
-		std::cout << "FLT "
-			<< cmagic << "("
-			<< std::hex << std::setw(16) << std::setfill('0') << pflt->magic
-			<< ")"
-			<< " len: " << std::dec << std::setw(6) <<  pflt->length
-			<< " Ntrig: " << std::setw(4) <<  pflt->numTrigs
-			<< " Id: " << std::setw(4) << pflt->workerId
-			<< " elapse: " << std::dec << std::setw(6) << pflt->elapseTime
-			<< std::endl;
-		pdata = reinterpret_cast<uint64_t *>(
-			reinterpret_cast<char *>(pdata) + sizeof(struct Filter::Header));
-		
-	} else {
-		std::cout << "#E Not FLT Header : " << std::hex << *pdata << std::endl;
-		//return false;
-	}
 
 	//uint32_t N_src = 0;
 	if (*pdata == TimeFrame::MAGIC) {
@@ -162,6 +149,32 @@ bool CheckBlock(char *buf, int size)
 		std::cout << "#E Not TF Header : " << std::hex << *pdata << std::endl;
 		//return false;
 	}
+
+
+	if (*pdata == Filter::MAGIC) {
+		Filter::Header *pflt = reinterpret_cast<Filter::Header *>(pdata);
+		//std::string smagic = std::string(
+		//	reinterpret_cast<char *>(&(pflt->magic))).substr(0,8);
+		char cmagic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+		for (int i = 0 ; i < 8 ; i++)
+			cmagic[i] = (reinterpret_cast<char *>(&(pflt->magic)))[i];
+		std::cout << "FLT "
+			<< cmagic << "("
+			<< std::hex << std::setw(16) << std::setfill('0') << pflt->magic
+			<< ")"
+			<< " len: " << std::dec << std::setw(6) <<  pflt->length
+			<< " Ntrig: " << std::setw(4) <<  pflt->numTrigs
+			<< " Id: " << std::setw(4) << pflt->workerId
+			<< " elapse: " << std::dec << std::setw(6) << pflt->elapseTime
+			<< std::endl;
+		pdata = reinterpret_cast<uint64_t *>(
+			reinterpret_cast<char *>(pdata) + sizeof(struct Filter::Header));
+		
+	} else {
+		//std::cout << "#E Not FLT Header : " << std::hex << *pdata << std::endl;
+		//return false;
+	}
+
 
 	uint32_t fe_type = 0;
 	uint32_t fe_id = 0;
@@ -193,6 +206,24 @@ bool CheckBlock(char *buf, int size)
 			pdata = reinterpret_cast<uint64_t *>(
 				reinterpret_cast<char *>(pdata) + sizeof(struct SubTimeFrame::Header));
 	
+		} else
+		if (*pdata == HeartbeatFrame::MAGIC) {
+			HeartbeatFrame::Header *phbf
+				= reinterpret_cast<HeartbeatFrame::Header *>(pdata);
+			char cmagic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+			for (int i = 0 ; i < 8 ; i++)
+				cmagic[i] = (reinterpret_cast<char *>(&(phbf->magic)))[i];
+			std::cout << "HBF " << cmagic
+				<< "(" << std::hex << std::setw(16) << std::setfill('0')
+				<< phbf->magic
+				<< ")"
+				<< " Len: " << phbf->length
+				<< " hLen: " << phbf->hLength
+				<< " Type: " << phbf->type
+				<< std::endl;
+			pdata = reinterpret_cast<uint64_t *>(
+				reinterpret_cast<char *>(pdata) + sizeof(struct HeartbeatFrame::Header));
+
 		} else {
 			CheckData(*pdata, fe_type, fe_id);
 			pdata++;
@@ -289,7 +320,7 @@ bool CheckBlock(char *buf, int size)
 				}
 
 			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_HB << 2)) {
-				std::cout << "Hart beat" << std::endl;
+				std::cout << "Heart beat" << std::endl;
 
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[j]));
 				struct TDC64H::tdc64 tdc;
@@ -343,8 +374,8 @@ int reader(char *file)
 	if (fsh->magic == FileSinkHeader::MAGIC) {
 		char cmagic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 		for (int i = 0 ; i < 8 ; i++) cmagic[i] = (reinterpret_cast<char *>(&(fsh->magic)))[i];
-		std::cout << "MAGIC: " << std::hex << fsh->magic << std::dec << std::endl
-			<< "MAGIC: " << cmagic
+		std::cout << "MAGIC: " << cmagic
+			<< "(" << std::hex << fsh->magic << std::dec << ")" << std::endl
 			<< " Size: " << fsh->size
 			<< " Type: " << fsh->fairMQDeviceType
 			<< " Run: " << fsh->runNumber
@@ -368,8 +399,8 @@ int reader(char *file)
 	if (fst->magic == FileSinkTrailer::MAGIC) {
 		char cmagic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 		for (int i = 0 ; i < 8 ; i++) cmagic[i] = (reinterpret_cast<char *>(&(fst->magic)))[i];
-		std::cout << "MAGIC: " << std::hex << fst->magic << std::dec << std::endl
-			<< "MAGIC: " << cmagic
+		std::cout << "MAGIC: " << cmagic
+			<< "(" << std::hex << fst->magic << std::dec << ")" << std::endl
 			<< " Size: " << fst->size
 			<< " Type: " << fst->fairMQDeviceType
 			<< " Run: " << fst->runNumber

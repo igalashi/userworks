@@ -57,7 +57,8 @@ static std::vector<struct signal_id> trg_sources = {
 	{ 0, 0xc0a802a9,  8, 0}, { 1, 0xc0a802a9, 10, 0},
 	{ 2, 0xc0a802aa, 16, -12}, { 3, 0xc0a802aa, 17, -12}, { 4, 0xc0a802aa, 18, -12}, { 5, 0xc0a802aa, 19, -12},
 	{ 6, 0xc0a802aa, 20, -12}, { 7, 0xc0a802aa, 21, -12}, { 8, 0xc0a802aa, 22, -12}, { 9, 0xc0a802aa, 23, -12},
-	{10, 0xc0a802aa, 24, -12}, {11, 0xc0a802aa, 25, -12}, {12, 0xc0a802aa, 27, -12}, {13, 0xc0a802aa, 28, -12}
+	{10, 0xc0a802aa, 24, -12}, {11, 0xc0a802aa, 25, -12}, {12, 0xc0a802aa, 27, -12}, {13, 0xc0a802aa, 28, -12},
+	{14, 0xc0a802a3,  4, -12}, {15, 0xc0a802a3, 16, -12}
 };
 
 
@@ -255,11 +256,11 @@ void gHistEntryTDC(fair::mq::MessagePtr& msg, uint32_t id, int type)
 {
 	//unsigned int msize = msg->GetSize();
 	//uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(msg->GetData()));
-	//HartbeatFrame::Header *phbf = reinterpret_cast<HartbeatFrame::Header *>(msg->GetData());
+	//HeartbeatFrame::Header *phbf = reinterpret_cast<HeartbeatFrame::Header *>(msg->GetData());
 
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(
-		reinterpret_cast<unsigned char *>(msg->GetData()) + sizeof(HartbeatFrame::Header));
-	unsigned int dsize = msg->GetSize() - sizeof(HartbeatFrame::Header);
+		reinterpret_cast<unsigned char *>(msg->GetData()) + sizeof(HeartbeatFrame::Header));
+	unsigned int dsize = msg->GetSize() - sizeof(HeartbeatFrame::Header);
 
 	for (auto &mod : gEntryTDC) {
 		if (id == mod.module) {
@@ -268,12 +269,27 @@ void gHistEntryTDC(fair::mq::MessagePtr& msg, uint32_t id, int type)
 			for (size_t i = 0 ; i < dsize ; i += sizeof(uint64_t)) {
 
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
-				struct TDC64H_V3::tdc64 tdc;
-				TDC64H_V3::Unpack(*dword, &tdc);
+				int val_tdc4n = -1;
+				int ch = -1;
 
-				if (tdc.ch == mod.channel) {
-					//std::cout << "#D " << tdc.ch << " : " << tdc.tdc << std::endl;
-					tdc4n.emplace_back(tdc.tdc4n);
+				if (type == SubTimeFrame::TDC64H_V3) {
+					struct TDC64H_V3::tdc64 tdc;
+					TDC64H_V3::Unpack(*dword, &tdc);
+					val_tdc4n = tdc.tdc4n;
+					ch = tdc.ch;
+				} else
+				if (type == SubTimeFrame::TDC64L_V3) {
+					struct TDC64L_V3::tdc64 tdc;
+					TDC64L_V3::Unpack(*dword, &tdc);
+					val_tdc4n = tdc.tdc4n;
+					ch = tdc.ch;
+				} else {
+					break;
+				}
+
+				if (ch == mod.channel) {
+					//std::cout << "#D " << ch << " : " << val_tdc4n << std::endl;
+					tdc4n.emplace_back(val_tdc4n);
 				}
 
 			}
@@ -484,41 +500,47 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 		}
 		#endif
 
+
 		for (auto &sig : trg_sources) {
 
+			int tdc4n = -1;
+			int ch = -1;
+			uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
 			if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2) 
 				&& (type == SubTimeFrame::TDC64H_V3)) {
 
-				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
 				struct TDC64H_V3::tdc64 tdc;
 				TDC64H_V3::Unpack(*dword, &tdc);
+				tdc4n = tdc.tdc4n;
+				ch = tdc.ch;
+			} else
+			if ((pdata[i + 7] & 0xfc) == (TDC64L_V3::T_TDC << 2) 
+				&& (type == SubTimeFrame::TDC64L_V3)) {
 
-				if ((id == sig.module) && (tdc.ch == sig.channel)) {
+				struct TDC64L_V3::tdc64 tdc;
+				TDC64L_V3::Unpack(*dword, &tdc);
+				tdc4n = tdc.tdc4n;
+				ch = tdc.ch;
+			}
 
-					#if 0
-					if(gTrig.size() > 0) {
-						std::cout << "#D Module :" << id
-						<< " CH: " << std::dec << std::setw(3) << tdc.ch
-						<< " TDC: " << std::setw(7) << tdc.tdc
-						<< " Trig[0]: " << gTrig[0] << std::endl;
-					}
-					#endif
-	
-					for (auto &trigs : gTrig) {
+			if ((ch >= 0)
+				&& (id == sig.module) && (ch == sig.channel)) {
+
+				#if 0
+				if(gTrig.size() > 0) {
+					std::cout << "#D Module :" << id
+					<< " CH: " << std::dec << std::setw(3) << tdc.ch
+					<< " TDC: " << std::setw(7) << tdc.tdc
+					<< " Trig[0]: " << gTrig[0] << std::endl;
+				}
+				#endif
+
+				for (auto &trigs : gTrig) {
 					for (auto &trg : trigs) {
-						int diff = tdc.tdc4n - trg;
+						int diff = tdc4n - trg;
 						if (std::abs(diff) < 1000) {
 							gH2TrigWindow->Fill(diff + sig.offset, sig.index);
 						}
-
-						#if 0
-						if (tw_one && (std::abs(diff) < 100)) {
-							gH2TrigWindow_one->Fill(diff + sig.offset, sig.index);
-							std::cout << "." << std::flush;
-							tw_nhit++;
-						}
-						#endif
-					}
 					}
 				}
 			}

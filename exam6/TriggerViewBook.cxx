@@ -42,18 +42,34 @@ struct signal_id {
 	int      offset;
 };
 
+#if 0
 static std::vector<struct signal_id> trg_sources = {
-	{ 0, 0xc0a80a23, 31, 0}, { 1, 0xc0a80a23, 63, 0}, { 2, 0xc0a80a24,  0, 0},
-  { 3, 0xc0a80a23, 15, 0}, { 4, 0xc0a80a23, 47, 0}, { 5, 0xc0a80a24, 16, 0},
-	{ 6, 0xc0a80a23,  7, 0}, { 7, 0xc0a80a23, 24, 0},
-  { 8, 0xc0a80a24,  0, 0}, { 9, 0xc0a80a24, 16, 0},
-  {10, 0xc0a80a25,  0, 0}, {11, 0xc0a80a25,  1, 0},
-  {12, 0xc0a80a25,  2, 0}, {13, 0xc0a80a25,  3, 0}, {14, 0xc0a80a25,  4, 0}, {15, 0xc0a80a25,  5, 0},
-  {16, 0xc0a80a25,  6, 0}, {17, 0xc0a80a25,  7, 0}, {18, 0xc0a80a25, 18, 0}, {19, 0xc0a80a25, 19, 0},
-  {20, 0xc0a80a25, 20, 0}, {21, 0xc0a80a25, 21, 0}, {22, 0xc0a80a25, 22, 0}, {23, 0xc0a80a25, 23, 0},
-  {24, 0xc0a80a25, 24, 0}, {25, 0xc0a80a25, 25, 0}, {26, 0xc0a80a25, 26, 0}, {27, 0xc0a80a25, 27, 0},
-  {28, 0xc0a80a25, 28, 0}, {29, 0xc0a80a25, 29, 0}, {30, 0xc0a80a25, 30, 0}, {31, 0xc0a80a25, 31, 0}
+	{ 0, 0xc0a802a9,  8,   0}, { 1, 0xc0a802a9, 10,   0},
+	{ 2, 0xc0a802aa, 16, -12}, { 3, 0xc0a802aa, 17, -12}, { 4, 0xc0a802aa, 18, -12}, { 5, 0xc0a802aa, 19, -12},
+	{ 6, 0xc0a802aa, 20, -12}, { 7, 0xc0a802aa, 21, -12}, { 8, 0xc0a802aa, 22, -12}, { 9, 0xc0a802aa, 23, -12},
+	{10, 0xc0a802aa, 24, -12}, {11, 0xc0a802aa, 25, -12}, {12, 0xc0a802aa, 27, -12}, {13, 0xc0a802aa, 28, -12},
+	{14, 0xc0a802a3,  4, -12}, {15, 0xc0a802a3, 16, -12}
 };
+#else
+static std::vector<struct signal_id> trg_sources = {
+	{ 0, 0xc0a80a23, 31, 0}, { 1, 0xc0a80a23, 15, 0},
+	{ 2, 0xc0a80a23, 63, 0}, { 3, 0xc0a80a24, 47, 0},
+	{ 4, 0xc0a80a24,  0, 0}, { 5, 0xc0a80a24, 16, 0},
+	{ 6, 0xc0a80a25,  0, 0}, { 7, 0xc0a80a25,  1, 0}, { 8, 0xc0a80a25,  2, 0}, { 9, 0xc0a80a25,  3, 0},
+	{10, 0xc0a80a25,  4, 0}, {11, 0xc0a80a25,  5, 0}, {12, 0xc0a80a25,  6, 0}, {13, 0xc0a80a25,  7, 0},
+	{14, 0xc0a80a25, 18, 0}, {15, 0xc0a80a25, 19, 0}
+};
+
+
+//	{ 4, 0xc0a80a23, 15, 0}, { 5, 0xc0a80a23, 47, 0}, { 5, 0xc0a80a24, 16, 0},
+//	{ 6, 0xc0a80a23,  7, 0}, { 7, 0xc0a80a23, 24, 0},
+//	{16, 0xc0a80a25,  6, 0}, {17, 0xc0a80a25,  7, 0}, {18, 0xc0a80a25, 18, 0}, {19, 0xc0a80a25, 19, 0},
+//	{20, 0xc0a80a25, 20, 0}, {21, 0xc0a80a25, 21, 0}, {22, 0xc0a80a25, 22, 0}, {23, 0xc0a80a25, 23, 0},
+//	{24, 0xc0a80a25, 24, 0}, {25, 0xc0a80a25, 25, 0}, {26, 0xc0a80a25, 26, 0}, {27, 0xc0a80a25, 27, 0},
+//	{28, 0xc0a80a25, 28, 0}, {29, 0xc0a80a25, 29, 0}, {30, 0xc0a80a25, 30, 0}, {31, 0xc0a80a25, 31, 0}
+//};
+
+#endif
 
 
 
@@ -211,24 +227,38 @@ void gHistEntryTDC(fair::mq::MessagePtr& msg, uint32_t id, int type)
 {
 	//unsigned int msize = msg->GetSize();
 	//uint64_t msg_magic = *(reinterpret_cast<uint64_t *>(msg->GetData()));
-	//HartbeatFrame::Header *phbf = reinterpret_cast<HartbeatFrame::Header *>(msg->GetData());
+	//HeartbeatFrame::Header *phbf = reinterpret_cast<HeartbeatFrame::Header *>(msg->GetData());
 
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(
-		reinterpret_cast<unsigned char *>(msg->GetData()) + sizeof(HartbeatFrame::Header));
-	unsigned int dsize = msg->GetSize() - sizeof(HartbeatFrame::Header);
+		reinterpret_cast<unsigned char *>(msg->GetData()) + sizeof(HeartbeatFrame::Header));
+	unsigned int dsize = msg->GetSize() - sizeof(HeartbeatFrame::Header);
 
 	for (auto &mod : gEntryTDC) {
 		if (id == mod.module) {
 			mod.type = type;
 			std::vector<int> tdc4n;
 			for (size_t i = 0 ; i < dsize ; i += sizeof(uint64_t)) {
-
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
-				struct TDC64H_V3::tdc64 tdc;
-				TDC64H_V3::Unpack(*dword, &tdc);
+				int val_tdc4n = -1;
+				int val_ch = -1;
 
-				if (tdc.ch == mod.channel) {
-					tdc4n.emplace_back(tdc.tdc4n);
+				if (type == SubTimeFrame::TDC64H_V3) {
+					struct TDC64H_V3::tdc64 tdc;
+					TDC64H_V3::Unpack(*dword, &tdc);
+					val_tdc4n = tdc.tdc4n;
+					val_ch = tdc.ch;
+				} else
+				if (type == SubTimeFrame::TDC64L_V3) {
+					struct TDC64L_V3::tdc64 tdc;
+					TDC64L_V3::Unpack(*dword, &tdc);
+					val_tdc4n = tdc.tdc4n;
+					val_ch = tdc.ch;
+				} else {
+					break;
+				}
+
+				if (val_ch == mod.channel) {
+					tdc4n.emplace_back(val_tdc4n);
 				}
 
 			}
@@ -243,8 +273,7 @@ void gHistEntryTDC(fair::mq::MessagePtr& msg, uint32_t id, int type)
 void gHistBookTrigWin()
 {
 	static unsigned int tw_counter = 0;
-	//static unsigned int tw_nhit = 0;
-	const unsigned int tw_pre_factor = 1000;	
+	const unsigned int tw_pre_factor = 100;	
 
 	for (unsigned int i = 0 ; i < gTrig.size() ; i++) {
 		for (auto &trg : gTrig[i]) {
@@ -256,7 +285,6 @@ void gHistBookTrigWin()
 						int diff = tdc4n - trg;
 						if (std::abs(diff) < 500) {
 							gH2TrigWindow_one->Fill(diff + mod.offset, mod.index);
-							//tw_nhit++;
 						}
 					}
 				}
@@ -274,19 +302,10 @@ void gHistBookTrigWin(fair::mq::MessagePtr& msg, uint32_t id, int type)
 	unsigned int msize = msg->GetSize();
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
 
-	static unsigned int tw_counter = 0;
-	static unsigned int tw_nhit = 0;
-	const unsigned int tw_pre_factor = 10000;	
-
 	if (gTrig_isvalid && (type == SubTimeFrame::TDC64H_V3)) {
 	for (auto &trigs : gTrig) {
 	for (auto &trg : trigs) {
-		bool tw_one = ((tw_counter++ % tw_pre_factor) == 0);
-		if ((tw_one) && (tw_nhit > 0)) {
-			gH2TrigWindow_one->Reset();
-			std::cout << tw_nhit << ":" << tw_counter << std::endl;
-			tw_nhit = 0;
-		}
+
 		for (size_t i = 0 ; i < msize ; i += sizeof(uint64_t)) {
 			for (auto &sig : trg_sources) {
 				if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2) 
@@ -312,21 +331,10 @@ void gHistBookTrigWin(fair::mq::MessagePtr& msg, uint32_t id, int type)
 							gH2TrigWindow->Fill(diff + sig.offset, sig.index);
 						}
 
-						#if 0
-						if (tw_one && (std::abs(diff) < 500)) {
-							gH2TrigWindow_one->Fill(diff + sig.offset, sig.index);
-
-							gCan1->cd(3)->Modified();
-
-							std::cout << "." << std::flush;
-							tw_nhit++;
-						}
-						#endif
 					}
 				}
 			}
 		}
-		if (tw_one) std::cout << std::endl;
 	}
 	}
 	}
@@ -401,22 +409,36 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 
 		for (auto &sig : trg_sources) {
 
+			int val_tdc4n = -1;
+			int val_ch = -1;
+			uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
 			if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2) 
 				&& (type == SubTimeFrame::TDC64H_V3)) {
 
-				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
 				struct TDC64H_V3::tdc64 tdc;
 				TDC64H_V3::Unpack(*dword, &tdc);
+				val_tdc4n = tdc.tdc4n;
+				val_ch = tdc.ch;
+			} else
+			if ((pdata[i + 7] & 0xfc) == (TDC64L_V3::T_TDC << 2) 
+				&& (type == SubTimeFrame::TDC64L_V3)) {
 
-				if ((id == sig.module) && (tdc.ch == sig.channel)) {
-					for (auto &trigs : gTrig) {
-						for (auto &trg : trigs) {
-							int diff = tdc.tdc4n - trg;
-							if (std::abs(diff) < 1000) {
-								gH2TrigWindow->Fill(diff + sig.offset, sig.index);
-							}
+				struct TDC64L_V3::tdc64 tdc;
+				TDC64L_V3::Unpack(*dword, &tdc);
+				val_tdc4n = tdc.tdc4n;
+				val_ch = tdc.ch;
+			} else {
+				continue;
+			}
 
+			if ((id == sig.module) && (val_ch == sig.channel)) {
+				for (auto &trigs : gTrig) {
+					for (auto &trg : trigs) {
+						int diff = val_tdc4n - trg;
+						if (std::abs(diff) < 1000) {
+							gH2TrigWindow->Fill(diff + sig.offset, sig.index);
 						}
+
 					}
 				}
 			}

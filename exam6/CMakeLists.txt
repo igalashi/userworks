@@ -66,7 +66,9 @@ target_include_directories(${EXEC} PUBLIC
     ${FairMQ_INCDIR}/fairmq;
     ${FairMQ_INCDIR}/fairlogger/bundled;
     ${CMAKE_SOURCE_DIR};
-    ${ROOT_INCLUDE_DIRS}
+    ${ROOT_INCLUDE_DIRS};
+    ${HIREDIS_HEADER};
+    ${REDIS_PLUS_PLUS_HEADER};
 )
 
 target_link_directories(${EXEC} PUBLIC
@@ -81,6 +83,8 @@ target_link_libraries(${EXEC} PUBLIC
     FairMQStateMachine;
     FairLogger;
     ${ROOT_LIBRARIES};
+    ${HIREDIS_LIB};
+    ${REDIS_PLUS_PLUS_LIB};
 )
 
 install(TARGETS ${EXEC};

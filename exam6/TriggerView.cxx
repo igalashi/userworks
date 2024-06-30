@@ -22,7 +22,7 @@
 
 #include "SubTimeFrameHeader.h"
 #include "TimeFrameHeader.h"
-#include "HartbeatFrameHeader.h"
+#include "HeartbeatFrameHeader.h"
 #include "FilterHeader.h"
 #include "UnpackTdc.h"
 #include "KTimer.cxx"
@@ -75,11 +75,13 @@ struct OnlineDisplay : fair::mq::Device
 		gHistReset();
 		gHistTrig_init();
 
-    std::string redisuri("tcp://127.0.0.1:6379");
-    //fRedis = new sw::redis::Redis(redisuri);
-    auto ffRedis = new sw::redis::Redis(redisuri);
-    //std::string sval(key);
-    auto val = ffRedis->get("key");
+
+		#if 0
+		std::string redisuri("tcp://127.0.0.1:6379");
+		fRedis = new sw::redis::Redis(redisuri);
+		auto val = fRedis->get("key");
+		#endif
+
 
 		//OnData(fInputChannelName, &OnlineDisplay::HandleData);
 	}
@@ -128,7 +130,7 @@ private:
 	uint32_t fFEMId = 0;
 	int fPrescale = 1;
 
-  sw::redis::Redis *fRedis;
+	sw::redis::Redis *fRedis;
 
 	KTimer fKt1;
 	KTimer fKt2;
@@ -230,7 +232,7 @@ bool OnlineDisplay::CheckData(fair::mq::MessagePtr& msg)
 				}
 
 			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_HB << 2)) {
-				std::cout << "Hart beat" << std::endl;
+				std::cout << "Heart beat" << std::endl;
 
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[j]));
 				struct TDC64H::tdc64 tdc;
@@ -362,7 +364,7 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 		fFEMId = pstf->femId;
 		fFeType = pstf->femType;
 
-	} else if (msg_magic == HartbeatFrame::MAGIC) {
+	} else if (msg_magic == HeartbeatFrame::MAGIC) {
 
 		gHistBook(msg, fFEMId, fFeType);
 		//gHistBookTrigWin(msg, fFEMId, fFeType);
@@ -415,7 +417,7 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 
 		} else if ((pdata[0 + 7] & 0xfc) == (TDC64H::T_HB << 2)) {
 			#if 0
-			std::cout << "Hart beat" << std::endl;
+			std::cout << "Heart beat" << std::endl;
 			uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[0]));
 			struct TDC64H::tdc64 tdc;
 			TDC64H::Unpack(*dword, &tdc);

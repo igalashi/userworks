@@ -24,7 +24,7 @@
 //#include "HulStrTdcData.h"
 #include "SubTimeFrameHeader.h"
 #include "TimeFrameHeader.h"
-#include "HartbeatFrameHeader.h"
+#include "HeartbeatFrameHeader.h"
 #include "FilterHeader.h"
 
 #include "SignalParser.cxx"
@@ -117,7 +117,7 @@ struct LogicFilter : fair::mq::Device
 	bool CheckData(fair::mq::MessagePtr&);
 
 private:
-	int IsHartBeat(uint64_t, uint32_t);
+	int IsHeartBeat(uint64_t, uint32_t);
 	int RemoveData(fair::mq::Parts &, int);
 	void CheckMultiPart(FairMQParts &);
 	int MakeBlockMap(FairMQParts &,
@@ -332,7 +332,7 @@ bool LogicFilter::CheckData(fair::mq::MessagePtr &msg)
 				}
 
 			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_HB << 2)) {
-				std::cout << "Hart beat" << std::endl;
+				std::cout << "Heart beat" << std::endl;
 			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_SPL_START << 2)) {
 				std::cout << "SPILL Start" << std::endl;
 			} else if ((pdata[j + 7] & 0xfc) == (TDC64H::T_SPL_END << 2)) {
@@ -350,7 +350,7 @@ bool LogicFilter::CheckData(fair::mq::MessagePtr &msg)
 	return true;
 }
 
-int LogicFilter::IsHartBeat(uint64_t val, uint32_t type)
+int LogicFilter::IsHeartBeat(uint64_t val, uint32_t type)
 {
 	int hbflag = -1;
 	int hbframe = -1;
@@ -492,8 +492,8 @@ void LogicFilter::CheckMultiPart(FairMQParts &inParts)
 			= reinterpret_cast<TimeFrame::Header *>(inParts[i].GetData());
 		struct SubTimeFrame::Header *stbh
 			= reinterpret_cast<SubTimeFrame::Header *>(inParts[i].GetData());
-		struct HartbeatFrame::Header *hbh
-			= reinterpret_cast<HartbeatFrame::Header *>(inParts[i].GetData());
+		struct HeartbeatFrame::Header *hbh
+			= reinterpret_cast<HeartbeatFrame::Header *>(inParts[i].GetData());
 
 		if (tbh->magic == TimeFrame::MAGIC) {
 			std::cout << "TF Id: "
@@ -503,12 +503,12 @@ void LogicFilter::CheckMultiPart(FairMQParts &inParts)
 			std::cout << std::endl << "* STF: TFid: 0x" << std::hex
 				<< std::setw(8) << stbh->timeFrameId << " :"; 
 		} else
-		if (hbh->magic == HartbeatFrame::MAGIC) {
+		if (hbh->magic == HeartbeatFrame::MAGIC) {
 			std::cout << " HB:" << std::dec
 				<< std::setw(8) << inParts[i].GetSize() << " :"; 
 		} else {
 			std::cout << "UK " << std::setw(8) << std::setfill('0')
-				<< IsHartBeat(top[0], SubTimeFrame::TDC64H);
+				<< IsHeartBeat(top[0], SubTimeFrame::TDC64H);
 		}
 	}
 	std::cout << std::dec << std::endl;
@@ -570,7 +570,7 @@ int LogicFilter::MakeBlockMap(
 			// make block map;
 
 			uint64_t *data = reinterpret_cast<uint64_t *>(inParts[i].GetData());
-			int hbframe = IsHartBeat(data[0], devtype);
+			int hbframe = IsHeartBeat(data[0], devtype);
 
 			#if 0
 			std::cout << "#DDD msg" << std::dec << std::setw(3) << i << ":"
@@ -579,7 +579,7 @@ int LogicFilter::MakeBlockMap(
 			#endif
 
 			//if (hbframe < 0) {
-			if ((data[0] == HartbeatFrame::MAGIC)
+			if ((data[0] == HeartbeatFrame::MAGIC)
 				|| (hbframe < 0)) {
 				dblock.femId = femid;
 				dblock.Type = devtype;
@@ -718,7 +718,7 @@ int LogicFilter::MakeBlockMap2(
 			// make block map;
 
 			uint64_t *data = reinterpret_cast<uint64_t *>(inParts[i].GetData());
-			int hbframe = IsHartBeat(data[0], devtype);
+			int hbframe = IsHeartBeat(data[0], devtype);
 
 			#if 0
 			std::cout << "#DDD msg" << std::dec << std::setw(3) << i << ":"
@@ -726,7 +726,7 @@ int LogicFilter::MakeBlockMap2(
 				<< " blocks.size(): " << blocks.size() << std::endl;
 			#endif
 
-			if ((data[0] == HartbeatFrame::MAGIC)
+			if ((data[0] == HeartbeatFrame::MAGIC)
 				|| (hbframe < 0)) {
 				dblock.femId = femid;
 				dblock.Type = devtype;
@@ -1236,15 +1236,15 @@ bool LogicFilter::ConditionalRun()
 				outParts.AddPart(std::move(msgCopy));
 			} else {
 				// add blank SubTime Frame
-				struct HartbeatFrame::Header *hbf
-					= reinterpret_cast<struct HartbeatFrame::Header *>(inParts[ii].GetData());
+				struct HeartbeatFrame::Header *hbf
+					= reinterpret_cast<struct HeartbeatFrame::Header *>(inParts[ii].GetData());
 				//uint64_t *hbf_u64
 				//	= reinterpret_cast<uint64_t *>(inParts[ii].GetData());
-				if (hbf->magic == HartbeatFrame::MAGIC) {
-				//if (hbf_u64[0] == HartbeatFrame::MAGIC) {
+				if (hbf->magic == HeartbeatFrame::MAGIC) {
+				//if (hbf_u64[0] == HeartbeatFrame::MAGIC) {
 					#pragma pack(4)
 					struct BlankHBF{
-						struct HartbeatFrame::Header Header;
+						struct HeartbeatFrame::Header Header;
 						uint64_t Delimiter[2];
 					};
 					#pragma pack()
@@ -1253,8 +1253,8 @@ bool LogicFilter::ConditionalRun()
 						reinterpret_cast<char *>(inParts[ii].GetData())
 						+ inParts[ii].GetSize() - (sizeof(uint64_t) * 2));
 					std::memcpy(&(blank->Header), inParts[ii].GetData(),
-						sizeof(struct HartbeatFrame::Header));
-					blank->Header.length = sizeof(HartbeatFrame::Header)
+						sizeof(struct HeartbeatFrame::Header));
+					blank->Header.length = sizeof(HeartbeatFrame::Header)
 						+ (sizeof(uint64_t) * 2);
 					std::memcpy(&(blank->Delimiter), d, sizeof(uint64_t) * 2);
 					outParts.AddPart(MessageUtil::NewMessage(*this, std::move(blank)));

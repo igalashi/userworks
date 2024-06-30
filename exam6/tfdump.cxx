@@ -19,7 +19,7 @@
 #include "SubTimeFrameHeader.h"
 #include "TimeFrameHeader.h"
 #include "FilterHeader.h"
-#include "HartbeatFrameHeader.h"
+#include "HeartbeatFrameHeader.h"
 #include "UnpackTdc.h"
 #include "KTimer.cxx"
 
@@ -241,7 +241,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 
 
 	//} else if (data_mode == DM_TDC) {
-	} else if (msg_magic == HartbeatFrame::MAGIC) {
+	} else if (msg_magic == HeartbeatFrame::MAGIC) {
 		//std::cout << "#D DMODE: TDC" << std::endl;
 		if (fIsShrink) {
 			//std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
@@ -249,8 +249,8 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 		} else {
 			std::cout << "#D HBF" << std::endl;
 
-			HartbeatFrame::Header *phbf
-				= reinterpret_cast<HartbeatFrame::Header *>(pdata);
+			HeartbeatFrame::Header *phbf
+				= reinterpret_cast<HeartbeatFrame::Header *>(pdata);
 
 			std::cout << "#HBF Header (" << std::dec << ac_nhbf << ") "
 				<< std::hex << std::setw(8) << std::setfill('0') <<  phbf->magic
@@ -311,7 +311,7 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 					   (pdata[j + 7] & 0xfc) == (TDC64H_V3::T_HB  << 2)
 					|| (pdata[j + 7] & 0xfc) == (TDC64H_V3::T_HB1 << 2)
 					|| (pdata[j + 7] & 0xfc) == (TDC64H_V3::T_HB2 << 2)) {
-					std::cout << "Hart beat" << std::endl;
+					std::cout << "Heart beat" << std::endl;
 
 					uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[j]));
 					struct TDC64H::tdc64 tdc;
