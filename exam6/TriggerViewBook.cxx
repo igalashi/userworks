@@ -42,7 +42,7 @@ struct signal_id {
 	int      offset;
 };
 
-#if 0
+#if 1
 static std::vector<struct signal_id> trg_sources = {
 	{ 0, 0xc0a802a9,  8,   0}, { 1, 0xc0a802a9, 10,   0},
 	{ 2, 0xc0a802aa, 16, -12}, { 3, 0xc0a802aa, 17, -12}, { 4, 0xc0a802aa, 18, -12}, { 5, 0xc0a802aa, 19, -12},
