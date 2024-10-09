@@ -17,7 +17,7 @@ ROOTLIBS = $(shell $(ROOTSYS)/bin/root-config --libs) \
 	-lNew -Xlinker
 ROOTGLIBS = $(shell $(ROOTSYS)/bin/root-config --glibs)
 
-EXECS = checkfilter chkfile
+EXECS = checkfilter chkfile chkraw
 
 all: $(EXECS)
 
@@ -30,12 +30,15 @@ checkfilter: checkfilter.cxx
 		# $(LDFLAGS) \
 		# -lThread
 
-
 chkfile: chkfile.cxx
 	$(CXX) $(CXXFLAGS) -o $@ \
 		-I$(ROOTINCDIR) \
 		$<
 
+chkraw: chkraw.cxx
+	$(CXX) $(CXXFLAGS) -o $@ \
+		-I$(ROOTINCDIR) \
+		$<
 
 clean:
 	rm $(EXECS)

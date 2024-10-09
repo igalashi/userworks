@@ -15,11 +15,12 @@ CONFIG_URI=' --parameter-config-uri tcp://127.0.0.1:6379/2'
 #BINDIR=/home/nestdaq/nestdaq/bin
 #BINDIR=/home/nestdaq/nestdaq/src/userworks/build/recbe
 #BINDIR=$HOME/nestdaq/src/userworks/build/recbe
-BINDIR=$HOME/nestdaq/src/userworks/bin
+BINDIR=$NESTDAQ/src/userworks/bin
 
 #export LD_LIBRARY_PATH=$ROOTSYS/lib
 
-PLUGIN_LIBDIR=/home/nestdaq/nestdaq/lib64
+#PLUGIN_LIBDIR=/home/nestdaq/nestdaq/lib64
+PLUGIN_LIBDIR=$NESTDAQ/lib64
 
 PLUGIN_SEARCH_PATH=" -S '<$PLUGIN_LIBDIR'"
 DAQSERVICE_PLUGIN=" -P daq_service"

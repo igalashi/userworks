@@ -17,7 +17,7 @@ BINDIR=$HOME/nestdaq/src/nestdaq-user-impl/bin
 
 export LD_LIBRARY_PATH=$ROOTSYS/lib
 
-PLUGIN_LIBDIR=/home/nestdaq/nestdaq/lib64
+PLUGIN_LIBDIR=$HOME/nestdaq/lib64
 
 PLUGIN_SEARCH_PATH=" -S '<$PLUGIN_LIBDIR'"
 DAQSERVICE_PLUGIN=" -P daq_service"
