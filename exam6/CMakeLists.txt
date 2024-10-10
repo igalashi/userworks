@@ -8,7 +8,8 @@ foreach(lvar IN ITEMS
 	tfdump; fltcoin; flttrig; LogicFilter
 	TimeFrameBuilder;
 	TFBFilePlayer; STFBFilePlayer;
-)
+  )
+
   set(EXEC ${lvar})
   add_executable(${EXEC} 
     ${EXEC}.cxx;
@@ -29,13 +30,30 @@ foreach(lvar IN ITEMS
     #${ROOT_LIBRARIES};
   )
 
-  target_link_libraries(${EXEC} PUBLIC 
-    ${Boost_LIBRARIES};  
-    FairMQ;
-    FairMQStateMachine;
-    FairLogger;
-    #${ROOT_LIBRARIES};
-  )
+  if ((FairMQ_VERSION VERSION_GREATER_EQUAL 1.8.0)
+    AND (FairMQ_VERSION VERSION_LESS_EQUAL 1.8.9))
+    target_link_libraries(${EXEC} PUBLIC 
+      ${Boost_LIBRARIES};  
+      #FairMQ;
+      #FairMQStateMachine;
+      fairmq;
+      FairLogger;
+      #${ROOT_LIBRARIES};
+    )
+    #message("FairMQ version ${FairMQ_VERSION}")
+  elseif ((FairMQ_VERSION VERSION_GREATER_EQUAL 1.4.55)
+    AND (FairMQ_VERSION VERSION_LESS_EQUAL 1.4.56))
+    target_link_libraries(${EXEC} PUBLIC 
+      ${Boost_LIBRARIES};  
+      FairMQ;
+      FairMQStateMachine;
+      FairLogger;
+    )
+    #message("FairMQ version ${FairMQ_VERSION}")
+  else()
+    message(FATAL_ERROR "Unsupported FairMQ version ${FairMQ_VERSION}")
+  endif()
+
 
   install(TARGETS
     ${EXEC};
@@ -79,8 +97,9 @@ target_link_directories(${EXEC} PUBLIC
 
 target_link_libraries(${EXEC} PUBLIC 
     ${Boost_LIBRARIES};  
-    FairMQ;
-    FairMQStateMachine;
+    #FairMQ;
+    #FairMQStateMachine;
+    fairmq;
     FairLogger;
     ${ROOT_LIBRARIES};
     ${HIREDIS_LIB};
