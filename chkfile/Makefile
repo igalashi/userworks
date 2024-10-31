@@ -7,7 +7,8 @@ CFLAGS = -Wall -g -O
 CXX = g++
 CXXFLAGS = -Wall -g -O --std=c++17
 
-LDFLAGS = -lasound -lm
+#LDFLAGS = -lasound -lm
+LDFLAGS = -lm -lstdc++fs
 
 ROOTINCDIR = $(shell $(ROOTSYS)/bin/root-config --incdir)
 ROOTLIBDIR = $(shell $(ROOTSYS)/bin/root-config --libdir)
@@ -24,21 +25,18 @@ all: $(EXECS)
 
 checkfilter: checkfilter.cxx
 	$(CXX) $(CXXFLAGS) -o $@ \
-		-I$(ROOTINCDIR) \
 		$< \
-		# -L$(ROOTLIBDIR) $(ROOTLIBS) $(ROOTGLIBS) \
-		# $(LDFLAGS) \
-		# -lThread
+		$(LDFLAGS)
 
 chkfile: chkfile.cxx
 	$(CXX) $(CXXFLAGS) -o $@ \
-		-I$(ROOTINCDIR) \
-		$<
+		$< \
+		$(LDFLAGS)
 
 chkraw: chkraw.cxx
 	$(CXX) $(CXXFLAGS) -o $@ \
-		-I$(ROOTINCDIR) \
-		$<
+		$< \
+		$(LDFLAGS)
 
 clean:
 	rm $(EXECS)
