@@ -173,7 +173,8 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 		<< " Size: " << std::dec << msize << std::endl;
 	#endif
 
-	if (msg_magic == Filter::Magic) {
+	//if (msg_magic == Filter::Magic) {
+	if (msg_magic == Filter::MAGIC) {
 		Filter::Header *pflt
 			= reinterpret_cast<Filter::Header *>(pdata);
 		std::cout << "#FLT Header "
@@ -184,7 +185,8 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< " elapse: " << std::dec <<  pflt->elapseTime
 			<< std::endl;
 
-	} else if (msg_magic == TimeFrame::Magic) {
+	//} else if (msg_magic == TimeFrame::Magic) {
+	} else if (msg_magic == TimeFrame::MAGIC) {
 		TimeFrame::Header *ptf
 			= reinterpret_cast<TimeFrame::Header *>(pdata);
 		std::cout << "#TF Header "
@@ -197,25 +199,32 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 		fFeType = 0;
 		fFEMId  = 0;
 
-	} else if (msg_magic == SubTimeFrame::Magic) {
+	//} else if (msg_magic == SubTimeFrame::Magic) {
+	} else if (msg_magic == SubTimeFrame::MAGIC) {
 		SubTimeFrame::Header *pstf
 			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
 		std::cout << "#STF Header "
 			<< std::hex << std::setw(8) << std::setfill('0') <<  pstf->magic
 			<< " id: " << std::setw(8) << std::setfill('0') <<  pstf->timeFrameId
 			//<< " res: " << std::setw(8) << std::setfill('0') <<  pstf->reserved
-			<< " Type: " << std::setw(8) << std::setfill('0') <<  pstf->FEMType
-			<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->FEMId
+			//<< " Type: " << std::setw(8) << std::setfill('0') <<  pstf->FEMType
+			//<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->FEMId
+			<< " Type: " << std::setw(8) << std::setfill('0') <<  pstf->femType
+			<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->femId
 			//<< std::endl << "# "
 			<< " len: " << std::dec <<  pstf->length
 			<< " nMsg: " << std::dec <<  pstf->numMessages
 			//<< std::endl << "# "
-			<< " Ts: " << std::dec << pstf->time_sec
-			<< " Tus: " << std::dec << pstf->time_usec
+			//<< " Ts: " << std::dec << pstf->time_sec
+			//<< " Tus: " << std::dec << pstf->time_usec
+			<< " Ts: " << std::dec << pstf->timeSec
+			<< " Tus: " << std::dec << pstf->timeUSec
 			<< std::endl;
 
-		fFeType = pstf->FEMType;
-		fFEMId  = pstf->FEMId;
+		//fFeType = pstf->FEMType;
+		//fFEMId  = pstf->FEMId;
+		fFeType = pstf->femType;
+		fFEMId  = pstf->femId;
 
 	} else if ((msg_magic & 0x0000'0000'0000'00ff) == 0x0000'0000'0000'0022) {
 		struct Recbe::Header *recbe;
@@ -357,7 +366,8 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 	std::cout << std::dec << std::endl;
 	#endif
 
-	if (msg_magic == Filter::Magic) {
+	//if (msg_magic == Filter::Magic) {
+	if (msg_magic == Filter::MAGIC) {
 		#if 0
 		Filter::Header *pflt
 			= reinterpret_cast<Filter::Header *>(pdata);
@@ -370,7 +380,8 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< std::endl;
 		#endif
 
-	} else if (msg_magic == TimeFrame::Magic) {
+	//} else if (msg_magic == TimeFrame::Magic) {
+	} else if (msg_magic == TimeFrame::MAGIC) {
 		#if 0
 		TimeFrame::Header *ptf
 			= reinterpret_cast<TimeFrame::Header *>(pdata);
@@ -403,7 +414,8 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 		fFEMId  = 0;
 		fFeType = 0;
 
-	} else if (msg_magic == SubTimeFrame::Magic) {
+	//} else if (msg_magic == SubTimeFrame::Magic) {
+	} else if (msg_magic == SubTimeFrame::MAGIC) {
 		SubTimeFrame::Header *pstf
 			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
 		#if 0
@@ -422,8 +434,10 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< std::endl;
 		#endif
 
-		fFEMId  = pstf->FEMId;
-		fFeType = pstf->FEMType;
+		//fFEMId  = pstf->FEMId;
+		//fFeType = pstf->FEMType;
+		fFEMId  = pstf->femId;
+		fFeType = pstf->femType;
 
 	} else if ((msg_magic & 0x0000'0000'0000'00ff) == 0x0000'0000'0000'0022) {
 		struct Recbe::Header *recbe;

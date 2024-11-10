@@ -131,7 +131,8 @@ bool TimeFrameBuilder::ConditionalRun()
         LOG(debug4) << "stfId: "<< stfId;
         LOG(debug4) << "msg size: " << inParts.Size();
 
-        auto femId     = stfHeader->FEMId;
+        //auto femId     = stfHeader->FEMId;
+        auto femId     = stfHeader->femId;
 	//fHId->Fill(static_cast<double>(femId & 0xff));
 	fHId->Fill(static_cast<double>(femId & 0xff) + 0.5);
         // std::cout << "#D stfId: "<< femId << " ";
@@ -182,7 +183,8 @@ bool TimeFrameBuilder::ConditionalRun()
                 FairMQParts dqmParts;
                 
                 auto h = std::make_unique<TF::Header>();
-                h->magic       = TF::Magic;
+                //h->magic       = TF::Magic;
+                h->magic       = TF::MAGIC;
                 h->timeFrameId = stfId;
                 h->numSource   = fNumSource;
                 h->length      = std::accumulate(tfBuf.begin(), tfBuf.end(), sizeof(TF::Header),

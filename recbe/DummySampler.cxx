@@ -392,17 +392,22 @@ bool RecbeSampler::ConditionalRun()
 
 	struct SubTimeFrame::Header *pstfheader
 		 = reinterpret_cast<struct SubTimeFrame::Header *>(msgSTFHeader.GetData());
-	pstfheader->magic = SubTimeFrame::Magic;
+	//pstfheader->magic = SubTimeFrame::Magic;
+	pstfheader->magic = SubTimeFrame::MAGIC;
 	pstfheader->timeFrameId = static_cast<uint32_t>(trig);
-	pstfheader->FEMType = static_cast<uint32_t>(pheader->type) & 0xff;
-	pstfheader->FEMId = static_cast<uint32_t>(pheader->id) & 0xff;
+	//pstfheader->FEMType = static_cast<uint32_t>(pheader->type) & 0xff;
+	//pstfheader->FEMId = static_cast<uint32_t>(pheader->id) & 0xff;
+	pstfheader->femType = static_cast<uint32_t>(pheader->type) & 0xff;
+	pstfheader->femId = static_cast<uint32_t>(pheader->id) & 0xff;
 	pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct Recbe::Header) + bodysize;
 	//pstfheader->numMessages = 3;
 	pstfheader->numMessages = 2;
 	struct timeval now;
 	gettimeofday(&now, nullptr);
-	pstfheader->time_sec = now.tv_sec;
-	pstfheader->time_usec = now.tv_usec;
+	//pstfheader->time_sec = now.tv_sec;
+	//pstfheader->time_usec = now.tv_usec;
+	pstfheader->timeSec = now.tv_sec;
+	pstfheader->timeUSec = now.tv_usec;
 
 	#if 0
 	// NewSimpleMessage creates a copy of the data and takes care of its destruction (after the transfer takes place).
