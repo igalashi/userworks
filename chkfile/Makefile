@@ -18,7 +18,7 @@ ROOTLIBS = $(shell $(ROOTSYS)/bin/root-config --libs) \
 	-lNew -Xlinker
 ROOTGLIBS = $(shell $(ROOTSYS)/bin/root-config --glibs)
 
-EXECS = checkfilter chkfile chkraw
+EXECS = checkfilter chkfile chkraw chkcydet
 
 all: $(EXECS)
 
@@ -34,6 +34,11 @@ chkfile: chkfile.cxx
 		$(LDFLAGS)
 
 chkraw: chkraw.cxx
+	$(CXX) $(CXXFLAGS) -o $@ \
+		$< \
+		$(LDFLAGS)
+
+chkcydet: chkcydet.cxx UnpackRecbe.h
 	$(CXX) $(CXXFLAGS) -o $@ \
 		$< \
 		$(LDFLAGS)

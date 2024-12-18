@@ -1,0 +1,21 @@
+Triggerd RAIRAW data format
+
+
+Header1: FFFF0160
+ - Magic
+
+Header2: | 0xFF0 | "0" | event overflow (1-bit) | event size (18-bit) |
+ - event size : ヘッダを除くワード長, ***バイト長ではない***
+
+Header3: | 0xFF00 | self event counter (16-bit) |
+
+TDC: |Magic word (8-bit)| channel (8-bit) | "0" | TDC (15-bit) |
+ADC: |Magic word (4-bit)| ch (5 bit) | "00" | Coarse TDC (11-bit) | ADC (10-bit) |
+- Magic word
+ -- TDC Leading: 0xCC
+ -- TDC Trailing: 0xCD
+ -- ADC: 0xA
+
+TDCはCommon stop型でトリガー到来時が0点で、過去にさかのぼると値が大きくなります。
+TDCの1-bit 精度は1/1.2 nsです。ADCにくっついてくるCoase TDCの精度はその16倍（16/1.2 ns）です。
+Coarse TDCとTDCは時間軸を共有しています。
