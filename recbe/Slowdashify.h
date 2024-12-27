@@ -1,5 +1,5 @@
-#ifndef SLOWDASHIFY_CXX
-#define SLOWDASHIFY_CXX
+#ifndef SLOWDASHIFY_H
+#define SLOWDASHIFY_H
 
 #include <string>
 #include <iostream>

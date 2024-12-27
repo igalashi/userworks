@@ -4,11 +4,11 @@
 #include <string>
 #include <iostream>
 
+#include <DataStore.h>
+
 #include <sw/redis++/redis++.h>
 #include <sw/redis++/patterns/redlock.h>
 #include <sw/redis++/errors.h>
-
-#include "DataStore.h"
 
 // - - - - - - - - - - - - - - - - 8< - - - - - - - - - - - - - - - - //
 
@@ -29,6 +29,13 @@ class RedisDataStore: public DataStore {
     void hset(const std::string& hash, const std::string& field, const std::string& value) {
       fClient->hset(hash, field, value);
     }
+    void del(const std::string& key) {
+      fClient->del(key);
+    }
+    void del(const std::vector<std::string>& keys) {
+      fClient->del(keys.begin(),keys.end());
+    }
+
   private:
     std::shared_ptr<sw::redis::Redis> fClient;
     std::unique_ptr<sw::redis::Pipeline> fPipe;

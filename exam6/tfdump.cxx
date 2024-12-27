@@ -21,6 +21,7 @@
 #include "FilterHeader.h"
 #include "HeartbeatFrameHeader.h"
 #include "UnpackTdc.h"
+#include "UnpackRecbe.h"
 #include "KTimer.cxx"
 
 namespace bpo = boost::program_options;
@@ -29,8 +30,8 @@ struct TFdump : fair::mq::Device
 {
 	struct OptionKey {
 		static constexpr std::string_view InputChannelName  {"in-chan-name"};
-		static constexpr std::string_view ShrinkMode	{"shrink"};
-		static constexpr std::string_view Interval	  {"interval"};
+		static constexpr std::string_view ShrinkMode        {"shrink"};
+		static constexpr std::string_view Interval          {"interval"};
 	};
 
 	TFdump()
@@ -235,6 +236,10 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 		if ((pstf->femType) == SubTimeFrame::TDC64L) {
 			data_mode = DM_TDC;
 			std::cout << "#DM TDC(L)" << std::endl;
+		} else
+		if ((pstf->femType) == Recbe::T_RAW_OLD) {
+			data_mode = 0x22;
+			std::cout << "#DM RECBE RAW" << std::endl;
 		}
 		ac_nstf++;
 		ac_nhbf = 0;
@@ -346,12 +351,22 @@ bool TFdump::CheckData(fair::mq::MessagePtr& msg)
 			}
 			std::cout <<  "#----" << std::endl;
 		}
+
+
+	} else if (((msg_magic & 0xff) == Recbe::T_RAW_OLD)
+		|| ((msg_magic & 0xff) == Recbe::T_RAW)) {
+		Recbe::Data recbe;
+		Recbe::Unpack(reinterpret_cast<char *>(pdata), recbe);
+		std::cout << "#RECBE Type: 0x" << std::hex << recbe.Type
+			<< " Id: 0x" << recbe.Id
+		       	<< " Nsample: " << std::dec << recbe.nSample << std::endl;
+
 	} else if (data_mode == DM_OTHER) {
 		std::cout << "#E Unkown data message" << std::endl;
 		std::cout << "#D " << reinterpret_cast<char *>(&msg_magic)
 			<< " 0x" << std::hex << msg_magic << std::dec << std::endl;
 
-		#if 1
+		#if 0
 		for (unsigned int i = 0 ; i < msize; i++) {
 			if ((i % 16) == 0) {
 				if (i != 0) std::cout << std::endl;

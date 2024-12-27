@@ -72,8 +72,9 @@ public:
 	void SetMaximum(double max) {if (m_entry == 0) {m_x_max = max;}};
 	double GetMaximum() {return m_x_max;};
 
-	void SetBinContent(int ibin, double val) {m_x_bins[ibin] = val;};
+	//void SetBinContent(int ibin, double val) {m_x_bins[ibin] = val;};
 	//double GetBinContent(int ibin) {return m_x_bins[ibin];};
+	void SetBinContent(int, double);
 	double GetBinContent(int);
 	std::vector<double>& GetBinContents() {return m_x_bins;};
 
@@ -193,6 +194,14 @@ double UH1Book::GetBinContent(int ibin)
 	if (ibin < 1)       return m_uf;
 	if (ibin > nbins_x) return m_of;
 	return m_x_bins[ibin - 1];
+}
+
+void UH1Book::SetBinContent(int ibin, double val)
+{
+	int nbins_x = static_cast<int>(m_x_bins.size());
+	if (ibin < 1)       m_uf = val;
+	if (ibin > nbins_x) m_of = val;
+	if ((ibin >= 1) && (ibin <= nbins_x)) m_x_bins[ibin - 1] = val;
 }
 
 UH1Book& UH1Book::Add(UH1Book &h)
@@ -450,8 +459,8 @@ public:
 			for (auto &i : m_bins) i.resize(ybins);
 		}
 	};
-	int GetNBinsX() {return m_bins[0].size();};
-	int GetNBinsY() {return m_bins.size();};
+	int GetNBinsX() {return m_bins.size();};
+	int GetNBinsY() {return m_bins[0].size();};
 
 	void SetMinimumX(double min) {if (m_entry == 0) {m_x_min = min;}};
 	double GetMinimumX() {return m_x_min;};
@@ -462,8 +471,9 @@ public:
 	void SetMaximumY(double max) {if (m_entry == 0) {m_y_max = max;}};
 	double GetMaximumY() {return m_y_max;};
 
-	void SetBinContent(int xbin, int ybin, double val) {m_bins[xbin][ybin] = val;};
+	//void SetBinContent(int xbin, int ybin, double val) {m_bins[xbin][ybin] = val;};
 	//double GetBinContent(int xbin, int ybin) {return m_bins[xbin][ybin];};
+	void SetBinContent(int, int, double);
 	double GetBinContent(int, int);
 	std::vector< std::vector<double> >& GetBinContents() {return m_bins;};
 
@@ -578,11 +588,11 @@ void UH2Book::Fill(double xval, double yval, double weight = 1.0)
 	if ((xval >= m_x_max) && (yval >= m_y_max)) m_ouflows[2][2]++;
 
 	if (	   (xval >= m_x_min) && (xval < m_x_max)
-		&& (yval >= m_y_min) && (yval < m_x_max)) {
+		&& (yval >= m_y_min) && (yval < m_y_max)) {
 		int ix = static_cast<int>(
 			(xval - m_x_min) / (m_x_max - m_x_min) * m_bins.size());
 		int iy = static_cast<int>(
-			(yval - m_y_min) / (m_y_max - m_y_min) * m_bins.size());
+			(yval - m_y_min) / (m_y_max - m_y_min) * m_bins[0].size());
 		m_bins[ix][iy] += weight;
 		m_entry++;
 	} else {
@@ -607,6 +617,27 @@ double UH2Book::GetBinContent(int xbin, int ybin)
 	if ((xbin > nbins_x) && (ybin > nbins_y)          ) return m_ouflows[2][2];
 
 	return m_bins[xbin - 1][ybin - 1];
+}
+
+void UH2Book::SetBinContent(int xbin, int ybin, double val)
+{
+	int nbins_x = static_cast<int>(m_bins.size());
+	int nbins_y = static_cast<int>(m_bins[0].size());
+
+	if ((xbin < 1)                && (ybin < 1)       ) m_ouflows[0][0] = val;
+	if ((xbin < 1) && (ybin >= 1) && (ybin <= nbins_y)) m_ouflows[0][1] = val;
+	if ((xbin < 1)                && (ybin >  nbins_y)) m_ouflows[0][2] = val;
+
+	if ((xbin >= 1) && (xbin <= nbins_x) && (ybin < 1)) m_ouflows[1][0] = val;
+	if ((xbin >= 1) && (xbin <= nbins_x) && (ybin > nbins_y)) m_ouflows[1][2] = val;
+
+	if ((xbin > nbins_x) && (ybin < 1)                ) m_ouflows[2][0] = val;
+	if ((xbin > nbins_x) && (ybin >= 1) && (ybin <= nbins_y)) m_ouflows[2][1] = val;
+	if ((xbin > nbins_x) && (ybin > nbins_y)          ) m_ouflows[2][2] = val;
+
+	if ((xbin >= 1) && (xbin <= nbins_x) && (ybin >= 1) && (ybin <= nbins_y)) {
+		m_bins[xbin - 1][ybin - 1] = val;
+	}
 }
 
 UH2Book& UH2Book::Add(UH2Book &h)

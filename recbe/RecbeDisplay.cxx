@@ -26,8 +26,11 @@
 #include "UnpackTdc.h"
 #include "KTimer.cxx"
 #include "uhbook.cxx"
+#if 0
 #include "recbe.h"
-#include "ghistogram.cxx"
+#else
+#include "gHistRecbe.cxx"
+#endif
 
 #define USE_THREAD
 
@@ -145,6 +148,7 @@ private:
 	std::string fRedisUrl;
 	std::unique_ptr<RedisDataStore> fDb;
 
+	#if 0
 	struct STFBuffer {
 		FairMQParts parts;
 		std::chrono::steady_clock::time_point start;
@@ -152,6 +156,8 @@ private:
 
 	std::unordered_map<uint32_t, std::vector<STFBuffer>> fTFBuffer;
 	std::unordered_set<uint64_t> fDiscarded;
+	#endif
+
 	int fNumSource = 0;
 	int fFeType = 0;
 	uint32_t fFEMId = 0;
@@ -173,7 +179,6 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 		<< " Size: " << std::dec << msize << std::endl;
 	#endif
 
-	//if (msg_magic == Filter::Magic) {
 	if (msg_magic == Filter::MAGIC) {
 		Filter::Header *pflt
 			= reinterpret_cast<Filter::Header *>(pdata);
@@ -185,7 +190,6 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< " elapse: " << std::dec <<  pflt->elapseTime
 			<< std::endl;
 
-	//} else if (msg_magic == TimeFrame::Magic) {
 	} else if (msg_magic == TimeFrame::MAGIC) {
 		TimeFrame::Header *ptf
 			= reinterpret_cast<TimeFrame::Header *>(pdata);
@@ -199,7 +203,6 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 		fFeType = 0;
 		fFEMId  = 0;
 
-	//} else if (msg_magic == SubTimeFrame::Magic) {
 	} else if (msg_magic == SubTimeFrame::MAGIC) {
 		SubTimeFrame::Header *pstf
 			= reinterpret_cast<SubTimeFrame::Header *>(pdata);
@@ -221,22 +224,20 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< " Tus: " << std::dec << pstf->timeUSec
 			<< std::endl;
 
-		//fFeType = pstf->FEMType;
-		//fFEMId  = pstf->FEMId;
 		fFeType = pstf->femType;
 		fFEMId  = pstf->femId;
 
 	} else if ((msg_magic & 0x0000'0000'0000'00ff) == 0x0000'0000'0000'0022) {
 		struct Recbe::Header *recbe;
 		recbe = reinterpret_cast<Recbe::Header *>(pdata);
-		int sent_num = ntohs(recbe->sent_num);
-		int ttime = ntohs(recbe->time);
-		int len = ntohs(recbe->len);
-		int trig_count = ntohl(recbe->trig_count);
+		int sent_num = ntohs(recbe->SentNumber);
+		int ttime = ntohs(recbe->TimeStamp);
+		int len = ntohs(recbe->Length);
+		int trig_count = ntohl(recbe->TriggerCount);
 		std::cout << "#Recbe Header " << std::hex
-			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->type)
+			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->Type)
 			<< " id: "
-			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->id)
+			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->Id)
 			<< std::dec
 			<< " Sent: " << sent_num
 			<< " Time: " << ttime
@@ -244,8 +245,8 @@ bool RecbeDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< " Trig: " << trig_count
 			<< std::endl;
 
-		fFeType = static_cast<unsigned int>(recbe->type);
-		fFEMId  = static_cast<unsigned int>(recbe->id);
+		fFeType = static_cast<unsigned int>(recbe->Type);
+		fFEMId  = static_cast<unsigned int>(recbe->Id);
 
 	} else {
 		std::cout << "#Unknown Header " << std::hex << msg_magic << std::endl;
@@ -394,12 +395,13 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 		#endif
 
 
+		#if 0
 		static int trig_prev = 0;
 		static int trig_diff = 0;
 		TimeFrame::Header *ptf
 			= reinterpret_cast<TimeFrame::Header *>(pdata);
+
 		int trig_now = ptf->timeFrameId;
-		#if 0
 		if (trig_diff != (trig_now - trig_prev)) {
 			std::cout << "#W Strange Trigger Number : " << trig_now
 				<< " / " << trig_prev << " : " << trig_diff << std::endl;
@@ -444,10 +446,10 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 		recbe = reinterpret_cast<Recbe::Header *>(pdata);
 
 		#if 0
-		int sent_num = ntohs(recbe->sent_num);
-		int ttime = ntohs(recbe->time);
+		int sent_num = ntohs(recbe->SentNumber);
+		int ttime = ntohs(recbe->TimeStamp);
 		int len = ntohs(recbe->len);
-		int trig_count = ntohl(recbe->trig_count);
+		int trig_count = ntohl(recbe->TriggerCount);
 
 		std::cout << "#Recbe Header " << std::hex
 			<< std::setw(2) << std::setfill('0') << static_cast<unsigned int>(recbe->type)
@@ -461,8 +463,8 @@ void RecbeDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< std::endl;
 		#endif
 
-		fFeType = static_cast<unsigned int>(recbe->type);
-		fFEMId  = static_cast<unsigned int>(recbe->id);
+		fFeType = static_cast<unsigned int>(recbe->Type);
+		fFEMId  = static_cast<unsigned int>(recbe->Id);
 
 		if (fFeType == 0x22) {
 			gHistBook(msg, fFEMId, fFeType);
@@ -503,7 +505,8 @@ bool RecbeDisplay::ConditionalRun()
 {
 
 	//Receive
-	FairMQParts inParts;
+	//FairMQParts inParts;
+	fair::mq::Parts inParts;
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
 		//assert(inParts.Size() >= 2);
 

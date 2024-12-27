@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 
+#include <cstring>
 #include <arpa/inet.h>
 
 namespace Recbe {
@@ -163,6 +164,7 @@ int Unpack(char *raw, struct Data &data)
 	return -1;
 }
 
+
 } // namespace v0
 } // namespace Recbe
 #endif
@@ -170,7 +172,8 @@ int Unpack(char *raw, struct Data &data)
 #if 0
 int main(int argc, char* argv[])
 {
-	Recbe::Data data;
+	struct Recbe::Data data;
+	struct Recbe::Tdc tdc;
 
 	return 0;
 }
