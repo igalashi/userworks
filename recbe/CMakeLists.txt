@@ -11,6 +11,7 @@ foreach(lvar IN ITEMS
 	RecbeDisplay;
 	RecbeSink;
 	DummySampler;
+	RaiRawSampler;
 )
   set(EXEC ${lvar})
   add_executable(${EXEC} 
