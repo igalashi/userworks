@@ -138,7 +138,7 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 
 	for (size_t i = 0 ; i < msize ; i += sizeof(uint64_t)) {
 		if ((id & 0x000000ff) == 16) {
-			if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2)) {
+			if ((pdata[i + 7] & 0xfc) == (TDC64L_V3::T_TDC << 2)) {
 
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
 				if (type == SubTimeFrame::TDC64H_V3) {
@@ -159,6 +159,7 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 				} else if (type == SubTimeFrame::TDC64L_V3) {
 					struct TDC64L_V3::tdc64 tdc;
 					TDC64L_V3::Unpack(*dword, &tdc);
+					gHHRTDC[0]->Fill(tdc.ch);
 #if 0
 					std::cout << "FEM: " << (id & 0xff) << " TDC ";
 					std::cout << "L :"
