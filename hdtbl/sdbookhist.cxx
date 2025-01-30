@@ -56,7 +56,7 @@ void gHistInit()
 	gDevName = "hdtbldisplay";
 	gNamePrefix = "dqm:" + gDevName;
 
-        if (gDevName.size() < 3) {
+        if (gDbURL.size() < 3) {
                 gDB = new RedisDataStore("tcp://127.0.0.1:6379/3");
         } else {
                 gDB = new RedisDataStore(gDbURL);
