@@ -161,11 +161,13 @@ bool OnlineDisplay::CheckData(fair::mq::MessagePtr& msg)
 			<< std::endl;
 
 	} else if (msg_magic == Filter::TDC_MAGIC) {
-		gTrig.clear();
-		gTrig.resize(0);
-		Filter::TrgTime *trg = reinterpret_cast<Filter::TrgTime *>(pdata + sizeof(Filter::TrgTimeHeader));
-		int len = (msize - sizeof(Filter::TrgTimeHeader)) / sizeof(Filter::TrgTime);
-		for (int i = 0 ; i < len ; i++) gTrig.emplace_back(trg[i].time);
+		Filter::TrgTimeHeader *pflttdc
+			= reinterpret_cast<Filter::TrgTimeHeader *>(pdata);
+		std::cout << "#FLT TDC Header "
+			<< std::hex << std::setw(16) << std::setfill('0') <<  pflttdc->magic
+			<< " len: " << std::dec << std::setw(8) <<  pflttdc->length
+			<< " type: " << std::setw(8) <<  pflttdc->type
+			<< std::endl;
 
 	} else if (msg_magic == TimeFrame::MAGIC) {
 		TimeFrame::Header *ptf
@@ -301,7 +303,8 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 			<< " N trigs: " << std::setw(8) <<  pflt->numTrigs
 			<< " Id: " << std::setw(8) << pflt->workerId
 			<< " elapse: " << std::dec <<  pflt->elapseTime
-			<< std::endl;
+			<< " res: " << std::setw(8) << std::hex <<  pflt->reserve
+			<< std::dec << std::endl;
 		#endif
 
 		gHistFlt(pflt);
@@ -366,8 +369,8 @@ void OnlineDisplay::BookData(fair::mq::MessagePtr& msg)
 
 	} else if (msg_magic == HeartbeatFrame::MAGIC) {
 
-		gHistBook(msg, fFEMId, fFeType);
-		//gHistBookTrigWin(msg, fFEMId, fFeType);
+		//gHistBook(msg, fFEMId, fFeType, 0xaa000000);
+		gHistBookTrigWin(msg, fFEMId, fFeType, 0xaa000000);
 		gHistEntryTDC(msg, fFEMId, fFeType);
 
 	} else {
@@ -497,7 +500,7 @@ bool OnlineDisplay::ConditionalRun()
 		if ((counts % fPrescale) == 0) {
 			gHistTrig_clear();
 			for(auto& vmsg : inParts) BookData(vmsg);
-			gHistBookTrigWin();
+			gHistBookTrigWinOne(0xaa000000);
 		}
 		#endif
 

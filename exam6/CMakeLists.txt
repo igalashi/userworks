@@ -5,7 +5,8 @@ set(INSTALL_BINDIR ${CMAKE_SOURCE_DIR}/bin)
 
 #foreach(lvar IN ITEMS Sampler; Sink; NullDevice;
 foreach(lvar IN ITEMS
-	tfdump; fltcoin; flttrig; LogicFilter
+	tfdump; fltcoin; flttrig;
+	#LogicFilter;
 	TimeFrameBuilder;
 	TFBFilePlayer; STFBFilePlayer;
   )

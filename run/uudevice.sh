@@ -47,8 +47,8 @@ function run_device () {
   var+=$DAQSERVICE_URI
   var+=$METRICS_URI
   var+=$CONFIG_URI
-#  var+=" --severity debug4"
-  var+=" --severity info"
+  var+=" --severity debug4"
+#  var+=" --severity info"
 #  var+=" --enable-uds true"
 
   if [ -n "$MY_TERM" ]; then

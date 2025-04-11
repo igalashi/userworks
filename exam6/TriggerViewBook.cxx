@@ -17,16 +17,20 @@ static TH1F *gHDiff;
 
 static TH1F *gHTrig;
 static TH2F *gH2TrigWindow;
-static TH2F *gH2TrigWindow_one;
+static TH2F *gH2TrigWindowOne;
 static TH1F *gHElapse;
 static TH1F *gHNTrig;
 
 
-
-static std::vector< std::vector<int> > gTrig;
+struct trg_tdc {
+	uint32_t trg_type;
+	std::vector<int> tdc4n;
+};
+//static std::vector< std::vector<int> > gTrig;
+static std::vector<struct trg_tdc> gTrig;
 
 struct entry_tdc {
-	std::vector< std::vector<int> > tdc4n;
+	std::vector<int> tdc4n;
 	int      index;
 	uint32_t module;
 	int      channel;
@@ -99,7 +103,7 @@ void gHistInit()
 
 	gHTrig = new TH1F("TRIG", "Trigger", 1000, 0, 150000);
 	gH2TrigWindow = new TH2F("TWINDOW", "Trigger Window", 1000, -500., 500., 32, 0., 32.);
-	gH2TrigWindow_one = new TH2F("TWONE", "Trigger Window One Event", 1000, -500., 500., 32, 0., 32.);
+	gH2TrigWindowOne = new TH2F("TWONE", "Trigger Window One Event", 1000, -500., 500., 32, 0., 32.);
 	gHElapse = new TH1F("ELAPSE", "Elapse Time (ms)", 500, 0, 20000);
 	gHNTrig = new TH1F("NTRIG", "Number of Trigger (/STF)", 500, 0, 1000);
 
@@ -119,9 +123,9 @@ void gHistInit()
 	gCan1->cd(2); gHNTrig->Draw();
 	//gCan1->cd(3); gHTrig->Draw();
 
-	gH2TrigWindow_one->GetXaxis()->SetRangeUser(-100., 100.);
-	gH2TrigWindow_one->GetYaxis()->SetRangeUser(0., 16.);
-	gCan1->cd(3); gH2TrigWindow_one->Draw("box");
+	gH2TrigWindowOne->GetXaxis()->SetRangeUser(-100., 100.);
+	gH2TrigWindowOne->GetYaxis()->SetRangeUser(0., 16.);
+	gCan1->cd(3); gH2TrigWindowOne->Draw("box");
 
 	gH2TrigWindow->GetXaxis()->SetRangeUser(-100., 100.);
 	gH2TrigWindow->GetYaxis()->SetRangeUser(0., 16.);
@@ -155,7 +159,7 @@ void gHistReset()
 
 	gHTrig->Reset();
 	gH2TrigWindow->Reset();
-	gH2TrigWindow_one->Reset();
+	gH2TrigWindowOne->Reset();
 	gHElapse->Reset();
 	gHNTrig->Reset();
 
@@ -181,7 +185,7 @@ void gHistTrig_init()
 		src.module = i.module;
 		src.channel = i.channel;
 		src.offset = i.offset;
-    src.type = 0;
+		src.type = 0;
 		src.tdc4n.clear();
 		src.tdc4n.resize(0);
 		gEntryTDC.emplace_back(src);
@@ -193,6 +197,10 @@ void gHistTrig_init()
 bool gTrig_isvalid = false;
 void gHistTrig_clear()
 {
+	for (auto &i : gTrig) {
+		i.tdc4n.clear();
+		i.tdc4n.resize(0);
+	}
 	gTrig.clear();
 	gTrig.resize(0);
 	gTrig_isvalid = false;
@@ -207,17 +215,26 @@ void gHistTrig_clear()
 
 void gHistTrig(Filter::TrgTime *pdata, int len)
 {
-	std::vector<int> trig_in_hbf;
+	//std::vector<int> trig_in_hbf;
+	struct trg_tdc trig_in_hbf;
+
+	Filter::TrgTime *top = reinterpret_cast<struct Filter::TrgTime *>(pdata);
+	uint32_t trg_type = trig_in_hbf.trg_type = top->type;
+	if (len < sizeof(struct Filter::TrgTime)) trig_in_hbf.trg_type = 0xffffffff;
 
 	for (int i = 0 ; i < len ; i++) {
 		Filter::TrgTime *t = reinterpret_cast<Filter::TrgTime *>(pdata + i);
-		if (t->type == 0xaa000000) trig_in_hbf.emplace_back(t->time);
+		if (t->type == trg_type) {
+			trig_in_hbf.tdc4n.emplace_back(t->time);
+		} else {
+			std::cout << "#E multipule Trigger type in FLT data "
+				<< std::hex << t->type << ":" << trg_type
+				<< std::endl;
+		}
 		gHTrig->Fill(t->time);
-		//std::cout << "#D type: " << t->type << " time: " << t->time;
 	}
-	gTrig.emplace_back(trig_in_hbf);
 
-	//std::cout << std::endl;
+	gTrig.emplace_back(trig_in_hbf);
 	gTrig_isvalid = true;
 
 	return;
@@ -236,7 +253,7 @@ void gHistEntryTDC(fair::mq::MessagePtr& msg, uint32_t id, int type)
 	for (auto &mod : gEntryTDC) {
 		if (id == mod.module) {
 			mod.type = type;
-			std::vector<int> tdc4n;
+			//std::vector<int> tdc4n;
 			for (size_t i = 0 ; i < dsize ; i += sizeof(uint64_t)) {
 				uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
 				int val_tdc4n = -1;
@@ -258,92 +275,103 @@ void gHistEntryTDC(fair::mq::MessagePtr& msg, uint32_t id, int type)
 				}
 
 				if (val_ch == mod.channel) {
-					tdc4n.emplace_back(val_tdc4n);
+					//tdc4n.emplace_back(val_tdc4n);
+					mod.tdc4n.emplace_back(val_tdc4n);
 				}
 
 			}
 
-			mod.tdc4n.emplace_back(tdc4n);
+			//mod.tdc4n.emplace_back(tdc4n);
 		}
 	}
 
 	return;
 }
 
-void gHistBookTrigWin()
+void gHistBookTrigWinOne(uint32_t trg_type)
 {
 	static unsigned int tw_counter = 0;
 	const unsigned int tw_pre_factor = 100;	
 
+	//std::cout << "#D gTrig.size() : " << gTrig.size() << std::endl;
+
 	for (unsigned int i = 0 ; i < gTrig.size() ; i++) {
-		for (auto &trg : gTrig[i]) {
-			bool is_draw = ((tw_counter++ % tw_pre_factor) == 0);
-			if (is_draw) gH2TrigWindow_one->Reset();
-			for (auto &mod : gEntryTDC) {
-				for (auto &tdc4n : mod.tdc4n[i]) {
-					if (is_draw) {
-						int diff = tdc4n - trg;
-						if (std::abs(diff) < 500) {
-							gH2TrigWindow_one->Fill(diff + mod.offset, mod.index);
+		if (gTrig[i].trg_type == trg_type) {
+			for (auto &trg : gTrig[i].tdc4n) {
+				bool is_draw = ((tw_counter++ % tw_pre_factor) == 0);
+				if (is_draw) gH2TrigWindowOne->Reset();
+				for (auto &mod : gEntryTDC) {
+					for (auto &tdc4n : mod.tdc4n) {
+						if (is_draw) {
+							int diff = tdc4n - trg;
+							if (std::abs(diff) < 500) {
+								gH2TrigWindowOne->Fill(diff + mod.offset, mod.index);
+							}
 						}
 					}
 				}
-
+				if (is_draw) gCan1->cd(3)->Modified();
 			}
-			if (is_draw) gCan1->cd(3)->Modified();
 		}
 	}
 	
 	return;
 }
 
-void gHistBookTrigWin(fair::mq::MessagePtr& msg, uint32_t id, int type)
+void gHistBookTrigWin(fair::mq::MessagePtr& msg, uint32_t id, int type, uint32_t trg_type)
 {
 	unsigned int msize = msg->GetSize();
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
 
-	if (gTrig_isvalid && (type == SubTimeFrame::TDC64H_V3)) {
-	for (auto &trigs : gTrig) {
-	for (auto &trg : trigs) {
+	if (! gTrig_isvalid) return;
 
-		for (size_t i = 0 ; i < msize ; i += sizeof(uint64_t)) {
-			for (auto &sig : trg_sources) {
-				if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2) 
-					&& (type == SubTimeFrame::TDC64H_V3)) {
+	for (size_t i = 0 ; i < msize ; i += sizeof(uint64_t)) {
+		for (auto &sig : trg_sources) {
 
-					uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
-					struct TDC64H_V3::tdc64 tdc;
-					TDC64H_V3::Unpack(*dword, &tdc);
+			int val_tdc4n = -1;
+			int val_ch = -1;
+			uint64_t *dword = reinterpret_cast<uint64_t *>(&(pdata[i]));
 
-					if ((id == sig.module) && (tdc.ch == sig.channel)) {
+			if ((pdata[i + 7] & 0xfc) == (TDC64H_V3::T_TDC << 2) 
+				&& (type == SubTimeFrame::TDC64H_V3)) {
 
-						#if 0
-						if(gTrig.size() > 0) {
-							std::cout << "#D Module :" << id
-							<< " CH: " << std::dec << std::setw(3) << tdc.ch
-							<< " TDC: " << std::setw(7) << tdc.tdc
-							<< " Trig[0]: " << gTrig[0] << std::endl;
+				struct TDC64H_V3::tdc64 tdc;
+				TDC64H_V3::Unpack(*dword, &tdc);
+				val_tdc4n = tdc.tdc4n;
+				val_ch = tdc.ch;
+			} else 
+			if ((pdata[i + 7] & 0xfc) == (TDC64L_V3::T_TDC << 2)
+				&& (type == SubTimeFrame::TDC64L_V3)) {
+
+				struct TDC64L_V3::tdc64 tdc;
+				TDC64L_V3::Unpack(*dword, &tdc);
+				val_tdc4n = tdc.tdc4n;
+				val_ch = tdc.ch;
+			} else {
+				continue;
+			}
+
+			if ((id == sig.module) && (val_ch == sig.channel)) {
+				for (auto &trigs : gTrig) {
+					if (trigs.trg_type == trg_type) {
+						for (auto &trg : trigs.tdc4n) {
+							int diff = val_tdc4n - trg;
+							if (std::abs(diff) < 500) {
+								gH2TrigWindow->Fill(diff + sig.offset, sig.index);
+							}
 						}
-						#endif
-
-						int diff = tdc.tdc4n - trg;
-						if (std::abs(diff) < 500) {
-							gH2TrigWindow->Fill(diff + sig.offset, sig.index);
-						}
-
 					}
 				}
 			}
+
 		}
-	}
-	}
 	}
 
 	return;
 }
 
 
-void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
+void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type, uint32_t trg_type)
 {
 	unsigned int msize = msg->GetSize();
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
@@ -433,12 +461,14 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 
 			if ((id == sig.module) && (val_ch == sig.channel)) {
 				for (auto &trigs : gTrig) {
-					for (auto &trg : trigs) {
-						int diff = val_tdc4n - trg;
-						if (std::abs(diff) < 1000) {
-							gH2TrigWindow->Fill(diff + sig.offset, sig.index);
-						}
+					if (trigs.trg_type == trg_type) {
+						for (auto &trg : trigs.tdc4n) {
+							int diff = val_tdc4n - trg;
+							if (std::abs(diff) < 1000) {
+								gH2TrigWindow->Fill(diff + sig.offset, sig.index);
+							}
 
+						}
 					}
 				}
 			}
@@ -447,6 +477,7 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 
 	}
 
+#if 0
 	uint64_t *pdata64 = reinterpret_cast<uint64_t *>(msg->GetData());
 	if ((id & 0x000000ff) == 169) {
 		for (size_t ii = 0 ; ii < (msize / sizeof(uint64_t)) ; ii++) {
@@ -483,10 +514,9 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 			}
 		}
 	}
-
+#endif
 
 	prescale++;
 
 	return;
 }
-

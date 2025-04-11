@@ -157,8 +157,8 @@ int main(int argc, char* argv[])
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-	//std::vector<int> sizes = {10, 20, 40, 60, 80, 100, 200, 400, 600, 1000};
-	std::vector<int> sizes = {10, 20, 40, 60, 80, 100, 1000};
+	std::vector<int> sizes = {10, 20, 40, 60, 80, 100, 200, 400, 600, 1000};
+	//std::vector<int> sizes = {10, 20, 40, 60, 80, 100, 200};
 	for (const auto &j : sizes) {
 
 		int size = j;
