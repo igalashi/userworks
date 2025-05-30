@@ -229,7 +229,7 @@ void LogicFilter::InitTask()
 		fTrig.resize(0);
 	}
 
-	std::cout << "#D expr.size() : " << expressions.size() << std::endl;
+	//std::cout << "#D expr.size() : " << expressions.size() << std::endl;
 	for (unsigned int i = 0 ; i < expressions.size() ; i++) {
 
 		fTrig.push_back(new Trigger());
@@ -660,7 +660,7 @@ int LogicFilter::MakeBlockMap(
 	} /// end of the for loop
 	block_map.push_back(blocks);
 
-#if 0 //BlockMap  check
+#if 1 //BlockMap  check
 	if (fKt2->Check()) {
 		std::cout << "#D block_map.size: " << std::dec << block_map.size() << std::endl;
 		for (auto& blk : block_map) {
@@ -1119,6 +1119,11 @@ bool LogicFilter::ConditionalRun()
 				//fltdata.emplace_back(*hits);
 				fltdata_each_trig.trg_tdc.emplace_back(*hits);
 				int nhits = hits->size();
+
+#if 0
+				std::cout << "#D0 " << i << " nhits: " << nhits
+					<< " hbf_list.size() = " << hbf_list.size() << std::endl;
+#endif
 
 #if 0
 				if (nhits > 0) {

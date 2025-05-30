@@ -33,31 +33,31 @@ function param1 () {
 #"(0xc0a802a9  8 0) (0xc0a802a9 10 0)
 #"(0 & 1) & (2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13)"
 
-redis-cli -u $server hset parameters:LogicFilter trigger-signals \
-"(0xc0a802a9  8 0) (0xc0a802a9 10 0) \
- (0xc0a802aa 16 -12) (0xc0a802aa 17 -12) (0xc0a802aa 18 -12) (0xc0a802aa 19 -12) \
- (0xc0a802aa 20 -12) (0xc0a802aa 21 -12) (0xc0a802aa 22 -12) (0xc0a802aa 23 -12) \
- (0xc0a802aa 24 -12) (0xc0a802aa 25 -12) (0xc0a802aa 27 -12) (0xc0a802aa 28 -12)"
-
 #redis-cli -u $server hset parameters:LogicFilter trigger-signals \
 #"(0xc0a802a9  8 0) (0xc0a802a9 10 0) \
-# (0xc0a802aa 16 -12) (0xc0a802aa 17 -12) (0xc0a802aa 18 -12) (0xc0a802aa 19 -12)"
+# (0xc0a802aa 16 -12) (0xc0a802aa 17 -12) (0xc0a802aa 18 -12) (0xc0a802aa 19 -12) \
+# (0xc0a802aa 20 -12) (0xc0a802aa 21 -12) (0xc0a802aa 22 -12) (0xc0a802aa 23 -12) \
+# (0xc0a802aa 24 -12) (0xc0a802aa 25 -12) (0xc0a802aa 27 -12) (0xc0a802aa 28 -12)"
 
+#redis-cli -u $server hset parameters:LogicFilter trigger-signals \
+#"(0xc0a80a10  0   0) (0xc0a80a10  1   0) (0xc0a80a10  2   0) (0xc0a80a10  3   0) \
+# (0xc0a80a10  4   0) (0xc0a80a10  5   0) (0xc0a80a10  6   0) (0xc0a80a10  7   0) \
+# (0xc0a80a0a  0   0) (0xc0a80a0a  1   0) (0xc0a80a0a  2   0) (0xc0a80a0a  3   0) \
+# (0xc0a80a0a 51   0) (0xc0a80a0a  5   0) (0xc0a80a0a 63   0) (0xc0a80a0a  7   0)"
+
+redis-cli -u $server hset parameters:LogicFilter trigger-signals \
+"(0xc0a80a10  0   0) (0xc0a80a10  4   0) (0xc0a80a0a  51   0) (0xc0a80a0a  63   0)"
 
 
 #redis-cli -u $server hset parameters:LogicFilter trigger-signals \
 #"(0xc0a802a9  8 0) (0xc0a802a9 10 0) (0xc0a802aa 16 -12)"
 
 
-#redis-cli -u $server hset parameters:LogicFilter trigger-formula \
-#"(0 & 1) & (2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13)"
-
 #redis-cli -u $server hset parameters:LogicFilter trigger-expression \
 #"0xaa000000 : (0 & 1) & (2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13) ; 0xaa000001 : (0 & 1)"
 
 redis-cli -u $server hset parameters:LogicFilter trigger-expression \
-"0xaa000000 : (0 & 1) & (2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13) ; \
- 0xaa000001 : (0 & ! 1)"
+"0xaa000000 : 0 ; 0xaa000001 : 1" 
 
 #redis-cli -u $server hset parameters:LogicFilter trigger-signals \
 #"(0xc0a802a9  8 0) (0xc0a802a9 10 0)"

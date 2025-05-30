@@ -46,7 +46,7 @@ int CheckData(uint64_t dword, uint32_t fe_type, uint32_t fe_id)
 		if (fe_type == SubTimeFrame::TDC64H) {
 			struct TDC64H::tdc64 tdc;
 			TDC64H::Unpack(dword, &tdc);
-			std::cout << "H :"
+			std::cout << "H :" << std::setfill(' ')
 				<< " FE: " << std::dec << std::setw(3) << (fe_id & 0xff)
 				<< " CH: " << std::dec << std::setw(3) << tdc.ch
 				<< " TDC: " << std::setw(8) << tdc.tdc
@@ -55,7 +55,7 @@ int CheckData(uint64_t dword, uint32_t fe_type, uint32_t fe_id)
 		if (fe_type == SubTimeFrame::TDC64H_V3) {
 			struct TDC64H_V3::tdc64 tdc;
 			TDC64H_V3::Unpack(dword, &tdc);
-			std::cout << "H :"
+			std::cout << "H :" << std::setfill(' ')
 				<< " FE: " << std::dec << std::setw(3) << (fe_id & 0xff)
 				<< " CH: " << std::dec << std::setw(3) << tdc.ch
 				<< " TDC: " << std::setw(8) << tdc.tdc
@@ -64,7 +64,7 @@ int CheckData(uint64_t dword, uint32_t fe_type, uint32_t fe_id)
 		if (fe_type == SubTimeFrame::TDC64L) {
 			struct TDC64L::tdc64 tdc;
 			TDC64L::Unpack(dword, &tdc);
-			std::cout << "L :"
+			std::cout << "L :" << std::setfill(' ')
 				<< " FE: " << std::dec << std::setw(3) << (fe_id & 0xff)
 				<< " CH: " << std::dec << std::setw(3) << tdc.ch
 				<< " TDC: " << std::setw(8) << tdc.tdc
@@ -73,7 +73,7 @@ int CheckData(uint64_t dword, uint32_t fe_type, uint32_t fe_id)
 		if (fe_type == SubTimeFrame::TDC64L_V3) {
 			struct TDC64L_V3::tdc64 tdc;
 			TDC64L_V3::Unpack(dword, &tdc);
-			std::cout << "L :"
+			std::cout << "L :" << std::setfill(' ')
 				<< " FE: " << std::dec << std::setw(3) << (fe_id & 0xff)
 				<< " CH: " << std::dec << std::setw(3) << tdc.ch
 				<< " TDC: " << std::setw(8) << tdc.tdc

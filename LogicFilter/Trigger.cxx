@@ -49,7 +49,6 @@ public:
 	void SetTriggerType(uint32_t tt){fTriggerType = tt;};
 	uint32_t GetTriggerType(){return fTriggerType;};
 	static int sOid;
-
 protected:
 private:
 	//std::vector<struct CoinCh> fEntry;
@@ -225,7 +224,12 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 			std::cout << "#DD Trigger::Mark " 
 				<< " FEM: " << std::hex << fem
 				<< " Ch: " << std::dec << ch
-				<< " MarkBit: " << markbit << std::endl;
+				<< " MarkBit: " << markbit
+				<< " Data len: " << std::dec << len << " / " << (len / sizeof(uint64_t))
+				<< " Type: " << std::dec << type
+				<< "(" << SubTimeFrame::TDC64H << "/" << SubTimeFrame::TDC64L
+				<< "," << SubTimeFrame::TDC64H_V3 << "/" << SubTimeFrame::TDC64L_V3 << ")"	
+				<< std::endl;
 			#endif
 
 			for (unsigned int j = 0 ; j < (len / sizeof(uint64_t)) ; j++) {
@@ -236,12 +240,11 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 						if (tdc.ch == ch) {
 							uint32_t hit = tdc.tdc4n + delay;
 
-							#if 0
-							std::cout << "#D Mark"
+							#if 0		
+							std::cout << "#D TDC64H Mark"
 								<< " FEM: " << std::hex << fem
 								<< " Ch: " << std::dec << ch
-								<< " Hit: " << hit
-								<< std::endl;
+								<< " Hit: " << hit << std::endl;
 							#endif
 
 							if (hit < fTimeRegionSize - (fMarkLen/2)) {
@@ -266,8 +269,12 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 						if (tdc.ch == ch) {
 							uint32_t hit = tdc.tdc4n + delay;
 
-							//std::cout << "#D Mark Ch: " << std::dec << ch
-							//	<< " Hit: " << hit << std::endl;
+							#if 0
+							std::cout << "#D TDC64L Mark"
+								<< " FEM: " << std::hex << fem
+								<< " Ch: " << std::dec << ch
+								<< " Hit: " << hit << std::endl;
+							#endif
 
 							if (hit < fTimeRegionSize - (fMarkLen/2)) {
 								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
@@ -293,7 +300,7 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 							uint32_t hit = tdc.tdc4n + delay;
 
 							#if 0
-							std::cout << "#D Mark"
+							std::cout << "#D TDC64H_V3 Mark"
 								<< " FEM: " << std::hex << fem
 								<< " Ch: " << std::dec << ch
 								<< " Hit: " << hit
@@ -318,13 +325,18 @@ void Trigger::Mark(unsigned char *pdata, int len, int fem, uint32_t type)
 					}
 				} else
 				if (type == SubTimeFrame::TDC64L_V3) {
-					struct TDC64L::tdc64 tdc;
-					if (TDC64L::Unpack(tdcval[j], &tdc) == TDC64L::T_TDC) {
+					struct TDC64L_V3::tdc64 tdc;
+					if (TDC64L_V3::Unpack(tdcval[j], &tdc) == TDC64L::T_TDC) {
 						if (tdc.ch == ch) {
 							uint32_t hit = tdc.tdc4n + delay;
 
-							//std::cout << "#D Mark Ch: " << std::dec << ch
-							//	<< " Hit: " << hit << std::endl;
+							#if 0
+							std::cout << "#D TDC64L_V3 Mark"
+								<< " FEM: " << std::hex << fem
+								<< " Ch: " << std::dec << ch
+								<< " Hit: " << hit
+								<< std::endl;
+							#endif
 
 							if (hit < fTimeRegionSize - (fMarkLen/2)) {
 								for (int k = -1 * (fMarkLen/2) ; k < ((fMarkLen/2) + 1) ; k++) {
@@ -401,34 +413,43 @@ std::vector<uint32_t> *Trigger::Exec(std::vector<struct HBFIndex> &hbf)
 		//	reinterpret_cast<unsigned char *>(inParts[mindex].GetData()),
 		//	inParts[mindex].GetSize(),
 		//	vfemid, dbl->Type);
+
+		#if 0
+		std::cout << "#DT seg.size: " << seg.size << ",  femId: " << seg.femId
+			<< ", femType: " << seg.femType << std::endl;
+		#endif
+
 		Trigger::Mark(seg.data, seg.size, seg.femId, seg.femType);
-	}
 
-	#if 0
-	uint32_t *tr = fTrig->GetTimeRegion();
-	std::cout << "####DDDD Hit TimeRegion: ";
-	for (uint32_t ii = 0 ; ii < fTrig->GetTimeRegionSize() ; ii++) {
-		if (tr[ii] != 0) {
-		std::cout << " " << std::dec << i << ":"
-			<< std::hex << std::setw(4) << std::setfill('0')
-			<< tr[ii];
+		#if 0
+		//uint32_t *tr = fTrig->GetTimeRegion();
+		uint32_t *tr = Trigger::GetTimeRegion();
+		std::cout << "####DDDD Hit TimeRegion: ";
+		//for (uint32_t ii = 0 ; ii < fTrig->GetTimeRegionSize() ; ii++) {
+		for (uint32_t ii = 0 ; ii < Trigger::GetTimeRegionSize() ; ii++) {
+			if (tr[ii] != 0) {
+			std::cout << " " << std::dec << ii << ":"
+				<< std::hex << std::setw(4) << std::setfill('0')
+				<< tr[ii];
+			}
 		}
-	}
-	std::cout << std::endl;
-	#endif
+		std::cout << std::endl;
+		#endif
 
-	#if 0
-	std::cout << "# HB: " << std::dec << i;
-	for (size_t iifem = 0 ; iifem < block_map.size() ; iifem++) {
-		struct DataBlock *dbl = &block_map[iifem][i];
-		uint64_t vfemid = dbl->femId;
-		uint64_t vhbframe = dbl->HBFrame;
-		//std::cout << "# HB: " << std::dec << i
-		//<< " FEM: " << std::hex << vfemid
-		std::cout << " " << std::dec << (vfemid  & 0xff) << ":" << vhbframe;
+		#if 0
+		std::cout << "# HB: " << std::dec << i;
+		for (size_t iifem = 0 ; iifem < block_map.size() ; iifem++) {
+			struct DataBlock *dbl = &block_map[iifem][i];
+			uint64_t vfemid = dbl->femId;
+			uint64_t vhbframe = dbl->HBFrame;
+			//std::cout << "# HB: " << std::dec << i
+			//<< " FEM: " << std::hex << vfemid
+			std::cout << " " << std::dec << (vfemid  & 0xff) << ":" << vhbframe;
+		}
+		std::cout << std::endl;
+		#endif
+
 	}
-	std::cout << std::endl;
-	#endif
 
 	return Trigger::Scan();
 }

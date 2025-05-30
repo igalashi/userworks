@@ -39,6 +39,8 @@ struct OnlineDisplay : fair::mq::Device
 {
 	struct OptionKey {
 		static constexpr std::string_view InputChannelName  {"in-chan-name"};
+		static constexpr std::string_view TrgRedisServerUri {"trg-redis-uri"};
+		static constexpr std::string_view TrgRedisKey       {"trg-redis-key"};
 	};
 
 	OnlineDisplay()
@@ -48,6 +50,9 @@ struct OnlineDisplay : fair::mq::Device
 		// LOG(info) << "Constructer Input Channel : " << fInputChannelName;
 	}
 
+	void Init() override;
+	void InitTask() override;
+	#if 0
 	void InitTask() override
 	{
 		using opt = OptionKey;
@@ -57,34 +62,9 @@ struct OnlineDisplay : fair::mq::Device
 		fInputChannelName  = fConfig->GetValue<std::string>(opt::InputChannelName.data());
 		LOG(info) << "InitTask Input Channel : " << fInputChannelName;
 
-		fKt1.SetDuration(50);
-		fKt2.SetDuration(2000);
-		fKt3.SetDuration(3000);
-
-		#if 0
-		#ifdef USE_THREAD
-		static bool atFirst = true;
-		if (atFirst) {
-			TThread thEventCycle("EventCycle", &gEventCycle, NULL);
-			thEventCycle.Run();
-			atFirst = false;
-		}
-		#endif
-		#endif
-
-		gHistTrig_init();
-		gHistReset();
-
-		#if 0
-		std::string redisuri("tcp://127.0.0.1:6379");
-		fRedis = new sw::redis::Redis(redisuri);
-		auto val = fRedis->get("key");
-		#endif
-
-
 		//OnData(fInputChannelName, &OnlineDisplay::HandleData);
 	}
-
+	#endif
 
 	#if 0
 	bool HandleData(fair::mq::MessagePtr& msg, int)
@@ -116,6 +96,8 @@ private:
 	uint64_t fNumIterations = 0;
 
 	std::string fInputChannelName;
+	std::string fTrgRedisServerUri;
+	std::string fTrgRedisKey;
 
 	struct STFBuffer {
 		//FairMQParts parts;
@@ -130,13 +112,74 @@ private:
 	uint32_t fFEMId = 0;
 	int fPrescale = 1;
 
+	#if 0
 	sw::redis::Redis *fRedis;
+	#endif
 
 	KTimer fKt1;
 	KTimer fKt2;
 	KTimer fKt3;
 
 };
+
+
+void OnlineDisplay::Init()
+{
+	using opt = OptionKey;
+
+	static bool at_first = true;
+
+	if (at_first) {
+		fTrgRedisServerUri = fConfig->GetValue<std::string>(opt::TrgRedisServerUri.data());
+		LOG(info) << "DB URI for Trigger singals : " << fTrgRedisServerUri;
+		fTrgRedisKey = fConfig->GetValue<std::string>(opt::TrgRedisKey.data());
+		LOG(info) << "Trigger key on DB : " << fTrgRedisKey;
+		gHistInit();
+
+		at_first = false;
+	}
+
+	return;
+}
+
+
+void OnlineDisplay::InitTask()
+{
+	using opt = OptionKey;
+
+	// Get the fMaxIterations value from the command line options (via fConfig)
+	fMaxIterations = fConfig->GetProperty<uint64_t>("max-iterations");
+	fInputChannelName  = fConfig->GetValue<std::string>(opt::InputChannelName.data());
+	LOG(info) << "InitTask Input Channel : " << fInputChannelName;
+
+	fKt1.SetDuration(50);
+	fKt2.SetDuration(2000);
+	fKt3.SetDuration(3000);
+
+	#if 0
+	#ifdef USE_THREAD
+	static bool atFirst = true;
+	if (atFirst) {
+		TThread thEventCycle("EventCycle", &gEventCycle, NULL);
+		thEventCycle.Run();
+		atFirst = false;
+	}
+	#endif
+	#endif
+
+	gHistWindowInit(fTrgRedisKey, fTrgRedisServerUri);
+	//gHistTrigSrcInit();
+	gHistReset();
+
+	#if 0
+	std::string redisuri("tcp://127.0.0.1:6379");
+	fRedis = new sw::redis::Redis(redisuri);
+	auto val = fRedis->get("key");
+	#endif
+
+	//OnData(fInputChannelName, &OnlineDisplay::HandleData);
+}
+
 
 bool OnlineDisplay::CheckData(fair::mq::MessagePtr& msg)
 {
@@ -499,7 +542,7 @@ bool OnlineDisplay::ConditionalRun()
 		#else
 		//if ((counts % 100) == 0) std::cout << "." << std::flush;
 		if ((counts % fPrescale) == 0) {
-			gHistTrig_clear();
+			gHistTrigTdc_clear();
 			for(auto& vmsg : inParts) BookData(vmsg);
 			gHistBookTrigWinOne();
 		}
@@ -582,14 +625,20 @@ void addCustomOptions(bpo::options_description& options)
 		"Maximum number of iterations of Run/ConditionalRun/OnData (0 - infinite)")
 		(opt::InputChannelName.data(),
 			bpo::value<std::string>()->default_value("in"),
-			"Name of the input channel");
+			"Name of the input channel")
+		(opt::TrgRedisServerUri.data(),
+			bpo::value<std::string>()->default_value("redis://localhost:6379/2"),
+			"URI of DB for trigger signals")
+		(opt::TrgRedisKey.data(),
+			bpo::value<std::string>()->default_value("parameters:LogicFilter"),
+			"Trigger key on DB")
+		;
 
 }
 
 
 std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& /*config*/)
 {
-	gHistInit();
 
 	#ifdef USE_THREAD
 	TThread thEventCycle("EventCycle", &gEventCycle, NULL);

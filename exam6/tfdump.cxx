@@ -503,7 +503,7 @@ bool TFdump::ConditionalRun()
 		#endif
 
 		if ((fInterval == 0) || (fKt1->Check())) {
-			std::cout << "Nmsg: " << std::dec << inParts.Size();
+			std::cout << " Nmsg: " << std::dec << inParts.Size();
 			std::cout << "  Freq: " << freq << "Hz  el: " << elapse
 				<< " C: " << counts  << std::endl;
 			for(auto& vmsg : inParts) CheckData(vmsg);

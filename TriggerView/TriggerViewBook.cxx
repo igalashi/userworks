@@ -9,6 +9,7 @@
 #include "TH2F.h"
 
 #include "FilterHeader.h"
+#include "GetTriggerInfo.cxx"
 
 static TCanvas *gCan1 = new TCanvas ("DISPLAY", "Display");
 static TH1F *gHHRTDC[2];
@@ -28,8 +29,7 @@ struct trg_tdc {
 	uint32_t trg_type;
 	std::vector<int> tdc4n;
 };
-//static std::vector< std::vector<int> > gTrig;
-static std::vector<struct trg_tdc> gTrig;
+static std::vector<struct trg_tdc> gTrigTdc;
 
 struct entry_tdc {
 	std::vector<int> tdc4n;
@@ -48,16 +48,18 @@ struct signal_id {
 	int      offset;
 };
 
-#if 1
-static std::vector<struct signal_id> trg_sources = {
+static std::vector<struct signal_id> g_trg_sources;
+
+#if 0
+static std::vector<struct signal_id> g_trg_sources = {
 	{ 0, 0xc0a802a9,  8,   0}, { 1, 0xc0a802a9, 10,   0},
 	{ 2, 0xc0a802aa, 16, -12}, { 3, 0xc0a802aa, 17, -12}, { 4, 0xc0a802aa, 18, -12}, { 5, 0xc0a802aa, 19, -12},
 	{ 6, 0xc0a802aa, 20, -12}, { 7, 0xc0a802aa, 21, -12}, { 8, 0xc0a802aa, 22, -12}, { 9, 0xc0a802aa, 23, -12},
 	{10, 0xc0a802aa, 24, -12}, {11, 0xc0a802aa, 25, -12}, {12, 0xc0a802aa, 27, -12}, {13, 0xc0a802aa, 28, -12},
 	{14, 0xc0a802a3,  4, -12}, {15, 0xc0a802a3, 16, -12}
 };
-#else
-static std::vector<struct signal_id> trg_sources = {
+
+static std::vector<struct signal_id> g_trg_sources = {
 	{ 0, 0xc0a80a23, 31, 0}, { 1, 0xc0a80a23, 15, 0},
 	{ 2, 0xc0a80a23, 63, 0}, { 3, 0xc0a80a24, 47, 0},
 	{ 4, 0xc0a80a24,  0, 0}, { 5, 0xc0a80a24, 16, 0},
@@ -67,13 +69,13 @@ static std::vector<struct signal_id> trg_sources = {
 };
 
 
-//	{ 4, 0xc0a80a23, 15, 0}, { 5, 0xc0a80a23, 47, 0}, { 5, 0xc0a80a24, 16, 0},
-//	{ 6, 0xc0a80a23,  7, 0}, { 7, 0xc0a80a23, 24, 0},
-//	{16, 0xc0a80a25,  6, 0}, {17, 0xc0a80a25,  7, 0}, {18, 0xc0a80a25, 18, 0}, {19, 0xc0a80a25, 19, 0},
-//	{20, 0xc0a80a25, 20, 0}, {21, 0xc0a80a25, 21, 0}, {22, 0xc0a80a25, 22, 0}, {23, 0xc0a80a25, 23, 0},
-//	{24, 0xc0a80a25, 24, 0}, {25, 0xc0a80a25, 25, 0}, {26, 0xc0a80a25, 26, 0}, {27, 0xc0a80a25, 27, 0},
-//	{28, 0xc0a80a25, 28, 0}, {29, 0xc0a80a25, 29, 0}, {30, 0xc0a80a25, 30, 0}, {31, 0xc0a80a25, 31, 0}
-//};
+	{ 4, 0xc0a80a23, 15, 0}, { 5, 0xc0a80a23, 47, 0}, { 5, 0xc0a80a24, 16, 0},
+	{ 6, 0xc0a80a23,  7, 0}, { 7, 0xc0a80a23, 24, 0},
+	{16, 0xc0a80a25,  6, 0}, {17, 0xc0a80a25,  7, 0}, {18, 0xc0a80a25, 18, 0}, {19, 0xc0a80a25, 19, 0},
+	{20, 0xc0a80a25, 20, 0}, {21, 0xc0a80a25, 21, 0}, {22, 0xc0a80a25, 22, 0}, {23, 0xc0a80a25, 23, 0},
+	{24, 0xc0a80a25, 24, 0}, {25, 0xc0a80a25, 25, 0}, {26, 0xc0a80a25, 26, 0}, {27, 0xc0a80a25, 27, 0},
+	{28, 0xc0a80a25, 28, 0}, {29, 0xc0a80a25, 29, 0}, {30, 0xc0a80a25, 30, 0}, {31, 0xc0a80a25, 31, 0}
+};
 
 #endif
 
@@ -94,9 +96,9 @@ void gEventCycle(void *arg = NULL)
 	return;
 }
 
-void gHistTrig_init()
+void gHistTrigSrcInit()
 {
-	for (auto &i : trg_sources) {
+	for (auto &i : g_trg_sources) {
 		struct entry_tdc src;
 		src.index = i.index;
 		src.module = i.module;
@@ -108,18 +110,20 @@ void gHistTrig_init()
 		gEntryTDC.emplace_back(src);
 	}
 
+#if 0
 	gTrigType.clear();
 	gTrigType.emplace_back(0xaa000000);
 	gTrigType.emplace_back(0xaa000001);
+#endif
 
 	return;
 }
 
 void gHistInit()
 {
-	//gMtxDisp = new TMutex();
-
-	gHistTrig_init();
+	#if 0
+	gMtxDisp = new TMutex();
+	#endif
 
 	gHHRTDC[0] = new TH1F("HRTDC0", "HR-TDC0", 64, 0, 64);
 	gHHRTDC[1] = new TH1F("HRTDC1", "HR-TDC1", 64, 0, 64);
@@ -144,9 +148,35 @@ void gHistInit()
 			1000, -500., 500., 32, 0., 32.));
 	}
 
+	return;
+}
 
+void gHistWindowInit(std::string key, std::string redis_server)
+{
+        //std::vector< std::vector<uint32_t> > signals
+	auto [signals, exprs] = GetTriggerSignals(key, redis_server);
+
+	g_trg_sources.clear();
+	g_trg_sources.resize(0);
+	for (unsigned int i = 0 ; i < signals.size() ; i++) {
+		if (signals[i].size() >= 3) {
+			struct signal_id sig;
+			sig.index = i;
+			sig.module = signals[i][0];
+			sig.channel = signals[i][1];
+			sig.offset = static_cast<int>(signals[i][2]);
+			g_trg_sources.emplace_back(sig);
+		}
+	}
+
+	gTrigType.clear();
+	gTrigType.resize(0);
+	for (auto &t : exprs) gTrigType.emplace_back(t.type);
+
+	gHistTrigSrcInit();
+
+	gCan1->Clear();
 	gCan1->Divide(2, 1 + gTrigType.size());
-
 	gCan1->cd(1); gHElapse->Draw();
 	gHNTrig->GetXaxis()->SetRangeUser(2., 1000.);
 	gCan1->cd(2); gHNTrig->Draw();
@@ -212,16 +242,16 @@ void gHistFlt(struct Filter::Header *pflt)
 	return;
 }
 
-bool gTrig_isvalid = false;
-void gHistTrig_clear()
+bool gTrigTdc_isvalid = false;
+void gHistTrigTdc_clear()
 {
-	for (auto &i : gTrig) {
+	for (auto &i : gTrigTdc) {
 		i.tdc4n.clear();
 		i.tdc4n.resize(0);
 	}
-	gTrig.clear();
-	gTrig.resize(0);
-	gTrig_isvalid = false;
+	gTrigTdc.clear();
+	gTrigTdc.resize(0);
+	gTrigTdc_isvalid = false;
 
 	for (auto &i : gEntryTDC) {
 		i.tdc4n.clear();
@@ -252,8 +282,8 @@ void gHistTrig(Filter::TrgTime *pdata, unsigned int len)
 		gHTrig->Fill(t->time);
 	}
 
-	gTrig.emplace_back(trig_in_hbf);
-	gTrig_isvalid = true;
+	gTrigTdc.emplace_back(trig_in_hbf);
+	gTrigTdc_isvalid = true;
 
 	return;
 }
@@ -311,10 +341,10 @@ void gHistBookTrigWinOne()
 	static unsigned int tw_counter = 0;
 	const unsigned int tw_pre_factor = 100;	
 
-	for (unsigned int i = 0 ; i < gTrig.size() ; i++) {
+	for (unsigned int i = 0 ; i < gTrigTdc.size() ; i++) {
 		for (unsigned int itt = 0 ; itt < gTrigType.size() ; itt++) {
-			if (gTrig[i].trg_type == gTrigType[itt]) {
-				for (auto &trg : gTrig[i].tdc4n) {
+			if (gTrigTdc[i].trg_type == gTrigType[itt]) {
+				for (auto &trg : gTrigTdc[i].tdc4n) {
 					bool is_draw = ((tw_counter++ % tw_pre_factor) == 0);
 					if (is_draw) gH2TrigWindowOne[itt]->Reset();
 					for (auto &mod : gEntryTDC) {
@@ -342,10 +372,10 @@ void gHistBookTrigWin(fair::mq::MessagePtr& msg, uint32_t id, int type)
 	unsigned int msize = msg->GetSize();
 	unsigned char *pdata = reinterpret_cast<unsigned char *>(msg->GetData());
 
-	if (! gTrig_isvalid) return;
+	if (! gTrigTdc_isvalid) return;
 
 	for (size_t i = 0 ; i < msize ; i += sizeof(uint64_t)) {
-		for (auto &sig : trg_sources) {
+		for (auto &sig : g_trg_sources) {
 
 			int val_tdc4n = -1;
 			int val_ch = -1;
@@ -371,7 +401,7 @@ void gHistBookTrigWin(fair::mq::MessagePtr& msg, uint32_t id, int type)
 			}
 
 			if ((id == sig.module) && (val_ch == sig.channel)) {
-				for (auto &trigs : gTrig) {
+				for (auto &trigs : gTrigTdc) {
 					for (unsigned int itt = 0 ; itt < gTrigType.size() ; itt++) {
 						if (trigs.trg_type == gTrigType[itt]) {
 							for (auto &trg : trigs.tdc4n) {
@@ -457,7 +487,7 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 		}
 
 
-		for (auto &sig : trg_sources) {
+		for (auto &sig : g_trg_sources) {
 
 			int val_tdc4n = -1;
 			int val_ch = -1;
@@ -482,7 +512,7 @@ void gHistBook(fair::mq::MessagePtr& msg, uint32_t id, int type)
 			}
 
 			if ((id == sig.module) && (val_ch == sig.channel)) {
-				for (auto &trigs : gTrig) {
+				for (auto &trigs : gTrigTdc) {
 					for (unsigned int itt = 0 ; itt < gTrigType.size() ; itt++) {
 						if (trigs.trg_type == gTrigType[itt]) {
 							for (auto &trg : trigs.tdc4n) {

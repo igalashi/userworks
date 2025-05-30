@@ -67,7 +67,7 @@ endforeach()
 
 foreach(lvar IN ITEMS
 	onlinedisplay;
-	TriggerView;
+	#	TriggerView;
 )
 
 set(EXEC ${lvar})
