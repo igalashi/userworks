@@ -57,7 +57,7 @@ redis-cli -u $server hset parameters:LogicFilter trigger-signals \
 #"0xaa000000 : (0 & 1) & (2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13) ; 0xaa000001 : (0 & 1)"
 
 redis-cli -u $server hset parameters:LogicFilter trigger-expression \
-"0xaa000000 : 0 ; 0xaa000001 : 1" 
+"0xaa000000 : 0 & 1 ; 0xaa000001 : 2 & 3" 
 
 #redis-cli -u $server hset parameters:LogicFilter trigger-signals \
 #"(0xc0a802a9  8 0) (0xc0a802a9 10 0)"

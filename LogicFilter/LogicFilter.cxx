@@ -69,7 +69,6 @@ struct LogicFilter : fair::mq::Device
 		//OnData("in", &LogicFilter::HandleData);
 
 		//fTrig = new Trigger();
-		//fTrig.push_back(Trigger());
 
 		fKt1 = new KTimer(1000);
 		fKt2 = new KTimer(1000);
@@ -125,17 +124,17 @@ private:
 	void CheckMultiPart(fair::mq::Parts &);
 	int MakeBlockMap(fair::mq::Parts &,
 		std::vector< std::vector<struct DataBlock> > &);
-	int MakeBlockMap2(fair::mq::Parts &,
-		std::vector< std::vector<struct DataBlock> > &);
 	int BuildHBF(std::vector<struct HBFIndex> &,
 		std::vector< std::vector<struct DataBlock> > &,
 		fair::mq::Parts &, int);
 	int AddFilterMessage(fair::mq::Parts &,
 		std::vector< std::vector<uint32_t> > &,
 		uint32_t, uint32_t, uint32_t);
+#if 0
 	int MarkFlagSending(
 		std::vector< std::vector<struct DataBlock> > &block_map,
 		int i, int nhits, std::vector<bool> &flag_sending);
+#endif
 
 	std::string fInputChannelName;
 	std::string fOutputChannelName;
@@ -150,8 +149,11 @@ private:
 	uint32_t fId {0};
 	//Trigger *fTrig;
 	std::vector<Trigger *> fTrig;
-	bool fIsDataSuppress = true;
+
+#if 0
+	bool fIsDataSuppress = false;
 	bool fIsRemoveHB = false;
+#endif
 
 	int fHBflag = 0;
 
@@ -184,6 +186,7 @@ void LogicFilter::InitTask()
 		fConfig->GetProperty<std::string>(opt::SplitMethod.data()));
 	LOG(info) << "InitTask: SplitMethod : " << fSplitMethod;
 
+#if 0
 	std::string sIsDataSuppress = fConfig->GetValue<std::string>(opt::DataSuppress.data());
 	if (sIsDataSuppress == "true") {
 		fIsDataSuppress = true;
@@ -199,6 +202,7 @@ void LogicFilter::InitTask()
 		fIsRemoveHB = false;
 	}
 	LOG(info) << "InitTask: RemoveHB : " << fIsRemoveHB;
+#endif
 
 	std::string str_signals = fConfig->GetProperty<std::string>(opt::TriggerSignals.data());
 	std::string str_expressions = fConfig->GetProperty<std::string>(opt::TriggerExpression.data());
@@ -326,12 +330,6 @@ bool LogicFilter::CheckData(fair::mq::MessagePtr &msg)
 
 		fe_type = pstf->femType;
 
-		//// toriaezu debug no tameni ireru. atodekesukoto
-		//fe_type = 1;
-		//pstf->femType = 1;
-		//pstf->femId = 1234;
-		////
-
 	} else {
 #if 1
 		for (unsigned int j = 0 ; j < msize ; j += 8) {
@@ -446,7 +444,6 @@ int LogicFilter::RemoveData(fair::mq::Parts &parts, int index)
 
 	fair::mq::Message & msg = parts[index];
 	//fair::mq::MessagePtr & msg = parts.At(index);
-	//auto & msg = parts[index];
 	char *pdata = reinterpret_cast<char *>(msg.GetData());
 	uint64_t *pdata64 = reinterpret_cast<uint64_t *>(msg.GetData());
 	unsigned int msize = msg.GetSize();
@@ -457,17 +454,9 @@ int LogicFilter::RemoveData(fair::mq::Parts &parts, int index)
 			std::cout << std::hex << pdata64[i] << std::endl;
 		}
 
-#if 0
-		auto hbp = std::make_unique<char[]>(HB_SIZE);
-		strncpy(hbp.get(), pdata + (msize - HB_SIZE), HB_SIZE);
-		auto hbmsg = MessageUtil::NewMessage(*this, std::move(hbp));
-#endif
-
-#if 1
 		auto hb = std::make_unique< std::vector<char> > (HB_SIZE);
 		strncpy(hb->data(), pdata + (msize - HB_SIZE), HB_SIZE);
 		auto hbmsg = MessageUtil::NewMessage(*this, std::move(hb));
-#endif
 
 #if 0
 		auto hb = new char[HB_SIZE];
@@ -551,13 +540,10 @@ int LogicFilter::MakeBlockMap(
 	uint64_t time_frame_id = 0;
 	uint64_t devtype = 0;
 	int ifem = 0;
-	//std::vector<bool> flag_sending;
 	std::vector<struct DataBlock> blocks;
 
-	//struct TimeFrame::Header *i_tfHeader = nullptr;
 
 	for(unsigned int i = 0 ; i < inParts.Size() ; i++) {
-		//flag_sending.push_back(true);
 #if 0
 		CheckData(inParts.At(i));
 #endif
@@ -570,7 +556,6 @@ int LogicFilter::MakeBlockMap(
 			ifem = -1;
 			//stf.clear();
 			//stf.resize(0);
-			//i_tfHeader = tfHeader;
 			dblock.is_HB = false;
 			dblock.msg_index = 0;
 			dblock.timeFrameId = tfHeader->timeFrameId;
@@ -678,152 +663,6 @@ int LogicFilter::MakeBlockMap(
 	for (auto& blk : block_map) {
 		if (blk.size() < bsize_min) {
 			LOG(warn) << "MB: Unmatched number of stf in TF "
-				<< bsize_min << " " << blk.size();
-			bsize_min = blk.size();
-		}
-	}
-
-#if 0
-	std::cout << "blocks: " << blocks.size() << std::endl;
-#endif
-
-	return 0;
-}
-
-int LogicFilter::MakeBlockMap2(
-    fair::mq::Parts &inParts,
-    std::vector< std::vector<struct DataBlock> > &block_map)
-{
-	uint64_t femid = 0;
-	uint64_t time_frame_id = 0;
-	uint64_t devtype = 0;
-	int ifem = 0;
-	//std::vector<bool> flag_sending;
-	std::vector<struct DataBlock> blocks;
-
-	//struct TimeFrame::Header *i_tfHeader = nullptr;
-
-	for(unsigned int i = 0 ; i < inParts.Size() ; i++) {
-		//flag_sending.push_back(true);
-#if 0
-		CheckData(inParts.At(i));
-#endif
-
-		auto tfHeader = reinterpret_cast<struct TimeFrame::Header *>(inParts[i].GetData());
-		auto stfHeader = reinterpret_cast<struct SubTimeFrame::Header *>(inParts[i].GetData());
-		struct DataBlock dblock;
-
-		if (tfHeader->magic == TimeFrame::MAGIC) {
-			ifem = -1;
-			//stf.clear();
-			//stf.resize(0);
-			//i_tfHeader = tfHeader;
-			dblock.is_HB = false;
-			dblock.msg_index = 0;
-			dblock.timeFrameId = tfHeader->timeFrameId;
-		} else if (stfHeader->magic == SubTimeFrame::MAGIC) {
-			femid = stfHeader->femId;
-			devtype = stfHeader->femType;
-			time_frame_id = stfHeader->timeFrameId;
-			if (blocks.size() > 0) block_map.push_back(blocks);
-			//stf.push_back(*stfHeader);
-			dblock.is_HB = false;
-			dblock.msg_index = -1;
-			dblock.timeFrameId = time_frame_id;
-			blocks.clear();
-			blocks.resize(0);
-			ifem++;
-
-#if 0
-			std::cout << "#D STF Nmsg: " << stfHeader->numMessages
-				<< " Tid: " << stfHeader->timeFrameId << std::endl;
-#endif
-
-		} else {
-			// make block map;
-
-			uint64_t *data = reinterpret_cast<uint64_t *>(inParts[i].GetData());
-			int hbframe = IsHartBeat(data[0], devtype);
-
-#if 0
-			std::cout << "#DDD msg" << std::dec << std::setw(3) << i << ":"
-				<< " HBFrame:" << std::setw(6) << hbframe
-				<< " blocks.size(): " << blocks.size() << std::endl;
-#endif
-
-			if ((data[0] == HeartbeatFrame::MAGIC)
-			        || (hbframe < 0)) {
-				dblock.femId = femid;
-				dblock.Type = devtype;
-				dblock.is_HB = false;
-				dblock.msg_index = i;
-				dblock.nTrig = 0;
-				dblock.HBFrame = 0;
-				dblock.timeFrameId = time_frame_id;
-			} else {
-				if (fSplitMethod == 1) {
-					//data ga nakattatokimo push_back dummy
-					if (   (blocks.size() == 0)
-					        || ((blocks.size() > 0)
-					            && (blocks.back().is_HB == true)) ) {
-
-#if 0
-						std::cout << "#W no data frame Msg:"
-							<< std::dec << i
-							<< " " << inParts.Size()
-							<< " " << blocks.size()
-							<< " is_HB:" << hbframe
-							<< " " << std::hex << data[0];
-						if (blocks.size() > 0) {
-							std::cout << " p_is_HB:"
-								<< blocks.back().is_HB;
-						}
-						std::cout << std::endl;
-						//assert(0);
-#endif
-
-						dblock.femId = femid;
-						dblock.Type = SubTimeFrame::NULDEV;
-						dblock.is_HB = false;
-						dblock.msg_index = -2;
-						dblock.nTrig = 0;
-						dblock.HBFrame = 0;
-						dblock.timeFrameId = time_frame_id;
-						blocks.push_back(dblock);
-					}
-				}
-
-				dblock.HBFrame = hbframe;
-				dblock.femId = femid;
-				dblock.Type = devtype;
-				dblock.is_HB = true;
-				dblock.msg_index = i;
-				dblock.nTrig = 0;
-				dblock.timeFrameId = time_frame_id;
-			}
-			blocks.push_back(dblock);
-		}
-	} /// end of the for loop
-	block_map.push_back(blocks);
-
-#if 0 //BlockMap  check
-	if (fKt2->Check()) {
-		std::cout << "#D block_map.size: " << std::dec << block_map.size() << std::endl;
-		for (auto& blk : block_map) {
-			std::cout << "#D block " << std::setw(2) << blk.size() << " /";
-			for (auto& b : blk) {
-				std::cout << " " << std::setw(3) << b.msg_index << " HB:" << b.is_HB;
-			}
-			std::cout << std::endl;
-		}
-		std::cout << std::endl;
-	}
-#endif
-
-	size_t bsize_min = block_map[0].size();
-	for (auto& blk : block_map) {
-		if (blk.size() < bsize_min) {
-			LOG(warn) << "Unmatched number of stf in TF "
 				<< bsize_min << " " << blk.size();
 			bsize_min = blk.size();
 		}
@@ -986,6 +825,7 @@ int LogicFilter::AddFilterMessage(
 	return flt_data_len;
 }
 
+#if 0
 int LogicFilter::MarkFlagSending(
     std::vector< std::vector<struct DataBlock> > &block_map,
     int i,
@@ -1032,6 +872,7 @@ int LogicFilter::MarkFlagSending(
 
 	return 0;
 }
+#endif
 
 
 bool LogicFilter::ConditionalRun()
@@ -1042,7 +883,6 @@ bool LogicFilter::ConditionalRun()
 	//FairMQMessagePtr msg_header(fTransportFactory->CreateMessage());
 	fair::mq::MessagePtr msg_header(fTransportFactory->CreateMessage());
 	struct Filter::Header fltheader;
-	// struct TimeFrame::Header *i_tfHeader = nullptr;
 	int i_tf_msg_index = 0;
 	uint32_t tf_tf_id = 0;
 	std::chrono::system_clock::time_point sw_start, sw_end;
@@ -1057,13 +897,15 @@ bool LogicFilter::ConditionalRun()
 
 		std::vector<struct DataBlock> blocks;
 		std::vector< std::vector<struct DataBlock> > block_map;
+
+#if 0
 		std::vector<bool> flag_sending;
 		for(unsigned int i = 0 ; i < inParts.Size() ; i++) flag_sending.push_back(true);
+#endif
 
 		for(unsigned int i = 0 ; i < inParts.Size() ; i++) {
 			auto tfHeader = reinterpret_cast<struct TimeFrame::Header *>(inParts[i].GetData());
 			if (tfHeader->magic == TimeFrame::MAGIC) {
-				// i_tfHeader = tfHeader;
 				i_tf_msg_index = i;
 				tf_tf_id = tfHeader->timeFrameId;
 			}
@@ -1141,7 +983,9 @@ bool LogicFilter::ConditionalRun()
 
 				// mark sending flag for STF
 				// data reduction wo shinainonaraba iranaika?
+#if 0
 				MarkFlagSending(block_map, i, nhits, flag_sending);
+#endif
 
 				totalhits += nhits;
 			}
@@ -1176,8 +1020,6 @@ bool LogicFilter::ConditionalRun()
 		if (totalhits > 0) {
 			std::cout << "#D TotalHits: " << std::setw(4) << totalhits << " :";
 			for (int i = 0 ; i < totalhits / 50 ; i++) std::cout << ".";
-			// std::cout << " Flag: ";
-			// for (const auto& v : flag_sending) std::cout << " " << v;
 			std::cout << std::endl;
 		}
 #endif
@@ -1213,54 +1055,6 @@ bool LogicFilter::ConditionalRun()
 			//int_processed_hbf = 0;
 		}
 
-#if 0
-		//Modify SubTimeFrameHeader
-		if (fIsDataSuppress) {
-			for (int ii = 0 ; ii < inParts.Size() ; ii++) {
-				auto stfh = reinterpret_cast<struct SubTimeFrame::Header *>
-				            (inParts[ii].GetData());
-				if (stfh->magic == SubTimeFrame::MAGIC) {
-					uint32_t len_stf = 0;
-					uint32_t nmsg_stf = 0;
-					int kk = ii + 1;
-					for (int jj = ii + 1 ; jj < inParts.Size() ; jj++) {
-						auto sstf =
-						    reinterpret_cast<struct SubTimeFrame::Header *>
-						    (inParts[jj].GetData());
-						if (sstf->magic == SubTimeFrame::MAGIC) {
-							kk = jj;
-							break;
-						} else if (flag_sending[jj]) {
-							len_stf += inParts[jj].GetSize();
-							nmsg_stf++;
-						}
-					}
-					// if (len_stf == 0) { // STF header kara nankunaru? OK?
-					// 	flag_sending[ii] = false;
-					// }
-					stfh->length
-					    = len_stf + sizeof(struct SubTimeFrame::Header);
-					stfh->numMessages = nmsg_stf;
-					ii = kk - 1;
-				}
-			}
-		}
-#endif
-
-#if 0
-		// Modify TimeFrameHeader Length
-		uint32_t tf_len = sizeof(TimeFrame::Header);
-		if (fIsDataSuppress) {
-			// SubTimeFrameHeader
-			for (int ii = 0 ; ii < inParts.Size() ; ii++) {
-				if (flag_sending[ii] || (! fIsDataSuppress)) {
-					tf_len += (inParts.AtRef(ii)).GetSize();
-				}
-			}
-		} else {
-			tf_len = i_tfHeader->length;
-		}
-#endif
 
 		fair::mq::Parts outParts;
 
@@ -1282,12 +1076,19 @@ bool LogicFilter::ConditionalRun()
 		//Copy SubTimeFrame
 		unsigned int msg_size = inParts.Size();
 		for (unsigned int ii = 1 ; ii < msg_size ; ii++) {
+#if 0
 			if (flag_sending[ii] || (! fIsDataSuppress)) {
+#else
+			if (true) {
+#endif
 				//FairMQMessagePtr msgCopy(fTransportFactory->CreateMessage());
 				fair::mq::MessagePtr msgCopy(fTransportFactory->CreateMessage());
 				msgCopy->Copy(inParts.AtRef(ii));
 				outParts.AddPart(std::move(msgCopy));
+
 			} else {
+#if 0
+
 				// add blank SubTime Frame
 				struct HeartbeatFrame::Header *hbf
 					    = reinterpret_cast<struct HeartbeatFrame::Header *>(inParts[ii].GetData());
@@ -1311,8 +1112,6 @@ bool LogicFilter::ConditionalRun()
 					                       + (sizeof(uint64_t) * 2);
 					std::memcpy(&(blank->Delimiter), d, sizeof(uint64_t) * 2);
 					outParts.AddPart(MessageUtil::NewMessage(*this, std::move(blank)));
-					//flag_sending[ii] = true;
-					//tf_len += sizeof(outParts[outParts.Size() - 1]);
 
 #if 0
 					std::cout << "#D null HBF size: " << std::dec
@@ -1327,9 +1126,11 @@ bool LogicFilter::ConditionalRun()
 #endif
 
 				}
+#endif
 			}
 		}
 
+#if 0
 		//Modify SubTimeFrameHeader
 		if (fIsDataSuppress) {
 			for (unsigned int ii = 0 ; ii < outParts.Size() ; ii++) {
@@ -1351,9 +1152,6 @@ bool LogicFilter::ConditionalRun()
 							nmsg_stf++;
 						}
 					}
-					// if (len_stf == 0) { // STF header kara nankunaru? OK?
-					// 	flag_sending[ii] = false;
-					// }
 					stfh->length
 					    = len_stf + sizeof(struct SubTimeFrame::Header);
 					stfh->numMessages = nmsg_stf;
@@ -1361,6 +1159,7 @@ bool LogicFilter::ConditionalRun()
 				}
 			}
 		}
+#endif
 
 		// rewrite TimeFrameHeader length
 		auto tfHeader = reinterpret_cast<struct TimeFrame::Header *>(
@@ -1500,12 +1299,16 @@ void addCustomOptions(bpo::options_description& options)
 	(opt::DQMChannelName.data(),
 		bpo::value<std::string>()->default_value("dqm"),
 		"Name of the data quality monitoring channel")
+
+#if 0
 	(opt::DataSuppress.data(),
 		bpo::value<std::string>()->default_value("false"),
 		"Data suppression enable")
 	(opt::RemoveHB.data(),
 		bpo::value<std::string>()->default_value("false"),
 		"Remove HB without hit")
+#endif
+
 	(opt::PollTimeout.data(),
 		bpo::value<std::string>()->default_value("1"),
 		"Timeout of polling (in msec)")
