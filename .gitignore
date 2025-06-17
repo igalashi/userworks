@@ -1,0 +1,19 @@
+# Build artifacts
+*.o
+*.obj
+*.exe
+histogram_demo
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build directories
+build/
+dist/
