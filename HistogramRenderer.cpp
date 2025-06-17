@@ -322,7 +322,7 @@ void HistogramRenderer::renderText(const std::string& text, int x, int y, SDL_Co
     
     SDL_Rect destRect;
     if (vertical) {
-        destRect = {x - textHeight/2, y - textWidth/2, textHeight, textWidth};
+        destRect = {x - textWidth/2, y - textHeight/2, textHeight, textWidth};
         SDL_RenderCopyEx(m_renderer, textTexture, nullptr, &destRect, -90.0, nullptr, SDL_FLIP_NONE);
     } else {
         destRect = {x - textWidth/2, y - textHeight/2, textWidth, textHeight};
@@ -338,14 +338,11 @@ void HistogramRenderer::drawHistogram() {
     int windowWidth, windowHeight;
     SDL_GetWindowSize(m_window, &windowWidth, &windowHeight);
     
-    int plotWidth = windowWidth - m_marginLeft - m_marginRight;
-    
     double binWidth = (m_dataMaxX - m_dataMinX) / m_binCounts.size();
     
     SDL_SetRenderDrawColor(m_renderer, m_histogramColor.r, m_histogramColor.g, m_histogramColor.b, m_histogramColor.a);
     
     for (size_t i = 0; i < m_binCounts.size(); ++i) {
-        double binCenter = m_dataMinX + (i + 0.5) * binWidth;
         double binLeft = m_dataMinX + i * binWidth;
         double binRight = m_dataMinX + (i + 1) * binWidth;
         
@@ -452,7 +449,6 @@ void HistogramRenderer::drawMouseOverInfo(int mouseX, int mouseY) {
         std::ostringstream oss;
         oss << "Bin " << binIndex << ": " << std::fixed << std::setprecision(2) << binHeight;
         
-        SDL_Color white = {255, 255, 255, 200};
         SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 150);
         SDL_Rect bgRect = {mouseX + 10, mouseY - 20, 120, 20};
         SDL_RenderFillRect(m_renderer, &bgRect);
@@ -528,6 +524,13 @@ bool HistogramRenderer::handleEvents() {
                 m_running = false;
                 return false;
                 
+            case SDL_WINDOWEVENT:
+                if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
+                    m_running = false;
+                    return false;
+                }
+                break;
+                
             case SDL_MOUSEWHEEL:
                 {
                     int mouseX, mouseY;
@@ -579,7 +582,7 @@ void HistogramRenderer::render() {
     drawLabels();
     
     int mouseX, mouseY;
-    Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
+    SDL_GetMouseState(&mouseX, &mouseY);
     if (mouseX > m_marginLeft && mouseX < 800 - m_marginRight &&
         mouseY > m_marginTop && mouseY < 600 - m_marginBottom) {
         drawMouseOverInfo(mouseX, mouseY);
