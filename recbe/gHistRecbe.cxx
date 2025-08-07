@@ -34,8 +34,8 @@ void gHistInit()
 {
 	if (gId != nullptr) return;
 
-	gId = new UH1Book("RecbeID", 110, 0, 110);
-	gDipSwId = new UH1Book("Recbe Data ID", 110, 0, 110);
+	gId = new UH1Book("RecbeID", 110, 0, 150);
+	gDipSwId = new UH1Book("Recbe Data ID", 150, 0, 150);
 
 	for (int i = 0 ; i < N_MODULE ; i++) {
 		std::ostringstream osst;
