@@ -66,13 +66,8 @@ endforeach()
 
 
 foreach(lvar IN ITEMS
-<<<<<<< HEAD
-	onlinedisplay;
-	#	TriggerView;
-=======
 #	onlinedisplay;
 #	TriggerView;
->>>>>>> 355e0ab (Minar update)
 )
 
 set(EXEC ${lvar})
