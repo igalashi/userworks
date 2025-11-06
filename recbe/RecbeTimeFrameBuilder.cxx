@@ -133,8 +133,8 @@ bool TimeFrameBuilder::ConditionalRun()
 
         //auto femId     = stfHeader->FEMId;
         auto femId     = stfHeader->femId;
-	//fHId->Fill(static_cast<double>(femId & 0xff));
-	fHId->Fill(static_cast<double>(femId & 0xff) + 0.5);
+        //fHId->Fill(static_cast<double>(femId & 0xff));
+        fHId->Fill(static_cast<double>(femId & 0xff) + 0.5);
         // std::cout << "#D stfId: "<< femId << " ";
 
         #if 0
@@ -286,12 +286,21 @@ bool TimeFrameBuilder::ConditionalRun()
                             << std::dec << fBufferTimeoutInMs << " milliseconds, discarding";
                     //fDiscarded.insert(stfId);
                     #else
-                    double build_rate
-                        = static_cast<double>(build_success)
-                        / static_cast<double>(build_fail + build_success)
-                        * 100;
-                    std::cout << "x "
-                        << std::fixed << std::setprecision(2) << build_rate << "% " << std::flush;
+                    {
+                    static auto w_last = std::chrono::steady_clock::now();
+                    auto w_now = std::chrono::steady_clock::now();
+                    auto w_diff = w_now - w_last;
+                    if (std::chrono::duration_cast<std::chrono::seconds>(w_diff).count() > 3) {
+                        w_last = w_now;
+                        double build_rate
+                            = static_cast<double>(build_success)
+                            / static_cast<double>(build_fail + build_success)
+                            * 100;
+                        std::cout << "x "
+                            << std::fixed << std::setprecision(2) << build_rate << "% " << std::flush;
+
+                    }
+                    }
                     #endif
 
                     #if 0 ////////// TFB Fail info. ///////////
