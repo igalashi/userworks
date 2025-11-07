@@ -3,19 +3,19 @@
 function kill_fairmq_devices (){
     for fairmq_dev in AmQStrTdcSampler STFBuilder Scaler TimeFrameBuilder FileSink
     do
-	echo killing ${fairmq_dev}...
-	while true
-	do
-	    ret=`ps aux | grep start_device | grep $fairmq_dev | grep -v grep | head -1`
-	    ret=`echo $ret | awk '{print $2}'`
-	    if [ ! "$ret" = ""  ]; then
-		echo $ret
-		echo kill -KILL $ret
-		kill -KILL $ret
-	    else
-		break
-	    fi
-	done
+        echo killing ${fairmq_dev}...
+        while true
+        do
+            ret=`ps aux | grep start_device | grep $fairmq_dev | grep -v grep | head -1`
+            ret=`echo $ret | awk '{print $2}'`
+            if [ ! "$ret" = ""  ]; then
+                echo $ret
+                echo kill -KILL $ret
+                kill -KILL $ret
+            else
+                break
+            fi
+        done
     done
 }
 
@@ -29,34 +29,34 @@ function state_consistency_wait() {
     #echo "$ret"
     for str in $ret
     do
-	dev=${str%:health}
-	dev=${dev#daq_service:*:}
-	#echo "$dev"
-	for i in {1..10}
-	do
-	    first_dev_state=`redis-cli -n 1 hget metrics:state ${first_dev}`
-	    state=`redis-cli -n 1 hget metrics:state ${dev}`
-	    #echo $state
-	    if [ "$state" = "" ]; then
-		echo "Null state"
-		sleep 1
-		continue
-	    fi
-	    if [ "$state" = "$first_dev_state" ]; then
-		break
-	    else
-		#echo ""
-		#echo "Waiting..."
-		#echo "Device: $dev"
-		#echo "Required state: $req_state"
-		#echo "Current state: $state..."
-		sleep 1
-	    fi
-	done
-	if [ "$i" = "10" ]; then
-	    kill_fairmq_devices
-	    break
-	fi
+        dev=${str%:health}
+        dev=${dev#daq_service:*:}
+        #echo "$dev"
+        for i in {1..10}
+        do
+            first_dev_state=`redis-cli -n 1 hget metrics:state ${first_dev}`
+            state=`redis-cli -n 1 hget metrics:state ${dev}`
+            #echo $state
+            if [ "$state" = "" ]; then
+                echo "Null state"
+                sleep 1
+            continue
+            fi
+            if [ "$state" = "$first_dev_state" ]; then
+                break
+            else
+                #echo ""
+                #echo "Waiting..."
+                #echo "Device: $dev"
+                #echo "Required state: $req_state"
+                #echo "Current state: $state..."
+                sleep 1
+            fi
+        done
+        if [ "$i" = "10" ]; then
+            kill_fairmq_devices
+            break
+        fi
     done
     consistent_state="$first_dev_state"
 }
@@ -65,7 +65,7 @@ function state_wait() {
     req_state=$1
     state_consistency_wait
     if [ ! "$req_state" = "$consistent_state" ]; then
-	echo "states are not consistent!!!"
+        echo "states are not consistent!!!"
     fi
 }
 
@@ -92,20 +92,20 @@ function stop_run() {
     echo "Next run number: $run_num"
     state_consistency_wait
     if [ "$consistent_state" = "RUNNING" ]; then
-	redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "STOP",         "services": ["all"], "instances": ["all"] }' > /dev/null
-	state_wait 'READY'
-	redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET TASK",   "services": ["all"], "instances": ["all"] }' > /dev/null
-	state_wait 'DEVICE READY'
-	redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET DEVICE", "services": ["all"], "instances": ["all"] }' > /dev/null
-	state_wait 'IDLE'
+        redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "STOP",         "services": ["all"], "instances": ["all"] }' > /dev/null
+        state_wait 'READY'
+        redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET TASK",   "services": ["all"], "instances": ["all"] }' > /dev/null
+        state_wait 'DEVICE READY'
+        redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET DEVICE", "services": ["all"], "instances": ["all"] }' > /dev/null
+        state_wait 'IDLE'
     elif [ "$consistent_state" = "READY"  ]; then
-	redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET TASK",   "services": ["all"], "instances": ["all"] }' > /dev/null
-	state_wait 'DEVICE READY'
-	redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET DEVICE", "services": ["all"], "instances": ["all"] }' > /dev/null
-	state_wait 'IDLE'
+        redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET TASK",   "services": ["all"], "instances": ["all"] }' > /dev/null
+        state_wait 'DEVICE READY'
+        redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET DEVICE", "services": ["all"], "instances": ["all"] }' > /dev/null
+        state_wait 'IDLE'
     elif [  "$consistent_state" = "DEVICE READY"  ]; then
-	redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET DEVICE", "services": ["all"], "instances": ["all"] }' > /dev/null
-	state_wait 'IDLE'
+        redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET DEVICE", "services": ["all"], "instances": ["all"] }' > /dev/null
+        state_wait 'IDLE'
     fi
 }
 
@@ -119,59 +119,45 @@ function status() {
     #echo "$ret"
     for str in $ret
     do
-	dev=${str%:health}
-	dev=${dev#daq_service:*:}
-	#echo "$dev"
+        dev=${str%:health}
+        dev=${dev#daq_service:*:}
 
         state=`redis-cli -n 1 hget metrics:state ${dev}`
         if [ "$state" = "" ]; then
-		state="NULL"
+            state="NULL"
         fi
         echo ${state} ":" ${dev}
 
-#	for i in {1..10}
-#	do
-#	    first_dev_state=`redis-cli -n 1 hget metrics:state ${first_dev}`
-#	    state=`redis-cli -n 1 hget metrics:state ${dev}`
-#	    echo ${state} ":" ${dev}
-#	    if [ "$state" = "" ]; then
-#		    echo "Null state"
-#		    sleep 1
-#		    continue
-#	    fi
-#	    if [ "$state" = "$first_dev_state" ]; then
-#		    break
-#	    else
-#    		#echo ""
-#	    	#echo "Waiting..."
-#    		#echo "Device: $dev"
-#	    	#echo "Required state: $req_state"
-# 	    	#echo "Current state: $state..."
-#		    sleep 1
-#	    fi
-#	done
-	##if [ "$i" = "10" ]; then
-	##    kill_fairmq_devices
-	##    break
-	##fi
     done
     consistent_state="$first_dev_state"
 }
 
 function state_change() {
     sc_com=$1
-    if [$2 = ""] ; then
-        sc_pro="all"
+    if [ $# -lt 2 ] ; then
+        sc_service="all"
     else
-        sc_pro=$2
+        sc_service=$2
+    fi
+
+    if [ $# -lt 3 ] ; then
+        sc_num="all"
+    else
+        sc_num=$3
+    fi
+
+    if [ $sc_num = "all" ] ; then
+        sc_instance="all"
+    else
+        sc_instance=$sc_service':'$sc_service'-'$sc_num
     fi
 
     if [ $sc_com = "initdev" ] ; then
         redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "CONNECT",    "services": ["all"], "instances": ["all"] }' > /dev/null
-    	echo $sc_com
+        echo $sc_com
     elif [ $sc_com = "inittask" ] ; then
         redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "INIT TASK",    "services": ["all"], "instances": ["all"] }' > /dev/null
-    	echo $sc_com
+        echo $sc_com
     elif [ $sc_com = "run" ] ; then
         redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RUN",    "services": ["all"], "instances": ["all"] }' > /dev/null
     elif [ $sc_com = "stop" ] ; then
@@ -181,41 +167,51 @@ function state_change() {
     elif [ $sc_com = "resetdev" ] ; then
         redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "RESET DEVICE",    "services": ["all"], "instances": ["all"] }' > /dev/null
     elif [ $sc_com = "end" ] ; then
-        redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "END",    "services": [$sc_pro], "instances": [$sc_pro] }' > /dev/null
+        redis-cli  'PUBLISH' 'daqctl' '{"command": "change_state", "value": "END",    "services": ["'$sc_service'"], "instances": ["'$sc_instance'"] }' > /dev/null
     fi
+}
+
+function run_number() {
+    if [ $# -ge 1 ] ; then
+         redis-cli -n 0 set run_info:run_number $1 > /dev/null
+    fi
+    run_num=`redis-cli -n 0 get run_info:run_number`
+    echo 'RUN:' $run_num
 }
 
 
 script_name=$0
 
-if [ $# -eq 0 ]
-then
-	com="status"
+if [ $# -eq 0 ] ; then
+    com="status"
 else
-	com=$1
+    com=$1
 fi
 
 if [ $com = "initdev" ] ; then
-	state_change "initdev"
+    state_change "initdev"
 elif [ $com = "inittask" ] ; then
-	state_change "inittask"
+    state_change "inittask"
 elif [ $com = "run" ] ; then
-	state_change "run"
+    state_change "run"
 elif [ $com = "stop" ] ; then
-	state_change "stop"
+    state_change "stop"
 elif [ $com = "resettask" ] ; then
-	state_change "resettask"
+    state_change "resettask"
 elif [ $com = "resetdev" ] ; then
-	state_change "resetdev"
+    state_change "resetdev"
 elif [ $com = "end" ] ; then
-	state_change "end" $2
+    state_change "end" $2 $3
 elif [ $com = "rstart" ] ; then
-	start_run
+    start_run
 elif [ $com = "rstop" ] ; then
-	stop_run
+    stop_run
 elif [ $com = "status" ] ; then
     status
     #echo $consistent_state ": Gloval state"
+elif [ $com = "run-number" ] ; then
+    run_number $2
+
 else
     echo "unrecognized command " $com
 fi

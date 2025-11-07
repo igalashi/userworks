@@ -204,7 +204,7 @@ bool CheckBlock(char *buf, int size)
 				<< cmagic << "("
 				<< std::hex << std::setw(16) << std::setfill('0') << pstf->magic
 				<< ")"
-				<< " id: " << std::setw(6) << std::setfill('0') <<  pstf->timeFrameId
+				<< " TFid: " << std::setw(6) << std::setfill('0') <<  pstf->timeFrameId
 				//<< " res: " << std::setw(8) << std::setfill('0') <<  pstf->reserved
 				<< " Type: " << std::setw(4) << std::setfill('0') <<  pstf->femType
 				<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->femId
