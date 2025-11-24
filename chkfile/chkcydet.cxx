@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <cstring>
+#include <arpa/inet.h>
 
 //#include "HulStrTdcData.h"
 #include "SubTimeFrameHeader.h"
@@ -148,39 +149,56 @@ int CheckDataRecbe(char* raw, uint32_t fe_type, uint32_t fe_id)
 
 	Recbe::Unpack(raw, data);
 
-	std::cout << "Type: " << data.Type << " Id: " << data.Id
+	std::cout << "RECBE Type: 0x" << std::hex << data.Type << " Id: " <<  std::dec << data.Id
 		<< " Sent: " << data.SentNumber << " Time: " << data.TimeStamp
 		<< " Len: " << data.Length << " Trig: " << data.TriggerCount
 		<< " nSample: " << data.nSample
 		<< std::endl;
 
-	for (int i = 0 ; i < Recbe::N_CH ; i++) {
+	if ((data.Type == Recbe::T_RAW) || (data.Type == Recbe::T_RAW_OLD)) {
+		for (int i = 0 ; i < Recbe::N_CH ; i++) {
 
-		bool is_hit = false;
-		for (int j = 0 ; j < data.nSample ; j++) {
-			if (data.Tdc[i][j].Hit) is_hit = true;
+			bool is_hit = false;
+			for (int j = 0 ; j < data.nSample ; j++) {
+				if (data.Tdc[i][j].Hit) is_hit = true;
+			}
+
+
+			if ((!g_flag_only_hits) || is_hit) {
+				std::cout << "ch: " << std::setw(2) << i;
+				std::cout << " A: ";
+				for (int j = 0 ; j < data.nSample ; j++) {
+					std::cout << std::setw(5) << data.Adc[i][j] << " ";
+				}
+				std::cout << std::endl;
+				std::cout << "ch: " << std::setw(2) << i;
+					std::cout << " T: ";
+				for (int j = 0 ; j < data.nSample ; j++) {
+					std::cout << std::setw(5) << data.Tdc[i][j].Value << " ";
+				}
+				std::cout << std::endl;
+				std::cout << "ch: " << std::setw(2) << i;
+				std::cout <<" Hit: ";
+				for (int j = 0 ; j < data.nSample ; j++) {
+					std::cout << data.Tdc[i][j].Hit << " ";
+				}
+					std::cout << std::endl;
+			}
 		}
+	}
 
-
-		if ((!g_flag_only_hits) || is_hit) {
-			std::cout << "ch: " << std::setw(2) << i;
-			std::cout << " A: ";
-			for (int j = 0 ; j < data.nSample ; j++) {
-				std::cout << std::setw(5) << data.Adc[i][j] << " ";
+	if ((data.Type == Recbe::T_SUPPRESS) || (data.Type == Recbe::T_SUPPRESS_OLD)) {
+		if (data.HitChannel.size() > 0) {
+			std::cout << "Nhit: " << data.HitChannel.size() << std::endl;
+			for (unsigned int i = 0 ; i < data.HitChannel.size() ; i++) {
+				std::cout << "Ch:" << std::setw(2) << static_cast<int>(data.HitChannel[i].ChannelId & 0xff)
+					<< " Len:" << std::setw(4) << static_cast<int>(data.HitChannel[i].Length & 0xff)
+					<< " COT:" << std::setw(4) << data.HitChannel[i].CountOverThreshold
+					<< " ADC:" << std::setw(6) << data.HitChannel[i].AdcSum
+					<< " TDC0:" << std::setw(6) << data.HitChannel[i].TdcHit[0]
+					<< " TDC1:" << std::setw(6) << data.HitChannel[i].TdcHit[1]
+					<< std::endl;
 			}
-			std::cout << std::endl;
-			std::cout << "ch: " << std::setw(2) << i;
-				std::cout << " T: ";
-			for (int j = 0 ; j < data.nSample ; j++) {
-				std::cout << std::setw(5) << data.Tdc[i][j].Value << " ";
-			}
-			std::cout << std::endl;
-			std::cout << "ch: " << std::setw(2) << i;
-			std::cout <<" Hit: ";
-			for (int j = 0 ; j < data.nSample ; j++) {
-				std::cout << data.Tdc[i][j].Hit << " ";
-			}
-			std::cout << std::endl;
 		}
 	}
 
@@ -211,7 +229,7 @@ bool CheckBlock(char *buf, int size)
 			<< ")"
 			<< " id: " << std::setw(6) << std::setfill('0') <<  ptf->timeFrameId
 			<< " Nsrc: " << std::setw(4) << std::setfill('0') <<  ptf->numSource
-			<< " len: " << std::dec <<  ptf->length
+			<< " len: " << std::dec << ptf->length
 			<< std::endl;
 		//N_src = ptf->numSource;
 		pdata = reinterpret_cast<uint64_t *>(
@@ -255,7 +273,7 @@ bool CheckBlock(char *buf, int size)
 			char cmagic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 			for (int i = 0 ; i < 8 ; i++)
 				cmagic[i] = (reinterpret_cast<char *>(&(pstf->magic)))[i];
-			std::cout << std::setw(3) << blockcount << " : ";
+			std::cout << std::setw(3) << std::setfill(' ') << blockcount << " : ";
 			std::cout << "STF "
 				<< cmagic << "("
 				<< std::hex << std::setw(16) << std::setfill('0') << pstf->magic
@@ -265,7 +283,7 @@ bool CheckBlock(char *buf, int size)
 				<< " Type: " << std::setw(4) << std::setfill('0') <<  pstf->femType
 				<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->femId
 				//<< std::endl << "# "
-				<< " len: " << std::dec <<  pstf->length
+				<< " len: " << std::dec << std::setw(3) << std::setfill(' ') << pstf->length
 				<< " nMsg: " << std::dec <<  pstf->numMessages
 				//<< std::endl << "# "
 				//<< " Ts: " << std::dec << pstf->time_sec
@@ -491,7 +509,7 @@ int readstdin(uint32_t fe_type)
 				<< " id: " << std::setw(6) << std::setfill('0') <<  pstf->timeFrameId
 				<< " Type: " << std::setw(4) << std::setfill('0') <<  pstf->femType
 				<< " FE: " << std::setw(8) << std::setfill('0') <<  pstf->femId
-				<< " len: " << std::dec <<  pstf->length
+				<< " len: " << std::dec << std::setw(3) << std::setfill(' ') << pstf->length
 				<< " nMsg: " << std::dec <<  pstf->numMessages
 				//<< " Ts: " << std::dec << pstf->time_sec
 				//<< " Tus: " << std::dec << pstf->time_usec

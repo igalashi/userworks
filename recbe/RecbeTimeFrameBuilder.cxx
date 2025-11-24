@@ -18,6 +18,8 @@
 #include "TimeFrameBuilder.h"
 
 //#include "AmQStrTdcData.h"
+//#include "recbe.h"
+//#include <arpa/inet.h>
 
 #if 0
 #include "uhbook.cxx"
@@ -131,7 +133,6 @@ bool TimeFrameBuilder::ConditionalRun()
         LOG(debug4) << "stfId: "<< stfId;
         LOG(debug4) << "msg size: " << inParts.Size();
 
-        //auto femId     = stfHeader->FEMId;
         auto femId     = stfHeader->femId;
         //fHId->Fill(static_cast<double>(femId & 0xff));
         fHId->Fill(static_cast<double>(femId & 0xff) + 0.5);

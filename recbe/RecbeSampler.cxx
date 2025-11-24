@@ -362,15 +362,11 @@ bool RecbeSampler::ConditionalRun()
 	}
 	#endif
 
-	//parts.AddPart(NewMessage(bodysize));
 	outParts.AddPart(NewMessage(hsize + bodysize));
-	//auto &msgRBody = parts[2];
 	auto &msg = outParts[1];
 	char *cmsgbuf = reinterpret_cast<char *>(msg.GetData());
 	memcpy(cmsgbuf, reinterpret_cast<char *>(pheader), sizeof(struct Recbe::Header));
 	char *recbe_body = reinterpret_cast<char *>(msg.GetData()) + hsize;
-	//nread = fSock.Receive(
-	//	reinterpret_cast<char *>(msgRBody.GetData()), bodysize, flag);
 	nread = fSock.Receive(recbe_body , bodysize, flag);
 	if (nread < bodysize) {
 		LOG(warn) << "Reading body: irregal data size " << nread << "/" << bodysize;
@@ -394,26 +390,21 @@ bool RecbeSampler::ConditionalRun()
 			hexdump(recbe_body, nread);
 		}
 	}
+
 	#ifdef CHECK_FREQ 
 	nevents++;
 	#endif
 
 	struct SubTimeFrame::Header *pstfheader
 		 = reinterpret_cast<struct SubTimeFrame::Header *>(msgSTFHeader.GetData());
-	//pstfheader->magic = SubTimeFrame::Magic;
 	pstfheader->magic = SubTimeFrame::MAGIC;
 	pstfheader->timeFrameId = static_cast<uint32_t>(trig);
-	//pstfheader->FEMType = static_cast<uint32_t>(pheader->type) & 0xff;
-	//pstfheader->FEMId = static_cast<uint32_t>(pheader->id) & 0xff;
 	pstfheader->femType = static_cast<uint32_t>(pheader->type) & 0xff;
 	pstfheader->femId = static_cast<uint32_t>(pheader->id) & 0xff;
 	pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct Recbe::Header) + bodysize;
-	//pstfheader->numMessages = 3;
 	pstfheader->numMessages = 2;
 	struct timeval now;
 	gettimeofday(&now, nullptr);
-	//pstfheader->time_sec = now.tv_sec;
-	//pstfheader->time_usec = now.tv_usec;
 	pstfheader->timeSec = now.tv_sec;
 	pstfheader->timeUSec = now.tv_usec;
 
@@ -441,13 +432,12 @@ bool RecbeSampler::ConditionalRun()
 	#endif
 
 
-
 	#if 1
-	FairMQParts dqmParts;
+	fair::mq::Parts dqmParts;
 	bool dqmSocketExists = fChannels.count(fDQMChannelName);
 	if (dqmSocketExists) {
 		for (auto & m : outParts) {
-			FairMQMessagePtr msgCopy(fTransportFactory->CreateMessage());
+			fair::mq::MessagePtr msgCopy(fTransportFactory->CreateMessage());
 			msgCopy->Copy(*m);
 			dqmParts.AddPart(std::move(msgCopy));
 		}

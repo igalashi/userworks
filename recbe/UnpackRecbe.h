@@ -123,7 +123,7 @@ int UnpackRaw(char *raw, struct Data &data)
 
 int UnpackSupp(char *raw, struct Data &data)
 {
-	std::cout << "#W This part have not tested yet!" << std::endl;
+	//std::cout << "#W This part have not tested yet!" << std::endl;
 
 	struct Header *header = reinterpret_cast<struct Header *>(raw);
 
@@ -143,12 +143,83 @@ int UnpackSupp(char *raw, struct Data &data)
 	data.HitChannel.clear();
 	data.HitChannel.resize(0);
 
+#if 0
+	std::cout << "#D " << std::hex
+		<< " " << static_cast<int>(raw[0] & 0xff)
+		<< " " << static_cast<int>(raw[1] & 0xff)
+		<< " " << static_cast<int>(raw[2] & 0xff)
+		<< " " << static_cast<int>(raw[3] & 0xff)
+		<< " " << static_cast<int>(raw[4] & 0xff)
+		<< " " << static_cast<int>(raw[5] & 0xff)
+		<< " " << static_cast<int>(raw[6] & 0xff)
+		<< " " << static_cast<int>(raw[7] & 0xff)
+		<< " " << static_cast<int>(raw[8] & 0xff)
+		<< " " << static_cast<int>(raw[9] & 0xff)
+		<< " " << static_cast<int>(raw[10] & 0xff)
+		<< " " << static_cast<int>(raw[11] & 0xff)
+		<< " :"
+	       	<< " " << static_cast<int>(raw[12] & 0xff)
+		<< " " << static_cast<int>(raw[13] & 0xff)
+		<< " " << static_cast<int>(raw[14] & 0xff)
+		<< " " << static_cast<int>(raw[15] & 0xff)
+		<< " " << static_cast<int>(raw[16] & 0xff)
+		<< " " << static_cast<int>(raw[17] & 0xff)
+		<< std::endl;
+#endif
+
+#if 0
+	std::cout << "#D" << std::dec
+		<< " Sent: " << data.SentNumber << " : " << ntohs(header->SentNumber)
+		<< " Len: " << data.Length << " : " << ntohs(header->Length)
+		<< std::endl;
+#endif
+
 	char *pdata = raw + sizeof(struct Header);
-	while (pdata - raw < data.Length) {
+	while ((pdata - raw + 8) <=
+		static_cast<long int>((data.Length + sizeof(struct Header)))) {
+		struct ChannelData *phit = reinterpret_cast<struct ChannelData *>(pdata);
 		struct ChannelData hit;
-		memcpy(pdata, &hit, sizeof(struct ChannelData));
+		hit.ChannelId = phit->ChannelId;
+		hit.Length = phit->Length;
+		hit.CountOverThreshold = ntohs(phit->CountOverThreshold);
+		hit.AdcSum = ntohs(phit->AdcSum);
+		hit.TdcHit[0] = ntohs(phit->TdcHit[0]);
+		if (hit.Length == 8) {
+			hit.TdcHit[1] = 0x0000;
+		} else if (hit.Length == 10) {
+			hit.TdcHit[1] = ntohs(phit->TdcHit[1]);
+		} else {
+			std::cout << "#W irrgail Channel Data length : " << static_cast<int>(hit.Length & 0xff) << std::endl;
+		}
 		data.HitChannel.emplace_back(hit);
-		pdata += sizeof(struct ChannelData);
+
+#if 0
+		//std::cout << "#D " << static_cast<int>(hit.ChannelId) << std::endl;
+		std::cout << "#D " << std::hex
+			<< " " << reinterpret_cast<unsigned long long>(pdata)
+			<< " ;" << std::setw(3) << std::dec << (pdata - raw) << " :"
+			<< std::hex
+			<< " " << std::setw(2) << static_cast<int>(pdata[0] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[1] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[2] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[3] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[4] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[5] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[6] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[7] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[8] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[9] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[10] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[11] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[12] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[13] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[14] & 0xff)
+			<< " " << std::setw(2) << static_cast<int>(pdata[15] & 0xff)
+			<< std::endl;
+#endif
+
+		//pdata += sizeof(struct ChannelData);
+		pdata += hit.Length;
 	}
 
 	return 0;
