@@ -189,10 +189,10 @@ int CheckDataRecbe(char* raw, uint32_t fe_type, uint32_t fe_id)
 
 	if ((data.Type == Recbe::T_SUPPRESS) || (data.Type == Recbe::T_SUPPRESS_OLD)) {
 		if (data.HitChannel.size() > 0) {
-			std::cout << "Nhit: " << data.HitChannel.size() << std::endl;
+			//std::cout << "Nhit: " << data.HitChannel.size() << std::endl;
 			for (unsigned int i = 0 ; i < data.HitChannel.size() ; i++) {
-				std::cout << "Ch:" << std::setw(2) << static_cast<int>(data.HitChannel[i].ChannelId & 0xff)
-					<< " Len:" << std::setw(4) << static_cast<int>(data.HitChannel[i].Length & 0xff)
+				std::cout << "Ch:" << std::setw(2) << data.HitChannel[i].ChannelId
+					<< " Len:" << std::setw(4) << data.HitChannel[i].Length
 					<< " COT:" << std::setw(4) << data.HitChannel[i].CountOverThreshold
 					<< " ADC:" << std::setw(6) << data.HitChannel[i].AdcSum
 					<< " TDC0:" << std::setw(6) << data.HitChannel[i].TdcHit[0]
@@ -480,7 +480,7 @@ int reader(const char *file)
 int readstdin(uint32_t fe_type)
 {
 	const int WORDSIZE = 8;
-	static char buf[128];
+	static char buf[1024 * 16];
 	static char trashbox[128];
 
 	uint32_t fe_id = 0;
@@ -536,16 +536,30 @@ int readstdin(uint32_t fe_type)
 			continue;
 		}
 
-		//uint64_t dword = *reinterpret_cast<uint64_t *>(buf);
-		//CheckData(dword, fe_type, fe_id);
+		struct Recbe::Header *recbe = reinterpret_cast<struct Recbe::Header *>(buf);
+		if (
+			(recbe->Type == Recbe::T_RAW) || (recbe->Type == Recbe::T_RAW_OLD)
+			|| (recbe->Type == Recbe::T_SUPPRESS) || (recbe->Type == Recbe::T_SUPPRESS_OLD)) {
 
-		/*
-		 * mada kaiteinai
-		pdata = reinterpret_cast<uint64_t *>(
-			reinterpret_cast<char *>(pdata) + sizeof(struct SubTimeFrame::Header));
+			int len = ntohs(recbe->Length);
+			std::cin.read(buf + WORDSIZE, sizeof(struct Recbe::Header) + len - WORDSIZE);
 
-		if (g_flag_dump_module) CheckData(pdata, fe_type, fe_id);
-		*/
+			if(g_flag_dump_module) {
+				CheckData(buf, fe_type, fe_id);
+			} else {
+				std::cout << "RECBE Type: " <<  static_cast<int>(recbe->Type & 0xff)
+			       		<< " Id: " << static_cast<int>(recbe->Id & 0xff)
+					<< " Sent: " << ntohs(recbe->SentNumber)
+					<< " Time: " << ntohs(recbe->TimeStamp)
+			       		<< " Len: " << ntohs(recbe->Length)
+			       		<< " Trig: " << ntohl(recbe->TriggerCount)
+					<< std::endl;
+			}
+
+			continue;
+		}
+
+		std::cout << "Unknown Header: " << std::hex << head << std::endl;
 
 	}
 
