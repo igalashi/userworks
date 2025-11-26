@@ -168,6 +168,7 @@ int UnpackSupp(char *raw, struct Data &data)
 		<< std::endl;
 	#endif
 
+	int sum_hitlength = 0;
 	char *pdata = raw + sizeof(struct Header);
 	while ((pdata - raw + 8) <=
 		static_cast<long int>((data.Length + sizeof(struct Header)))) {
@@ -197,7 +198,16 @@ int UnpackSupp(char *raw, struct Data &data)
 		std::cout << std::setfill(' ') << std::endl;
 		#endif
 
+		sum_hitlength += hit.Length;
+
 		pdata += hit.Length;
+	}
+
+	if (sum_hitlength != data.Length) {
+		std::cout << "#W  Recbe: " << std::dec << std::setw(3) << data.Id << ",  "
+			<< "Data Len: " << std::setw(3) << data.Length
+			<< ", Sum of Hit Len: " << std::setw(3) << sum_hitlength
+			<< std::endl;
 	}
 
 	return 0;
