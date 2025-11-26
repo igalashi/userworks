@@ -547,6 +547,7 @@ int readstdin(uint32_t fe_type)
 			if(g_flag_dump_module) {
 				CheckData(buf, fe_type, fe_id);
 			} else {
+				#if 0
 				std::cout << "RECBE Type: " <<  static_cast<int>(recbe->Type & 0xff)
 			       		<< " Id: " << static_cast<int>(recbe->Id & 0xff)
 					<< " Sent: " << ntohs(recbe->SentNumber)
@@ -554,6 +555,7 @@ int readstdin(uint32_t fe_type)
 			       		<< " Len: " << ntohs(recbe->Length)
 			       		<< " Trig: " << ntohl(recbe->TriggerCount)
 					<< std::endl;
+				#endif
 			}
 
 			continue;
