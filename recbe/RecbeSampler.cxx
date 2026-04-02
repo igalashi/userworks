@@ -276,12 +276,8 @@ bool RecbeSampler::ConditionalRun()
 	struct Recbe::Header recbe_header;
 	int hsize = sizeof(struct Recbe::Header);
 
-	//parts.AddPart(NewMessage(hsize));
-	//auto &msgRHeader = parts[1];
-
+	bool receive_error = false;
 	int flag;
-	//int nread = fSock.Receive(
-	//	reinterpret_cast<char *>(msgRHeader.GetData()), hsize, flag);
 	int nread = fSock.Receive(
 		reinterpret_cast<char *>(&recbe_header), hsize, flag);
 	if (nread < hsize) {
@@ -298,6 +294,7 @@ bool RecbeSampler::ConditionalRun()
 				} else {
 					LOG(warn) << "Unknown error...";
 				}
+				receive_error = true;
 			}
 		} else {
 			return true;
@@ -343,21 +340,7 @@ bool RecbeSampler::ConditionalRun()
 		l_trig = trig;
 		if (fdump) {
 			char *cpheader = reinterpret_cast<char *>(pheader);
-			#if 1
 			hexdump(cpheader, nread);
-			#else
-			std::cout << std::hex;
-			for (int i = 0 ; i < hsize ; i++) {
-				if ((i % 16) == 0) {
-					if (i != 0) std::cout << std::endl;
-					std::cout << "# " << std::setw(4) << i << ":";
-				}
-				std::cout << " " << std::setw(2) << std::setfill('0')
-					<< (static_cast<unsigned int>(pdata[i]) & 0xff);
-			}
-			std::cout << std::endl;
-			std::cout << std::dec;
-			#endif
 		}
 	}
 	#endif
@@ -384,6 +367,7 @@ bool RecbeSampler::ConditionalRun()
 					LOG(warn) << "Unknown error...";
 					hexdump(recbe_body, nread);
 				}
+				receive_error = true;
 			}
 		} else {
 			LOG(error) << "Unknown err. " << flag;
@@ -395,99 +379,69 @@ bool RecbeSampler::ConditionalRun()
 	nevents++;
 	#endif
 
-	struct SubTimeFrame::Header *pstfheader
-		 = reinterpret_cast<struct SubTimeFrame::Header *>(msgSTFHeader.GetData());
-	pstfheader->magic = SubTimeFrame::MAGIC;
-	pstfheader->timeFrameId = static_cast<uint32_t>(trig);
-	pstfheader->femType = static_cast<uint32_t>(pheader->type) & 0xff;
-	pstfheader->femId = static_cast<uint32_t>(pheader->id) & 0xff;
-	pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct Recbe::Header) + bodysize;
-	pstfheader->numMessages = 2;
-	struct timeval now;
-	gettimeofday(&now, nullptr);
-	pstfheader->timeSec = now.tv_sec;
-	pstfheader->timeUSec = now.tv_usec;
+	if (! receive_error) {
 
-	#if 0
-	// NewSimpleMessage creates a copy of the data and takes care of its destruction (after the transfer takes place).
-	// Should only be used for small data because of the cost of an additional copy
-	parts.AddPart(NewSimpleMessage(header));
-	parts.AddPart(NewMessage(1000));
+		struct SubTimeFrame::Header *pstfheader
+			 = reinterpret_cast<struct SubTimeFrame::Header *>(msgSTFHeader.GetData());
+		pstfheader->magic = SubTimeFrame::MAGIC;
+		pstfheader->timeFrameId = static_cast<uint32_t>(trig);
+		pstfheader->femType = static_cast<uint32_t>(pheader->type) & 0xff;
+		pstfheader->femId = static_cast<uint32_t>(pheader->id) & 0xff;
+		pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct Recbe::Header) + bodysize;
+		pstfheader->numMessages = 2;
+		struct timeval now;
+		gettimeofday(&now, nullptr);
+		pstfheader->timeSec = now.tv_sec;
+		pstfheader->timeUSec = now.tv_usec;
 
-	// create more data parts, testing the fair::mq::Parts in-place constructor
-	fair::mq::Parts auxData{ NewMessage(500), NewMessage(600), NewMessage(700) };
-	assert(auxData.Size() == 3);
-	parts.AddPart(std::move(auxData));
-	assert(auxData.Size() == 0);
-	assert(parts.Size() == 5);
+		#if 1
+		fair::mq::Parts dqmParts;
+		bool dqmSocketExists = fChannels.count(fDQMChannelName);
+		if (dqmSocketExists) {
+			for (auto & m : outParts) {
+				fair::mq::MessagePtr msgCopy(fTransportFactory->CreateMessage());
+				msgCopy->Copy(*m);
+				dqmParts.AddPart(std::move(msgCopy));
+			}
 
-	parts.AddPart(NewMessage());
-		 from /home/nestdaq/nestdaq/src/userworks/recbe/RecbeSampler.cxx:9:
-	assert(parts.Size() == 6);
-
-	parts.AddPart(NewMessage(100));
-	assert(parts.Size() == 7);
-
-	LOG(info) << "Sending body of size: " << parts.At(1)->GetSize();
-	#endif
-
-
-	#if 1
-	fair::mq::Parts dqmParts;
-	bool dqmSocketExists = fChannels.count(fDQMChannelName);
-	if (dqmSocketExists) {
-		for (auto & m : outParts) {
-			fair::mq::MessagePtr msgCopy(fTransportFactory->CreateMessage());
-			msgCopy->Copy(*m);
-			dqmParts.AddPart(std::move(msgCopy));
-		}
-
-		if (Send(dqmParts, fDQMChannelName) < 0) {
-			if (NewStatePending()) {
-				LOG(info) << "Device is not RUNNING";
+			if (Send(dqmParts, fDQMChannelName) < 0) {
+				if (NewStatePending()) {
+					LOG(info) << "Device is not RUNNING";
+				} else {
+					LOG(error) << "Failed to enqueue dqm-channel";
+				}
 			} else {
-				LOG(error) << "Failed to enqueue dqm-channel";
+				std::cout << "+" << std::flush;
 			}
 		} else {
-			std::cout << "+" << std::flush;
+			// std::cout << "NoDQM socket" << std::endl;
 		}
-	} else {
-		// std::cout << "NoDQM socket" << std::endl;
-	}
-	#endif
+		#endif
 
-
-
-	#if 0
-	Send(outParts, fOutputChannelName);
-	#else
-
-	int direction = trig % fNumDestination;
-	auto poller = NewPoller(fOutputChannelName);
-	while (!NewStatePending()) {
-		poller->Poll(fPollTimeoutMS);
-		if (poller->CheckOutput(fOutputChannelName, direction)) {
-			if (Send(outParts, fOutputChannelName, direction) > 0) {
-				// successfully sent
-				break;
-			} else {
-				LOG(error) << "Failed to queue output-channel :"
-					<< fOutputChannelName;
+		int direction = trig % fNumDestination;
+		auto poller = NewPoller(fOutputChannelName);
+		while (!NewStatePending()) {
+			poller->Poll(fPollTimeoutMS);
+			if (poller->CheckOutput(fOutputChannelName, direction)) {
+				if (Send(outParts, fOutputChannelName, direction) > 0) {
+					// successfully sent
+					break;
+				} else {
+					LOG(error) << "Failed to queue output-channel :"
+						<< fOutputChannelName;
+				}
+			}
+			if (fNumDestination == 1) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
 		}
-		if (fNumDestination == 1) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
+
+		++fNumIterations;
+		#if 0
+		// Wait a second to keep the output readable.
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		#endif
 	}
-
-	#endif
-
-
-	++fNumIterations;
-	#if 0
-	// Wait a second to keep the output readable.
-	std::this_thread::sleep_for(std::chrono::seconds(1));
-	#endif
 
 	return true;
 }
