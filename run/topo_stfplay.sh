@@ -43,11 +43,13 @@ echo "---------------------------------------------------------------------"
 #endpoint     STFBuilder        in            type pair  method connect 
 #endpoint     STFBuilder        out           type push  method connect autoSubChannel true
 endpoint     STFBFilePlayer    out           type push  method connect 
+endpoint     TFBFilePlayer     out           type push  method connect 
 
 #
 endpoint     TimeFrameBuilder  in            type pull  method bind
 endpoint     TimeFrameBuilder  out           type push  method connect autoSubChannel true 
-endpoint     TFBFilePlayer     out           type push  method connect 
+endpoint     TimeFrameBuilder  dqm           type pub   method bind
+endpoint     TimeFrameBuilder  decimator     type pub   method bind
 
 #
 endpoint     LogicFilter       in            type pull  method bind
@@ -59,6 +61,9 @@ endpoint     TriggerView       in            type sub   method connect
 endpoint     FileSink          in            type pull  method bind
 endpoint     tfdump            in            type pull  method bind
 
+#
+endpoint     dqmdump           in            type sub   method connect
+endpoint     decidump          in            type sub   method connect
 
 echo "---------------------------------------------------------------------"
 echo " config link"
@@ -74,7 +79,10 @@ echo "---------------------------------------------------------------------"
 
 #
 link    STFBFilePlayer    out            TimeFrameBuilder  in
-link    TimeFrameBuilder  out            tfdump            in
+#link    TimeFrameBuilder  out            tfdump            in
+link    TimeFrameBuilder  out            FileSink          in
+link    TimeFrameBuilder  dqm            dqmdump           in
+link    TimeFrameBuilder  decimator      decidump          in 
 
 #
 #link    STFBFilePlayer    out            TimeFrameBuilder  in

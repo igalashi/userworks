@@ -1,0 +1,254 @@
+以下が、現状の `processwatchdog.py` を再生成できるための仕様です。
+
+**基本**
+配置先:
+
+```text
+/home/igarashi/nestdaq/src/processwatchdog/processwatchdog.py
+```
+
+目的:
+
+- Redis hash `metrics:TimeFrameBuilder-0:LostSegments` を監視する。
+- 同じ `field` が一定回数、一定時間内に連続して変化した場合に `run.sh` を実行する。
+- `run.sh` 実行前後で、対象 `RecbeSampler` に対して DAQ 状態変更コマンドを Redis publish する。
+
+**デフォルト設定**
+```python
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
+REDIS_DB = 1
+
+HASH_KEY = "metrics:TimeFrameBuilder-0:LostSegments"
+SCRIPT_PATH = "./run.sh"
+
+USE_TABLE_LOOKUP = True
+CONSECUTIVE_FIELD_COUNT = 5
+CONSECUTIVE_FIELD_TIMEOUT_SECONDS = 2.0
+
+DAQCTL_CHANNEL = "daqctl"
+STATE_HASH_KEY = "metrics:state"
+STATE_WAIT_RETRY_COUNT = 10
+STATE_WAIT_SLEEP_SECONDS = 1
+
+RECBE_SAMPLER_DB = 2
+RECBE_SAMPLER_KEY_PATTERN = "parameters:RecbeSampler-*"
+RECBE_SAMPLER_KEY_PREFIX = "parameters:"
+RECBE_SAMPLER_IP_FIELD = "ip"
+RECBE_SAMPLER_IP_PREFIX = "192.168.10."
+```
+
+**コマンドラインオプション**
+```sh
+--redis-host
+--redis-port
+--redis-db
+--consecutive-field-count
+--consecutive-field-timeout
+--daqctl-services
+--daqctl-instances
+--publish-daqctl-state STATE SERVICES INSTANCES
+--find-recbe-sampler-key IP_ADDRESS
+--hlep
+```
+
+`--publish-daqctl-state` が指定された場合:
+
+- Redis DB 0 に `daqctl` publish だけ行う。
+- 監視ループには入らず終了する。
+
+`--find-recbe-sampler-key` が指定された場合:
+
+- Redis DB 2 を scan する。
+- `parameters:RecbeSampler-*` の hash field `ip` と指定 IP を比較する。
+- 一致した key の `parameters:` prefix を外し、`RecbeSampler-*` を出力して終了する。
+
+**Redis 監視**
+起動時に Redis keyspace notification を有効化する。
+
+```python
+r.config_set("notify-keyspace-events", "Kh")
+```
+
+購読 channel:
+
+```text
+__keyspace@<redis_db>__:metrics:TimeFrameBuilder-0:LostSegments
+```
+
+対象イベント:
+
+```text
+hset
+hmset
+hdel
+```
+
+イベント発生時:
+
+- `hgetall(HASH_KEY)` で hash 全体を取得する。
+- 前回 hash と比較して、値が変化した field のみを抽出する。
+- 変更された field/value を表示する。
+
+```text
+DB changed: field=<field> value=<value>
+```
+
+**連続判定**
+スクリプト実行条件:
+
+- 同じ `field` が連続して変化すること。
+- 連続回数が `CONSECUTIVE_FIELD_COUNT` 以上であること。
+- 連続する各変更の間隔が `CONSECUTIVE_FIELD_TIMEOUT_SECONDS` 秒以内であること。
+
+タイムアウトを超えた場合、または field が変わった場合:
+
+```text
+consecutive_field_count = 1
+```
+
+実行後は:
+
+```text
+consecutive_field_count = 0
+```
+
+**run.sh 引数生成**
+`USE_TABLE_LOOKUP = True` のため、field は `SAMPLE_TABLE` で変換する。
+
+```python
+field -> (first, second)
+```
+
+`run.sh` には以下の形で渡す。
+
+```text
+./run.sh field first second value
+```
+
+例:
+
+```python
+field = "4"
+value = "123"
+SAMPLE_TABLE[4] = (11, 0x0001)
+```
+
+実行引数:
+
+```text
+./run.sh 4 11 1 123
+```
+
+テーブルに field が無い場合は `ValueError` になり、その更新はスキップする。
+
+**RecbeSampler 名の解決**
+`field` から直接 `RecbeSampler-<field>` は作らない。
+
+手順:
+
+1. `field` を整数に変換する。
+2. `field + 16` を IP アドレス末尾にする。
+3. IP 文字列を作る。
+
+```text
+192.168.10.<field + 16>
+```
+
+例:
+
+```text
+field = 4
+IP = 192.168.10.20
+```
+
+4. Redis DB 2 を scan する。
+5. `parameters:RecbeSampler-*` の hash field `"ip"` を読む。
+6. IP が一致した key を取得する。
+7. key の `parameters:` prefix を外す。
+
+```text
+parameters:RecbeSampler-XX -> RecbeSampler-XX
+```
+
+8. DAQ publish 用 instance 文字列を作る。
+
+```text
+RecbeSampler:RecbeSampler-XX
+```
+
+見つからない場合:
+
+```text
+Skip script execution: RecbeSampler key not found: field=<field> ip=<ip>
+```
+
+**run.sh 前後の DAQ 制御**
+`run.sh` 実行時は以下の順序。
+
+```text
+publish_daqctl_state("STOP", "RecbeSampler", "RecbeSampler:RecbeSampler-XX")
+run.sh 実行
+publish_daqctl_state("RUN", "RecbeSampler", "RecbeSampler:RecbeSampler-XX")
+sleep 5
+state_wait(..., "RUN")
+```
+
+現状では STOP 後の `state_wait(..., "STOP")` はコメントアウトされている。
+
+**publish payload**
+Redis DB 0 の channel `daqctl` に publish する。
+
+payload:
+
+```json
+{
+  "command": "change_state",
+  "value": "<STOP or RUN>",
+  "services": ["<services>"],
+  "instances": ["<instances>"]
+}
+```
+
+**状態確認**
+`state_consistency_wait()` は:
+
+- Redis DB 0 の keys から `health` を含み `:health` で終わる key を探す。
+- device 名を取り出す。
+- Redis DB 1 の hash `metrics:state` から各 device の state を読む。
+- 最初の device の state と全 device の state が一致するまで待つ。
+- 最大 `STATE_WAIT_RETRY_COUNT = 10` 回、各回 `STATE_WAIT_SLEEP_SECONDS = 1` 秒待つ。
+- 一致しない場合は `kill_fairmq_devices()` を呼ぶ。
+- ただし `kill_fairmq_devices()` は現状ではメッセージ表示のみ。
+
+**実行結果表示**
+`run.sh` 実行後、以下を表示する。
+
+```text
+Return code: <returncode>
+stdout:
+<stdout>
+stderr:
+<stderr>
+```
+
+**常駐動作**
+`main()` は `while True` で呼ばれる。
+
+Redis 接続エラー時:
+
+```text
+Redis connection error: ...
+```
+
+を表示し、3秒 sleep して再試行する。
+
+**現在の実行例**
+```sh
+cd ~/nestdaq/src/processwatchdog
+
+python3 processwatchdog.py \
+  --redis-host comet-cdc-daq01.intra.j-parc.jp \
+  --consecutive-field-count 5 \
+  --consecutive-field-timeout 2.0
+```

@@ -17,6 +17,7 @@ tmux new-session -d -s STFPlay
 #tmux new-window -d -n S${runID} -t TFPlay -- "./udevice.sh TFBFilePlayer --wait 10 --in-file $HOME/nestdaq/data/run001132.dat " &
 
 #for i in {00..09}
+#for i in 01 02 03 04 05 06 07 08 09 10 11
 for i in 01 02 03 04 05 06 07 08 09 10 11
 do
 	tmux new-window -d -n S${i} -t STFPlay -- \
