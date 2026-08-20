@@ -94,7 +94,7 @@ private:
 	std::string fInputChannelName;
 
 	struct STFBuffer {
-		FairMQParts parts;
+		fair::mq::Parts parts;
 		std::chrono::steady_clock::time_point start;
 	};
 
@@ -286,7 +286,7 @@ bool RawDump::DumpMsgData(fair::mq::MessagePtr& msg)
 bool RawDump::ConditionalRun()
 {
 	//Receive
-	FairMQParts inParts;
+	fair::mq::Parts inParts;
 	if (Receive(inParts, fInputChannelName, 0, 1000) > 0) {
 		//assert(inParts.Size() >= 2);
 
@@ -337,7 +337,7 @@ bool RawDump::ConditionalRun()
 		}
 
 		if (!fIsShrink) {
-			for(int i = 0 ; i < inParts.Size() ; i++) {
+			for(unsigned int i = 0 ; i < inParts.Size() ; i++) {
 				std::cout << "Msg: " << std::dec << i << " Size: " << inParts.At(i)->GetSize();
 				DumpMsgData(inParts.At(i));
 			}

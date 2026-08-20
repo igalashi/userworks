@@ -18,7 +18,7 @@
 #endif
 
 #include "koltcp.h"
-#include "recbe.h"
+#include "Recbe.h"
 
 const int default_buf_size = 16 * 1024 * 1024;
 //const char rotbar[] = {'-', '/', '|', '\\'};

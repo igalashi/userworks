@@ -41,6 +41,8 @@ inline namespace v1 {
 
 // " EMITBUS" : little endian of "SUBTIME "
 constexpr uint64_t MAGIC  {0x00454d4954425553};
+
+constexpr uint32_t NULDEV    {0};
 constexpr uint32_t TDC64H    {2};
 constexpr uint32_t TDC64H_V1 {2};
 constexpr uint32_t TDC64L    {3};
@@ -53,7 +55,14 @@ constexpr uint32_t TDC64L_V3 {6};
 constexpr uint32_t INPUT_REG {21};
 constexpr uint32_t FLT_TDC   {0x0000'1000};
 
-constexpr uint32_t NULDEV    {0};
+#if 0
+constexpr uint32_t RECBE          {0x0000be00};
+constexpr uint32_t RECBE_RAW      {0x0000be00};
+constexpr uint32_t RECBE_SUPRESS  {0x0000be21};
+constexpr uint32_t COTTORI_CDC_FE {0x0000cdcf};
+constexpr uint32_t COTTORI_CDC_MB {0x0000cdcb};
+constexpr uint32_t COTTORI_CTH_FE {0x0000ccfe};
+#endif
 
 constexpr uint16_t META {1};
 

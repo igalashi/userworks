@@ -22,7 +22,7 @@
 
 #include "SubTimeFrameHeader.h"
 #include "SubTimeFrameHeaderLocal.h"
-#include "Recbe.h"
+#include "CottoriCdcMb.h"
 #include "CliSock.cxx"
 #include "RBCP.cxx"
 #include "KTimer.cxx"
@@ -31,12 +31,12 @@
 
 namespace bpo = boost::program_options;
 
-class RecbeSampler : public fair::mq::Device
+class CottoriCdcMbSampler : public fair::mq::Device
 {
 public:
 	struct OptionKey {
-		static constexpr std::string_view DeviceIp	    {"ip"};
-		static constexpr std::string_view DataPort	    {"port"};
+		static constexpr std::string_view DeviceIp          {"ip"};
+		static constexpr std::string_view DataPort          {"port"};
 		static constexpr std::string_view Timeout_ms        {"timeout"};
 		static constexpr std::string_view ControlPort       {"control-port"};
 		static constexpr std::string_view OutputChannelName {"out-chan-name"};
@@ -47,10 +47,10 @@ public:
 		static constexpr std::string_view RBCP              {"rbcp"};
 	};
 
-	RecbeSampler() : fair::mq::Device() {};
-	RecbeSampler(const RecbeSampler&)	    = delete;
-	RecbeSampler& operator=(const RecbeSampler&) = delete;
-	~RecbeSampler() = default;
+	CottoriCdcMbSampler() : fair::mq::Device() {};
+	CottoriCdcMbSampler(const CottoriCdcMbSampler&)            = delete;
+	CottoriCdcMbSampler& operator=(const CottoriCdcMbSampler&) = delete;
+	~CottoriCdcMbSampler() = default;
 
 protected:
 	void Init() override;
@@ -60,7 +60,7 @@ protected:
 	void PreRun() override;
 	//bool PreRun() override;
 	void Run() override;
-	bool CheckRecbeHeader(char*);
+	//bool CheckCottoriCdcMbHeader(char*);
 
 private:
 	uint64_t fNumIterations = 0;
@@ -82,7 +82,7 @@ private:
 
 void addCustomOptions(bpo::options_description& options)
 {
-	using opt = RecbeSampler::OptionKey;
+	using opt = CottoriCdcMbSampler::OptionKey;
 	options.add_options()
 		("max-iterations",
 			bpo::value<uint64_t>()->default_value(5),
@@ -107,7 +107,7 @@ void addCustomOptions(bpo::options_description& options)
 			"Timeout of the front-end deive")
 		(opt::Mode.data(),
 			bpo::value<std::string>()->default_value("1"),
-			"Recbe run mode")
+			"CottoriCdcMb run mode")
 		(opt::PollTimeout.data(),
 			bpo::value<std::string>()->default_value("1"),
 			"Timeout of polling (in msec)")
@@ -127,7 +127,7 @@ void addCustomOptions(bpo::options_description& options)
 
 std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& /*config*/)
 {
-	return std::make_unique<RecbeSampler>();
+	return std::make_unique<CottoriCdcMbSampler>();
 }
 
 
@@ -143,13 +143,13 @@ void PrintConfig(const fair::mq::ProgOptions* config, std::string_view name, std
 }
 
 
-void RecbeSampler::Init()
+void CottoriCdcMbSampler::Init()
 {
 	LOG(debug) << __FUNCTION__;
 }
 
 
-void RecbeSampler::InitTask()
+void CottoriCdcMbSampler::InitTask()
 {
 	LOG(debug) << __FUNCTION__;
 
@@ -181,7 +181,7 @@ void RecbeSampler::InitTask()
 	char val[8]; val[1] = 0x00;
 	if (fMode != 0) {
 		val[0] = fMode;
-		if (rbcp.Write(val, Recbe::R_MODE, 1) > 0) {
+		if (rbcp.Write(val, CottoriCdcMb::R_MODE, 1) > 0) {
 			LOG(info) << "Run Mode: " << fMode;
 		} else {
 			LOG(error) << "RBCP err. IP: " << fDeviceIp << " Port: " << fControlPort;
@@ -228,14 +228,15 @@ void RecbeSampler::InitTask()
 }
 
 
-bool RecbeSampler::CheckRecbeHeader(char *buf)
+#if 0
+bool CottoriCdcMbSampler::CheckCottoriCdcMbHeader(char *buf)
 {
 	int htype[] = {
-		Recbe::T_RAW, Recbe::T_SUPPRESS, Recbe::T_BOTH,
-		Recbe::T_RAW_OLD, Recbe::T_SUPPRESS_OLD
+		CottoriCdcMb::T_RAW, CottoriCdcMb::T_SUPPRESS, CottoriCdcMb::T_BOTH,
+		CottoriCdcMb::T_RAW_OLD, CottoriCdcMb::T_SUPPRESS_OLD
 	};
 	
-	struct Recbe::Header *h = reinterpret_cast<Recbe::Header *>(buf);
+	struct CottoriCdcMb::Header *h = reinterpret_cast<CottoriCdcMb::Header *>(buf);
 	bool ret = false;
 	for (auto i : htype) {
 		if (h->type == i) {
@@ -246,9 +247,10 @@ bool RecbeSampler::CheckRecbeHeader(char *buf)
 
 	return ret;
 }
+#endif
 
 
-bool RecbeSampler::ConditionalRun()
+bool CottoriCdcMbSampler::ConditionalRun()
 {
 	#if 0
 	example_multipart::Header header;
@@ -274,19 +276,19 @@ bool RecbeSampler::ConditionalRun()
 	outParts.AddPart(NewMessage(sizeof(SubTimeFrame::Header)));
 	auto &msgSTFHeader = outParts[0];
 
-	struct Recbe::Header recbe_header;
-	int hsize = sizeof(struct Recbe::Header);
+	struct CottoriCdcMb::Header cottori_header;
+	int hsize = sizeof(struct CottoriCdcMb::Header);
 
 	bool receive_error = false;
 	int flag;
 	int nread = fSock.Receive(
-		reinterpret_cast<char *>(&recbe_header), hsize, flag);
+		reinterpret_cast<char *>(&cottori_header), hsize, flag);
 	if (nread < hsize) {
 		LOG(warn) << "Irregal data size : " << nread << "/" << hsize;
 		if (flag == EAGAIN) {
 			 LOG(warn) << "Timeout and Retry";
 			int nnread = fSock.Receive(
-				reinterpret_cast<char *>(&recbe_header) + nread,
+				reinterpret_cast<char *>(&cottori_header) + nread,
 				hsize - nread, flag);
 			nread += nnread;
 			if (nread < hsize) {
@@ -301,11 +303,12 @@ bool RecbeSampler::ConditionalRun()
 			return true;
 		}
 	}
-	struct Recbe::Header *pheader;
-	//pheader = reinterpret_cast<struct Recbe::Header *>(msgRHeader.GetData());
-	pheader = &recbe_header;
-	int bodysize = static_cast<int>(ntohs(pheader->len));
-	int trig = static_cast<int>(ntohl(pheader->trig_count));
+	struct CottoriCdcMb::Header *pheader;
+	pheader = &cottori_header;
+	int bodysize = static_cast<int>((pheader->n_sample) * CottoriCdcMb::N_DATA_BYTES);
+	uint32_t trig = static_cast<int>(
+			(ntohs(pheader->trig_counts_u) * 65536)
+		       	+ ntohs(pheader->trig_counts_l));
 
 	#if 0
 	if (fKt1.Check()) {
@@ -349,30 +352,30 @@ bool RecbeSampler::ConditionalRun()
 	outParts.AddPart(NewMessage(hsize + bodysize));
 	auto &msg = outParts[1];
 	char *cmsgbuf = reinterpret_cast<char *>(msg.GetData());
-	memcpy(cmsgbuf, reinterpret_cast<char *>(pheader), sizeof(struct Recbe::Header));
-	char *recbe_body = reinterpret_cast<char *>(msg.GetData()) + hsize;
-	nread = fSock.Receive(recbe_body , bodysize, flag);
+	memcpy(cmsgbuf, reinterpret_cast<char *>(pheader), sizeof(struct CottoriCdcMb::Header));
+	char *cottori_body = reinterpret_cast<char *>(msg.GetData()) + hsize;
+	nread = fSock.Receive(cottori_body , bodysize, flag);
 	if (nread < bodysize) {
 		LOG(warn) << "Reading body: irregal data size " << nread << "/" << bodysize;
 		if (flag == EAGAIN) {
 			LOG(warn) << "Timeout and Retry";
 			int nnread = fSock.Receive(
-				recbe_body + nread,
+				cottori_body + nread,
 				bodysize - nread, flag);
 			nread += nnread;
 			if (nread < bodysize) {
 				if (flag == EAGAIN) {
 					LOG(warn) << "Timeout anagin...";
-					hexdump(recbe_body, nread);
+					hexdump(cottori_body, nread);
 				} else {
 					LOG(warn) << "Unknown error...";
-					hexdump(recbe_body, nread);
+					hexdump(cottori_body, nread);
 				}
 				receive_error = true;
 			}
 		} else {
 			LOG(error) << "Unknown err. " << flag;
-			hexdump(recbe_body, nread);
+			hexdump(cottori_body, nread);
 		}
 	}
 
@@ -386,9 +389,9 @@ bool RecbeSampler::ConditionalRun()
 			 = reinterpret_cast<struct SubTimeFrame::Header *>(msgSTFHeader.GetData());
 		pstfheader->magic = SubTimeFrame::MAGIC;
 		pstfheader->timeFrameId = static_cast<uint32_t>(trig);
-		pstfheader->femType = (static_cast<uint32_t>(pheader->type) & 0xff) | (SubTimeFrame::RECBE & 0xff00);
+		pstfheader->femType = SubTimeFrame::COTTORI_CDC_FE;
 		pstfheader->femId = static_cast<uint32_t>(pheader->id) & 0xff;
-		pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct Recbe::Header) + bodysize;
+		pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct CottoriCdcMb::Header) + bodysize;
 		pstfheader->numMessages = 2;
 		struct timeval now;
 		gettimeofday(&now, nullptr);
@@ -448,7 +451,7 @@ bool RecbeSampler::ConditionalRun()
 }
 
 
-void RecbeSampler::PostRun()
+void CottoriCdcMbSampler::PostRun()
 {
 	LOG(debug) << __FUNCTION__;
 	fNumIterations = 0;
@@ -456,8 +459,8 @@ void RecbeSampler::PostRun()
 }
 
 
-//bool RecbeSampler::PreRun()
-void RecbeSampler::PreRun()
+//bool CottoriCdcMbSampler::PreRun()
+void CottoriCdcMbSampler::PreRun()
 {
 	LOG(debug) << __FUNCTION__;
 	if (fTimeout_ms > 0) fSock.SetTimeOut_ms(fTimeout_ms);
@@ -472,7 +475,7 @@ void RecbeSampler::PreRun()
 }
 
 
-void RecbeSampler::Run()
+void CottoriCdcMbSampler::Run()
 {
 	LOG(debug) << __FUNCTION__;
 }

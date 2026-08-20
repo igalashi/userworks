@@ -7,6 +7,8 @@ set(INSTALL_LIBDIR ${CMAKE_SOURCE_DIR}/lib)
 foreach(lvar IN ITEMS
 	rawdump;
 	RecbeSampler;
+	CottoriCdcFeSampler;
+	CottoriCdcMbSampler;
 	RecbeTimeFrameBuilder;
 	RecbeDisplay;
 	RecbeSink;
@@ -118,7 +120,7 @@ target_compile_options(CliSock
 
 add_executable(drecbe
 	drecbe.cxx
-	recbe.h
+	Recbe.h
 	)
 target_compile_options(drecbe
 	PRIVATE -Wall -O -g)

@@ -21,7 +21,7 @@
 #include <sys/time.h>
 
 #include "SubTimeFrameHeader.h"
-#include "recbe.h"
+#include "Recbe.h"
 #include "CliSock.cxx"
 #include "RBCP.cxx"
 #include "KTimer.cxx"
