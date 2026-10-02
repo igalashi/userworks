@@ -23,6 +23,9 @@ function link () {
 }
 
 
+echo "Clear DAQ service keys"
+redis-cli -u $server keys 'daq_service:*' | xargs redis-cli -u $server del
+
 echo "---------------------------------------------------------------------"
 echo " config endpoint (socket)"
 echo "---------------------------------------------------------------------"

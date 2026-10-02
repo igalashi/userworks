@@ -7,7 +7,7 @@ tmux new-window -d -n S${runID} -t TFPlay -- "./udevice.sh TFBFilePlayer --wait 
 #tmux new-window -d -n S${runID} -t TFPlay -- "./udevice.sh TFBFilePlayer --wait 10 --in-file $HOME/nestdaq/run001132.dat " &
 #tmux new-window -d -n S${runID} -t TFPlay -- "./uudevice.sh LogicFilter" &
 tmux new-window -d -n S${runID} -t TFPlay -- "./udevice.sh LogicFilter" &
-tmux new-window -d -n S${runID} -t TFPlay -- "./uudevice.sh tfdump --shrink true" &
+tmux new-window -d -n S${runID} -t TFPlay -- "./udevice.sh tfdump --shrink true" &
 #tmux new-window -d -n S${runID} -t TFPlay -- "./uudevice.sh RecbeDisplay" &
 #tmux new-window -d -n S${runID} -t TFPlay -- "./uudevice.sh hdtbldisplay" &
 tmux new-window -d -n S${runID} -t TFPlay -- "./udevice.sh TriggerView" &

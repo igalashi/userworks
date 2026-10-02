@@ -23,6 +23,9 @@ function link () {
 }
 
 
+echo "Clear DAQ service keys"
+redis-cli -u $server keys 'daq_service:*' | xargs redis-cli -u $server del
+
 echo "---------------------------------------------------------------------"
 echo " config endpoint (socket)"
 echo "---------------------------------------------------------------------"
@@ -52,8 +55,8 @@ endpoint     TimeFrameBuilder  out         type push  method bind
 endpoint     TFBFilePlayer   out           type push  method bind 
 
 #
-endpoint     fltcoin        in             type pull  method connect
-endpoint     fltcoin        out            type push  method bind
+endpoint     LogicFilter     in             type pull  method connect
+endpoint     LogicFilter     out            type push  method bind
 
 
 # Sink
@@ -85,13 +88,13 @@ echo "---------------------------------------------------------------------"
 
 #link    STFBFilePlayer    out            tfdump       in
 
-link    TFBFilePlayer     out            fltcoin      in
-link    fltcoin           out            tfdump       in
+link    TFBFilePlayer     out            LogicFilter  in
+link    LogicFilter       out            tfdump       in
 
 #link    STFBFilePlayer    out            TimeFrameBuilder in
-#link    TimeFrameBuilder  out            fltcoin          in
-#link    fltcoin           out            tfdump           in
+#link    TimeFrameBuilder  out            LogicFilter          in
+#link    LogicFilter           out            tfdump           in
 
 #link    STFBFilePlayer    out            tfbuilder        in
-#link    tfbuilder         out            fltcoin          in
-#link    fltcoin           out            tfdump           in
+#link    tfbuilder         out            LogicFilter          in
+#link    LogicFilter           out            tfdump           in
