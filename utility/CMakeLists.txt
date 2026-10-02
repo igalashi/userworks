@@ -83,7 +83,7 @@ add_library(Utility
 )
 
 if(USE_LZMA)
-  add_compile_definitions(Utility USE_LZMA=1)
+  target_compile_definitions(Utility PRIVATE USE_LZMA=1)
 endif()
 
 target_include_directories(Utility PRIVATE

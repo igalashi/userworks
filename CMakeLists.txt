@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.13)
 
 project(nestdaq LANGUAGES CXX C)
 
@@ -11,7 +11,7 @@ if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   add_compile_options(-fdiagnostics-color=always)
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   message("turn on colored error message of Clang")
-  add_compiler_options(-fcolor-diagnostics)
+  add_compile_options(-fcolor-diagnostics)
 endif()
 
 #------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ find_package(Threads REQUIRED)
 #------------------------------------------------------------------------------
 # RPATH handling
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX/${CMAKE_INSTALL_LIBDIR}}" isSystemDir)
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" isSystemDir)
 if("${isSystemDir}" STREQUAL "-1")
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS} -Wl,--enable-new-dtags")

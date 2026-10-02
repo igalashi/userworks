@@ -1,0 +1,4 @@
+# Build and install outputs
+/build/
+/bin/
+/lib/
