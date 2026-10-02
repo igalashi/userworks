@@ -1,9 +1,9 @@
 /********************************************************************************
  *    Copyright (C) 2014 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH    *
- *									      *
- *	      This software is distributed under the terms of the	     *
- *	      GNU Lesser General Public Licence (LGPL) version 3,	     *
- *		  copied verbatim in the file "LICENSE"		       *
+ *										*
+ *	      This software is distributed under the terms of the		*
+ *	      GNU Lesser General Public Licence (LGPL) version 3,		*
+ *		  copied verbatim in the file "LICENSE"				*
  ********************************************************************************/
 
 #include <fairmq/Device.h>
@@ -22,7 +22,7 @@
 
 #include "SubTimeFrameHeader.h"
 #include "SubTimeFrameHeaderLocal.h"
-#include "CottoriCdcFe.h"
+#include "CottriCdcFe.h"
 #include "CliSock.cxx"
 #include "RBCP.cxx"
 #include "KTimer.cxx"
@@ -31,7 +31,7 @@
 
 namespace bpo = boost::program_options;
 
-class CottoriCdcFeSampler : public fair::mq::Device
+class CottriCdcFeSampler : public fair::mq::Device
 {
 public:
 	struct OptionKey {
@@ -47,10 +47,10 @@ public:
 		static constexpr std::string_view RBCP              {"rbcp"};
 	};
 
-	CottoriCdcFeSampler() : fair::mq::Device() {};
-	CottoriCdcFeSampler(const CottoriCdcFeSampler&)            = delete;
-	CottoriCdcFeSampler& operator=(const CottoriCdcFeSampler&) = delete;
-	~CottoriCdcFeSampler() = default;
+	CottriCdcFeSampler() : fair::mq::Device() {};
+	CottriCdcFeSampler(const CottriCdcFeSampler&)            = delete;
+	CottriCdcFeSampler& operator=(const CottriCdcFeSampler&) = delete;
+	~CottriCdcFeSampler() = default;
 
 protected:
 	void Init() override;
@@ -60,9 +60,11 @@ protected:
 	void PreRun() override;
 	//bool PreRun() override;
 	void Run() override;
-	//bool CheckCottoriCdcFeHeader(char*);
+	//bool CheckCottriCdcFeHeader(char*);
 
 private:
+	int SkipAndScanHeader();
+
 	uint64_t fNumIterations = 0;
 	unsigned int fNumDestination = 0;
 	unsigned int fPollTimeoutMS = 0;
@@ -82,7 +84,7 @@ private:
 
 void addCustomOptions(bpo::options_description& options)
 {
-	using opt = CottoriCdcFeSampler::OptionKey;
+	using opt = CottriCdcFeSampler::OptionKey;
 	options.add_options()
 		("max-iterations",
 			bpo::value<uint64_t>()->default_value(5),
@@ -107,7 +109,7 @@ void addCustomOptions(bpo::options_description& options)
 			"Timeout of the front-end deive")
 		(opt::Mode.data(),
 			bpo::value<std::string>()->default_value("1"),
-			"CottoriCdcFe run mode")
+			"CottriCdcFe run mode")
 		(opt::PollTimeout.data(),
 			bpo::value<std::string>()->default_value("1"),
 			"Timeout of polling (in msec)")
@@ -127,7 +129,7 @@ void addCustomOptions(bpo::options_description& options)
 
 std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& /*config*/)
 {
-	return std::make_unique<CottoriCdcFeSampler>();
+	return std::make_unique<CottriCdcFeSampler>();
 }
 
 
@@ -143,13 +145,13 @@ void PrintConfig(const fair::mq::ProgOptions* config, std::string_view name, std
 }
 
 
-void CottoriCdcFeSampler::Init()
+void CottriCdcFeSampler::Init()
 {
 	LOG(debug) << __FUNCTION__;
 }
 
 
-void CottoriCdcFeSampler::InitTask()
+void CottriCdcFeSampler::InitTask()
 {
 	LOG(debug) << __FUNCTION__;
 
@@ -181,7 +183,7 @@ void CottoriCdcFeSampler::InitTask()
 	char val[8]; val[1] = 0x00;
 	if (fMode != 0) {
 		val[0] = fMode;
-		if (rbcp.Write(val, CottoriCdcFe::R_MODE, 1) > 0) {
+		if (rbcp.Write(val, CottriCdcFe::R_MODE, 1) > 0) {
 			LOG(info) << "Run Mode: " << fMode;
 		} else {
 			LOG(error) << "RBCP err. IP: " << fDeviceIp << " Port: " << fControlPort;
@@ -229,14 +231,14 @@ void CottoriCdcFeSampler::InitTask()
 
 
 #if 0
-bool CottoriCdcFeSampler::CheckCottoriCdcFeHeader(char *buf)
+bool CottriCdcFeSampler::CheckCottriCdcFeHeader(char *buf)
 {
 	int htype[] = {
-		CottoriCdcFe::T_RAW, CottoriCdcFe::T_SUPPRESS, CottoriCdcFe::T_BOTH,
-		CottoriCdcFe::T_RAW_OLD, CottoriCdcFe::T_SUPPRESS_OLD
+		CottriCdcFe::T_RAW, CottriCdcFe::T_SUPPRESS, CottriCdcFe::T_BOTH,
+		CottriCdcFe::T_RAW_OLD, CottriCdcFe::T_SUPPRESS_OLD
 	};
 	
-	struct CottoriCdcFe::Header *h = reinterpret_cast<CottoriCdcFe::Header *>(buf);
+	struct CottriCdcFe::Header *h = reinterpret_cast<CottriCdcFe::Header *>(buf);
 	bool ret = false;
 	for (auto i : htype) {
 		if (h->type == i) {
@@ -249,8 +251,12 @@ bool CottoriCdcFeSampler::CheckCottoriCdcFeHeader(char *buf)
 }
 #endif
 
-int CottoriCdcFeSampler::SkipAndScanHeader()
+int CottriCdcFeSampler::SkipAndScanHeader()
 {
+	struct CottriCdcFe::Header cottori_header;
+	int hsize = sizeof(struct CottriCdcFe::Header);
+	bool receive_error = false;
+	int flag;
 
 	int nread = fSock.Receive(
 		reinterpret_cast<char *>(&cottori_header), hsize, flag);
@@ -275,16 +281,16 @@ int CottoriCdcFeSampler::SkipAndScanHeader()
 		}
 	}
 
-	struct CottoriCdcFe::Header *pheader;
+	struct CottriCdcFe::Header *pheader;
 	pheader = &cottori_header;
-	int bodysize = static_cast<int>((pheader->n_sample) * CottoriCdcFe::N_DATA_BYTES);
+	int bodysize = static_cast<int>((pheader->n_sample) * CottriCdcFe::N_DATA_BYTES);
 	uint32_t trig = static_cast<int>(
 			(ntohs(pheader->trig_counts_u) * 65536)
 		       	+ ntohs(pheader->trig_counts_l));
 
 
 	int h_magic = ntohs(static_cast<int>(pheader->magic) & 0xffff);
-	if (fKt1.Check() || (h_magic != CottoriCdcFe::MAGIC)) {
+	if (fKt1.Check() || (h_magic != CottriCdcFe::MAGIC)) {
 		std::cout << std::hex
 			<< "#D MAGIC: " << ntohs(static_cast<int>(pheader->magic) & 0xffff)
 			<< " ID: " << (static_cast<int>(pheader->id) & 0xff)
@@ -299,7 +305,7 @@ int CottoriCdcFeSampler::SkipAndScanHeader()
 }
 
 
-bool CottoriCdcFeSampler::ConditionalRun()
+bool CottriCdcFeSampler::ConditionalRun()
 {
 	#if 0
 	example_multipart::Header header;
@@ -325,8 +331,8 @@ bool CottoriCdcFeSampler::ConditionalRun()
 	outParts.AddPart(NewMessage(sizeof(SubTimeFrame::Header)));
 	auto &msgSTFHeader = outParts[0];
 
-	struct CottoriCdcFe::Header cottori_header;
-	int hsize = sizeof(struct CottoriCdcFe::Header);
+	struct CottriCdcFe::Header cottori_header;
+	int hsize = sizeof(struct CottriCdcFe::Header);
 
 	bool receive_error = false;
 	int flag;
@@ -352,16 +358,16 @@ bool CottoriCdcFeSampler::ConditionalRun()
 			return true;
 		}
 	}
-	struct CottoriCdcFe::Header *pheader;
+	struct CottriCdcFe::Header *pheader;
 	pheader = &cottori_header;
-	int bodysize = static_cast<int>((pheader->n_sample) * CottoriCdcFe::N_DATA_BYTES);
+	int bodysize = static_cast<int>((pheader->n_sample) * CottriCdcFe::N_DATA_BYTES);
 	uint32_t trig = static_cast<int>(
 			(ntohs(pheader->trig_counts_u) * 65536)
-		       	+ ntohs(pheader->trig_counts_l));
+			+ ntohs(pheader->trig_counts_l));
 
 	#if 1
 	int h_magic = ntohs(static_cast<int>(pheader->magic) & 0xffff);
-	if (fKt1.Check() || (h_magic != CottoriCdcFe::MAGIC)) {
+	if (fKt1.Check() || (h_magic != CottriCdcFe::MAGIC)) {
 		std::cout << std::hex
 			<< "#D MAGIC: " << ntohs(static_cast<int>(pheader->magic) & 0xffff)
 			<< " ID: " << (static_cast<int>(pheader->id) & 0xff)
@@ -403,7 +409,7 @@ bool CottoriCdcFeSampler::ConditionalRun()
 	outParts.AddPart(NewMessage(hsize + bodysize));
 	auto &msg = outParts[1];
 	char *cmsgbuf = reinterpret_cast<char *>(msg.GetData());
-	memcpy(cmsgbuf, reinterpret_cast<char *>(pheader), sizeof(struct CottoriCdcFe::Header));
+	memcpy(cmsgbuf, reinterpret_cast<char *>(pheader), sizeof(struct CottriCdcFe::Header));
 	char *cottori_body = reinterpret_cast<char *>(msg.GetData()) + hsize;
 	nread = fSock.Receive(cottori_body , bodysize, flag);
 	if (nread < bodysize) {
@@ -442,7 +448,7 @@ bool CottoriCdcFeSampler::ConditionalRun()
 		pstfheader->timeFrameId = static_cast<uint32_t>(trig);
 		pstfheader->femType = SubTimeFrame::COTTORI_CDC_FE;
 		pstfheader->femId = static_cast<uint32_t>(pheader->id) & 0xff;
-		pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct CottoriCdcFe::Header) + bodysize;
+		pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct CottriCdcFe::Header) + bodysize;
 		pstfheader->numMessages = 2;
 		struct timeval now;
 		gettimeofday(&now, nullptr);
@@ -502,7 +508,7 @@ bool CottoriCdcFeSampler::ConditionalRun()
 }
 
 
-void CottoriCdcFeSampler::PostRun()
+void CottriCdcFeSampler::PostRun()
 {
 	LOG(debug) << __FUNCTION__;
 	fNumIterations = 0;
@@ -510,8 +516,8 @@ void CottoriCdcFeSampler::PostRun()
 }
 
 
-//bool CottoriCdcFeSampler::PreRun()
-void CottoriCdcFeSampler::PreRun()
+//bool CottriCdcFeSampler::PreRun()
+void CottriCdcFeSampler::PreRun()
 {
 	LOG(debug) << __FUNCTION__;
 	if (fTimeout_ms > 0) fSock.SetTimeOut_ms(fTimeout_ms);
@@ -526,7 +532,7 @@ void CottoriCdcFeSampler::PreRun()
 }
 
 
-void CottoriCdcFeSampler::Run()
+void CottriCdcFeSampler::Run()
 {
 	LOG(debug) << __FUNCTION__;
 }

@@ -2,10 +2,10 @@
  *
  */
 
-#ifndef INC_CottoriCdcFe
-#define INC_CottoriCdcFe
+#ifndef INC_CottriCdcMb
+#define INC_CottriCdcMb
 
-namespace CottoriCdcFe {
+namespace CottriCdcMb {
 inline namespace v0 {
 
 #if 0
@@ -22,8 +22,8 @@ constexpr int T_RAW_OLD	     = 0x22;
 constexpr int T_SUPPRESS_OLD = 0x20;
 #endif
 
-
 constexpr int N_CH = 48;
+
 
 // network byte order
 struct Header {
@@ -34,18 +34,15 @@ struct Header {
 	unsigned char  delay;
 	unsigned short trig_counts_u;
 	unsigned short trig_counts_l;
-	unsigned short reserve1;
-	unsigned short reserve2;
+	unsigned short internal_trig_u;
+	unsigned short internal_trig_l;
 	unsigned short magic2;
 //	unsigned char[120] data;
 };
 
-constexpr int N_DATA_BYTES = 120;
+constexpr int N_DATA_BYTES = 150;
 constexpr uint32_t MAGIC = 0xaaaa;
 constexpr uint32_t MAGIC2 = 0x5555;
-
-// This was written in SubTimeFrameHeader.h
-//constexpr uint32_t T_COTTRI_CDCFE = 0x0000'cdcf;
 
 
 //Register map

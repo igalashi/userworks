@@ -80,14 +80,14 @@ echo "---------------------------------------------------------------------"
 #
 link    STFBFilePlayer    out            TimeFrameBuilder  in
 #link    TimeFrameBuilder  out            tfdump            in
-link    TimeFrameBuilder  out            FileSink          in
+#link    TimeFrameBuilder  out            FileSink          in
 link    TimeFrameBuilder  dqm            dqmdump           in
 link    TimeFrameBuilder  decimator      decidump          in 
 
 #
 #link    STFBFilePlayer    out            TimeFrameBuilder  in
-#link    TimeFrameBuilder  out            LogicFilter       in
-#link    LogicFilter       out            tfdump            in
+link    TimeFrameBuilder  out            LogicFilter       in
+link    LogicFilter       out            tfdump            in
 #
 #link    STFBFilePlayer    out            tfdump            in
 #link    TFBFilePlayer     out            tfdump            in

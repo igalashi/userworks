@@ -93,14 +93,16 @@ std::vector<struct TrgExpression> Parsing(const std::string &expression)
 		try {
 			unsigned long ll = std::stoul(words[0], nullptr, 0);
 			t.type = 0xffffffff & ll;
+			t.expr = words[1];
 		} catch (const std::invalid_argument &e) {
-			std::cerr << "#E invalid argument " << e.what() << " " << words[0] << std::endl;
-			break;
+			std::cerr << "#W invalid argument " << e.what() << " " << words[0] << std::endl;
+			std::cerr << "Apply old format with Trigger type = 0xaa000000." << std::endl;
+			t.type = 0xaa000000;
+			t.expr = words[0];
 		} catch (const std::out_of_range &e) {
 			std::cerr << "#E out of range " << e.what() << " " << words[0] << std::endl;
 			break;
 		}
-		t.expr = words[1];
 		trig.emplace_back(t);
 	}
 

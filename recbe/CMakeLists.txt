@@ -7,8 +7,8 @@ set(INSTALL_LIBDIR ${CMAKE_SOURCE_DIR}/lib)
 foreach(lvar IN ITEMS
 	rawdump;
 	RecbeSampler;
-	CottoriCdcFeSampler;
-	CottoriCdcMbSampler;
+	CottriCdcFeSampler;
+	CottriCdcMbSampler;
 	RecbeTimeFrameBuilder;
 	RecbeDisplay;
 	RecbeSink;

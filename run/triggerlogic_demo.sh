@@ -40,7 +40,9 @@ redis-cli -u $server hset parameters:LogicFilter trigger-signals \
  (0xc0a802aa 24 -12) (0xc0a802aa 25 -12) (0xc0a802aa 27 -12) (0xc0a802aa 28 -12)"
 
 redis-cli -u $server hset parameters:LogicFilter trigger-formula \
-"(0 & 1) & (2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13)"
+	"(0 & 1) & (2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13)"
+redis-cli -u $server hset parameters:LogicFilter trigger-expression \
+	"(0 & 1) & (2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13)"
 
 #redis-cli -u $server hset parameters:LogicFilter trigger-signals \
 #"(0xc0a802aa 10  0) (0xc0a802aa 12  0) \
@@ -64,7 +66,7 @@ redis-cli -u $server hset parameters:LogicFilter trigger-formula \
 #redis-cli -u $server hset parameters:LogicFilter trigger-formula "(0 & 1)"
 
 #redis-cli -u $server hset parameters:LogicFilter trigger-width "10"
-redis-cli -u $server hset parameters:LogicFilter trigger-width "30"
+redis-cli -u $server hset parameters:LogicFilter trigger-width "20"
 
 
 redis-cli -u $server hgetall parameters:LogicFilter

@@ -22,7 +22,7 @@
 
 #include "SubTimeFrameHeader.h"
 #include "SubTimeFrameHeaderLocal.h"
-#include "CottoriCdcMb.h"
+#include "CottriCdcMb.h"
 #include "CliSock.cxx"
 #include "RBCP.cxx"
 #include "KTimer.cxx"
@@ -31,7 +31,7 @@
 
 namespace bpo = boost::program_options;
 
-class CottoriCdcMbSampler : public fair::mq::Device
+class CottriCdcMbSampler : public fair::mq::Device
 {
 public:
 	struct OptionKey {
@@ -47,10 +47,10 @@ public:
 		static constexpr std::string_view RBCP              {"rbcp"};
 	};
 
-	CottoriCdcMbSampler() : fair::mq::Device() {};
-	CottoriCdcMbSampler(const CottoriCdcMbSampler&)            = delete;
-	CottoriCdcMbSampler& operator=(const CottoriCdcMbSampler&) = delete;
-	~CottoriCdcMbSampler() = default;
+	CottriCdcMbSampler() : fair::mq::Device() {};
+	CottriCdcMbSampler(const CottriCdcMbSampler&)            = delete;
+	CottriCdcMbSampler& operator=(const CottriCdcMbSampler&) = delete;
+	~CottriCdcMbSampler() = default;
 
 protected:
 	void Init() override;
@@ -60,7 +60,7 @@ protected:
 	void PreRun() override;
 	//bool PreRun() override;
 	void Run() override;
-	//bool CheckCottoriCdcMbHeader(char*);
+	//bool CheckCottriCdcMbHeader(char*);
 
 private:
 	uint64_t fNumIterations = 0;
@@ -82,7 +82,7 @@ private:
 
 void addCustomOptions(bpo::options_description& options)
 {
-	using opt = CottoriCdcMbSampler::OptionKey;
+	using opt = CottriCdcMbSampler::OptionKey;
 	options.add_options()
 		("max-iterations",
 			bpo::value<uint64_t>()->default_value(5),
@@ -107,7 +107,7 @@ void addCustomOptions(bpo::options_description& options)
 			"Timeout of the front-end deive")
 		(opt::Mode.data(),
 			bpo::value<std::string>()->default_value("1"),
-			"CottoriCdcMb run mode")
+			"CottriCdcMb run mode")
 		(opt::PollTimeout.data(),
 			bpo::value<std::string>()->default_value("1"),
 			"Timeout of polling (in msec)")
@@ -127,7 +127,7 @@ void addCustomOptions(bpo::options_description& options)
 
 std::unique_ptr<fair::mq::Device> getDevice(fair::mq::ProgOptions& /*config*/)
 {
-	return std::make_unique<CottoriCdcMbSampler>();
+	return std::make_unique<CottriCdcMbSampler>();
 }
 
 
@@ -143,13 +143,13 @@ void PrintConfig(const fair::mq::ProgOptions* config, std::string_view name, std
 }
 
 
-void CottoriCdcMbSampler::Init()
+void CottriCdcMbSampler::Init()
 {
 	LOG(debug) << __FUNCTION__;
 }
 
 
-void CottoriCdcMbSampler::InitTask()
+void CottriCdcMbSampler::InitTask()
 {
 	LOG(debug) << __FUNCTION__;
 
@@ -181,7 +181,7 @@ void CottoriCdcMbSampler::InitTask()
 	char val[8]; val[1] = 0x00;
 	if (fMode != 0) {
 		val[0] = fMode;
-		if (rbcp.Write(val, CottoriCdcMb::R_MODE, 1) > 0) {
+		if (rbcp.Write(val, CottriCdcMb::R_MODE, 1) > 0) {
 			LOG(info) << "Run Mode: " << fMode;
 		} else {
 			LOG(error) << "RBCP err. IP: " << fDeviceIp << " Port: " << fControlPort;
@@ -229,14 +229,14 @@ void CottoriCdcMbSampler::InitTask()
 
 
 #if 0
-bool CottoriCdcMbSampler::CheckCottoriCdcMbHeader(char *buf)
+bool CottriCdcMbSampler::CheckCottriCdcMbHeader(char *buf)
 {
 	int htype[] = {
-		CottoriCdcMb::T_RAW, CottoriCdcMb::T_SUPPRESS, CottoriCdcMb::T_BOTH,
-		CottoriCdcMb::T_RAW_OLD, CottoriCdcMb::T_SUPPRESS_OLD
+		CottriCdcMb::T_RAW, CottriCdcMb::T_SUPPRESS, CottriCdcMb::T_BOTH,
+		CottriCdcMb::T_RAW_OLD, CottriCdcMb::T_SUPPRESS_OLD
 	};
 	
-	struct CottoriCdcMb::Header *h = reinterpret_cast<CottoriCdcMb::Header *>(buf);
+	struct CottriCdcMb::Header *h = reinterpret_cast<CottriCdcMb::Header *>(buf);
 	bool ret = false;
 	for (auto i : htype) {
 		if (h->type == i) {
@@ -250,7 +250,7 @@ bool CottoriCdcMbSampler::CheckCottoriCdcMbHeader(char *buf)
 #endif
 
 
-bool CottoriCdcMbSampler::ConditionalRun()
+bool CottriCdcMbSampler::ConditionalRun()
 {
 	#if 0
 	example_multipart::Header header;
@@ -276,8 +276,8 @@ bool CottoriCdcMbSampler::ConditionalRun()
 	outParts.AddPart(NewMessage(sizeof(SubTimeFrame::Header)));
 	auto &msgSTFHeader = outParts[0];
 
-	struct CottoriCdcMb::Header cottori_header;
-	int hsize = sizeof(struct CottoriCdcMb::Header);
+	struct CottriCdcMb::Header cottori_header;
+	int hsize = sizeof(struct CottriCdcMb::Header);
 
 	bool receive_error = false;
 	int flag;
@@ -303,9 +303,9 @@ bool CottoriCdcMbSampler::ConditionalRun()
 			return true;
 		}
 	}
-	struct CottoriCdcMb::Header *pheader;
+	struct CottriCdcMb::Header *pheader;
 	pheader = &cottori_header;
-	int bodysize = static_cast<int>((pheader->n_sample) * CottoriCdcMb::N_DATA_BYTES);
+	int bodysize = static_cast<int>((pheader->n_sample) * CottriCdcMb::N_DATA_BYTES);
 	uint32_t trig = static_cast<int>(
 			(ntohs(pheader->trig_counts_u) * 65536)
 		       	+ ntohs(pheader->trig_counts_l));
@@ -352,7 +352,7 @@ bool CottoriCdcMbSampler::ConditionalRun()
 	outParts.AddPart(NewMessage(hsize + bodysize));
 	auto &msg = outParts[1];
 	char *cmsgbuf = reinterpret_cast<char *>(msg.GetData());
-	memcpy(cmsgbuf, reinterpret_cast<char *>(pheader), sizeof(struct CottoriCdcMb::Header));
+	memcpy(cmsgbuf, reinterpret_cast<char *>(pheader), sizeof(struct CottriCdcMb::Header));
 	char *cottori_body = reinterpret_cast<char *>(msg.GetData()) + hsize;
 	nread = fSock.Receive(cottori_body , bodysize, flag);
 	if (nread < bodysize) {
@@ -391,7 +391,7 @@ bool CottoriCdcMbSampler::ConditionalRun()
 		pstfheader->timeFrameId = static_cast<uint32_t>(trig);
 		pstfheader->femType = SubTimeFrame::COTTORI_CDC_FE;
 		pstfheader->femId = static_cast<uint32_t>(pheader->id) & 0xff;
-		pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct CottoriCdcMb::Header) + bodysize;
+		pstfheader->length = sizeof(struct SubTimeFrame::Header) + sizeof(struct CottriCdcMb::Header) + bodysize;
 		pstfheader->numMessages = 2;
 		struct timeval now;
 		gettimeofday(&now, nullptr);
@@ -451,7 +451,7 @@ bool CottoriCdcMbSampler::ConditionalRun()
 }
 
 
-void CottoriCdcMbSampler::PostRun()
+void CottriCdcMbSampler::PostRun()
 {
 	LOG(debug) << __FUNCTION__;
 	fNumIterations = 0;
@@ -459,8 +459,8 @@ void CottoriCdcMbSampler::PostRun()
 }
 
 
-//bool CottoriCdcMbSampler::PreRun()
-void CottoriCdcMbSampler::PreRun()
+//bool CottriCdcMbSampler::PreRun()
+void CottriCdcMbSampler::PreRun()
 {
 	LOG(debug) << __FUNCTION__;
 	if (fTimeout_ms > 0) fSock.SetTimeOut_ms(fTimeout_ms);
@@ -475,7 +475,7 @@ void CottoriCdcMbSampler::PreRun()
 }
 
 
-void CottoriCdcMbSampler::Run()
+void CottriCdcMbSampler::Run()
 {
 	LOG(debug) << __FUNCTION__;
 }
